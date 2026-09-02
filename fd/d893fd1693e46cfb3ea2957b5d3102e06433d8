@@ -1,0 +1,16 @@
+src/main.rs
+  h_361662506da91f 10
+src/cli.rs
+  h_361662506da91f 20,41,46,61,82-83
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "fdd893fd1693e46cfb3ea2957b5d3102e06433d8",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
