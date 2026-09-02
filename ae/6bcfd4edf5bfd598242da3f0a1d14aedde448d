@@ -1,0 +1,14 @@
+Cargo.toml
+  h_361662506da91f 5,24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ae6bcfd4edf5bfd598242da3f0a1d14aedde448d",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
