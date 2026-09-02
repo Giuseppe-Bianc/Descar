@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "crates/descar-core",
     "crates/descar-cli",
+    "crates/descar",
 ]
 
 [workspace.lints.clippy]
