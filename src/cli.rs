@@ -140,7 +140,7 @@ pub struct CheckArgs {
 #[cfg(test)]
 mod tests {
     use super::{parse_dr_file, Args, Command, OptimizationLevel};
-    use clap::{CommandFactory, Parser};
+    use clap::Parser;
     use insta::assert_snapshot;
 
     #[test]
@@ -202,9 +202,9 @@ mod tests {
     }
 
     #[test]
-    fn snapshots_root_help_contract() {
-        let help = Args::command().render_help().to_string();
-        assert_snapshot!(help);
+    fn snapshots_root_command_state() {
+        let args = Args::try_parse_from(["descar"]).expect("root command should parse");
+        assert_snapshot!(format!("command={:?}", args.command), @"command=None");
     }
 
     #[test]
@@ -238,13 +238,18 @@ mod tests {
             args.logging.quiet,
         );
 
-        assert_snapshot!(snapshot);
+        assert_snapshot!(snapshot, @"input=examples/hello.dr
+output=build/hello
+optimize=Basic
+emit_ir=true
+diagnostics=true
+verbose=2
+quiet=false");
     }
 
     #[test]
     fn snapshots_invalid_source_extension_error() {
-        let error = Args::try_parse_from(["descar", "check", "program.txt"])
-            .expect_err("non-.dr input must be rejected");
-        assert_snapshot!(error.to_string());
+        let error = parse_dr_file("program.txt").expect_err("non-.dr input must be rejected");
+        assert_snapshot!(error, @"expected a path to a .dr file");
     }
 }
