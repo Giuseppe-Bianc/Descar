@@ -10,7 +10,7 @@ use clap::{
         styling::{AnsiColor, Effects},
     },
 };
-use descar_core::error::DescarError;
+use descar_core::error::internal::DescarError;
 use std::path::PathBuf;
 
 /// Custom help template used by the Descar CLI.

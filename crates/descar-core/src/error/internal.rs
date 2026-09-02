@@ -12,10 +12,6 @@ pub enum DescarError {
     /// A source file could not be read.
     #[error("failed to read source file `{path}`: {message}")]
     SourceRead { path: String, message: String },
-
-    /// The compiler encountered invalid source syntax.
-    #[error("invalid syntax: {message}")]
-    Syntax { message: String },
 }
 
 #[cfg(test)]
@@ -34,12 +30,5 @@ mod tests {
         let error = DescarError::SourceRead { path: "examples/hello.dr".into(), message: "permission denied".into() };
 
         assert_eq!(error.to_string(), "failed to read source file `examples/hello.dr`: permission denied");
-    }
-
-    #[test]
-    fn formats_syntax_error() {
-        let error = DescarError::Syntax { message: "expected expression".into() };
-
-        assert_eq!(error.to_string(), "invalid syntax: expected expression");
     }
 }
