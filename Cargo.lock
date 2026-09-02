@@ -3,14 +3,6 @@
 version = 4
 
 [[package]]
-name = "Descar"
-version = "0.1.0"
-dependencies = [
- "clap",
- "insta",
-]
-
-[[package]]
 name = "aho-corasick"
 version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -165,6 +157,27 @@ dependencies = [
  "generic-array",
  "typenum",
 ]
+
+[[package]]
+name = "descar"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "descar-cli",
+]
+
+[[package]]
+name = "descar-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "descar-core",
+ "insta",
+]
+
+[[package]]
+name = "descar-core"
+version = "0.1.0"
 
 [[package]]
 name = "digest"

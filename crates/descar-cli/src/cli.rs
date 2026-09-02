@@ -4,8 +4,11 @@
 //! grow through dedicated subcommands such as `compile` and `check`.
 
 use clap::{
-    builder::{styling::{AnsiColor, Effects}, Styles},
     ArgAction, Args as ClapArgs, Parser, Subcommand, ValueEnum,
+    builder::{
+        Styles,
+        styling::{AnsiColor, Effects},
+    },
 };
 use std::path::PathBuf;
 
@@ -39,11 +42,7 @@ fn parse_dr_file(value: &str) -> Result<PathBuf, String> {
         .and_then(|extension| extension.to_str())
         .is_some_and(|extension| extension.eq_ignore_ascii_case("dr"));
 
-    if is_dr {
-        Ok(path)
-    } else {
-        Err("expected a path to a .dr file".into())
-    }
+    if is_dr { Ok(path) } else { Err("expected a path to a .dr file".into()) }
 }
 
 /// Optimization levels accepted by the compiler CLI.
