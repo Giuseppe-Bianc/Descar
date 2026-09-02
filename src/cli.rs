@@ -10,13 +10,13 @@ use clap::{
 use std::path::PathBuf;
 
 /// Custom help template used by the Descar CLI.
-const HELP_STR: &str = r#"
+const HELP_STR: &str = r"
 {before-help}{name} {version}
 {author-with-newline}
 {about-with-newline}
 {usage-heading} {usage}
 
-{all-args}{after-help}"#;
+{all-args}{after-help}";
 
 /// Creates the custom styles used by clap's help output.
 #[must_use]
