@@ -2,6 +2,7 @@
 name = "Descar"
 version = "0.1.0"
 edition = "2024"
+authors = ["Giuseppe Bianconi (Giuseppe-Bianc) <bianconig6@gmail.com>"]
 repository = "https://github.com/Giuseppe-Bianc/Descar"
 license = "Apache-2.0"
 readme = "README.md"
@@ -20,6 +21,7 @@ path = "src/main.rs"
 bench = false
 
 [dependencies]
+clap = { version = "4.6.6", features = ["cargo", "derive"] }
 
 
 [lints.clippy]
