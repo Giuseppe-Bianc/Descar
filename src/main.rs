@@ -7,6 +7,6 @@ fn main() {
     let args = Args::parse();
 
     if args.verbose {
-        println!("Compiling {:?}", args.input);
+        println!("Compiling {:?}", args.input.display());
     }
 }

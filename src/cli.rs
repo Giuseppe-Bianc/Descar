@@ -11,13 +11,13 @@ use clap::{
 use std::path::PathBuf;
 
 /// Custom help template used by the Descar CLI.
-const HELP_STR: &str = r#"
+const HELP_STR: &str = r"
 {before-help}{name} {version}
 {author-with-newline}
 {about-with-newline}
 {usage-heading} {usage}
 
-{all-args}{after-help}"#;
+{all-args}{after-help}";
 
 /// Creates the custom styles used by clap's help output.
 #[must_use]
@@ -38,12 +38,12 @@ fn parse_vn_file(value: &str) -> Result<PathBuf, String> {
     let is_vn = path
         .extension()
         .and_then(|extension| extension.to_str())
-        .is_some_and(|extension| extension.eq_ignore_ascii_case("vn"));
+        .is_some_and(|extension| extension.eq_ignore_ascii_case("dr"));
 
     if is_vn {
         Ok(path)
     } else {
-        Err("expected a path to a .vn file".into())
+        Err("expected a path to a .dr file".into())
     }
 }
 
@@ -58,7 +58,7 @@ fn parse_vn_file(value: &str) -> Result<PathBuf, String> {
     styles = custom_styles()
 )]
 pub struct Args {
-    /// Input `.vn` source file to compile.
+    /// Input `.dr` source file to compile.
     #[arg(
         short,
         long,
@@ -79,8 +79,8 @@ mod tests {
 
     #[test]
     fn accepts_vn_extension_case_insensitively() {
-        assert!(parse_vn_file("program.vn").is_ok());
-        assert!(parse_vn_file("program.VN").is_ok());
+        assert!(parse_vn_file("program.dr").is_ok());
+        assert!(parse_vn_file("program.DR").is_ok());
     }
 
     #[test]
