@@ -1,0 +1,33 @@
+crates/descar-core/src/location/source_span.rs
+  h_361662506da91f 42-46,54-58,63-64,70-71,76-77,83-84,89-90,95-96,101-102,107-108,113-114,118,123,125-126,132,141-157
+  s_57ecb8cd943678::t_d9cbefd077f460 124,158-159
+crates/descar-core/tests/source_location_snapshots.rs
+  h_361662506da91f 15
+crates/descar-core/tests/source_location_test.rs
+  h_361662506da91f 24,59-60
+crates/descar-core/src/location/source_id.rs
+  h_361662506da91f 21-22,24,34,44,54,61-64,72-75
+crates/descar-core/src/location/source_location.rs
+  h_361662506da91f 59,109,119,144,149-150,155-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1c49afa2743a811c56ff87c00c81087c70a0d411",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_57ecb8cd943678": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6e78008-1ea0-421e-b4e1-0ce47df84469",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
