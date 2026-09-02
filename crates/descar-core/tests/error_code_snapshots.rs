@@ -115,16 +115,8 @@ fn snapshots_enum_representations() {
 
     let rendered = format!(
         "severities:\n{}\nphases:\n{}",
-        severities
-            .iter()
-            .map(|severity| format!("{severity:?} => {severity}"))
-            .collect::<Vec<_>>()
-            .join("\n"),
-        phases
-            .iter()
-            .map(|phase| format!("{phase:?} => {phase}"))
-            .collect::<Vec<_>>()
-            .join("\n"),
+        severities.iter().map(|severity| format!("{severity:?} => {severity}")).collect::<Vec<_>>().join("\n"),
+        phases.iter().map(|phase| format!("{phase:?} => {phase}")).collect::<Vec<_>>().join("\n"),
     );
 
     assert_snapshot!("enum_representations", rendered);
