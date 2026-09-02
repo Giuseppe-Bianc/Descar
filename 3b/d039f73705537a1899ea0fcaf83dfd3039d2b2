@@ -1,0 +1,18 @@
+CODE_OF_CONDUCT.md
+  h_361662506da91f 1-128
+SECURITY.md
+  h_361662506da91f 1-103
+rustfmt.toml
+  h_361662506da91f 1-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3bd039f73705537a1899ea0fcaf83dfd3039d2b2",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
