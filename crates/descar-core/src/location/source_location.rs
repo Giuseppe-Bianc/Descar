@@ -197,8 +197,16 @@ impl PartialOrd for SourceLocation {
 }
 
 impl Ord for SourceLocation {
+    /// Confronta tutti i campi nell'ordine di dichiarazione, coerente con [`Eq`]:
+    /// `line` → `column` → `offset` → `index` → `utf8_offset` → `code_point_offset`.
     fn cmp(&self, other: &Self) -> Ordering {
-        self.offset.cmp(&other.offset)
+        self.line
+            .cmp(&other.line)
+            .then_with(|| self.column.cmp(&other.column))
+            .then_with(|| self.offset.cmp(&other.offset))
+            .then_with(|| self.index.cmp(&other.index))
+            .then_with(|| self.utf8_offset.cmp(&other.utf8_offset))
+            .then_with(|| self.code_point_offset.cmp(&other.code_point_offset))
     }
 }
 

@@ -145,12 +145,10 @@ impl fmt::Display for Span {
 
 /// Ordinamento deterministico coerente con [`PartialEq`].
 ///
-/// Confronta prima per `start.offset()`, poi per `end.offset()`, e usa tutti
-/// gli altri campi di [`SourceLocation`] come tiebreaker in modo che due span
-/// distinti secondo `==` non risultino mai uguali secondo `cmp`.
-///
-/// Ordine dei tiebreaker (applicati a `start` prima, poi a `end`):
-/// `offset` → `line` → `column` → `index` → `utf8_offset` → `code_point_offset`.
+/// Delega a [`SourceLocation::cmp`], che confronta tutti i campi nell'ordine
+/// di dichiarazione (`line → column → offset → index → utf8_offset →
+/// code_point_offset`). Due span distinti secondo `==` non risultano mai
+/// uguali secondo `cmp`.
 impl PartialOrd for Span {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -159,23 +157,6 @@ impl PartialOrd for Span {
 
 impl Ord for Span {
     fn cmp(&self, other: &Self) -> Ordering {
-        // Primary key: start offset.
-        self.start
-            .offset()
-            .cmp(&other.start.offset())
-            // Then the remaining start metadata.
-            .then_with(|| self.start.line().cmp(&other.start.line()))
-            .then_with(|| self.start.column().cmp(&other.start.column()))
-            .then_with(|| self.start.index().cmp(&other.start.index()))
-            .then_with(|| self.start.utf8_offset().cmp(&other.start.utf8_offset()))
-            .then_with(|| self.start.code_point_offset().cmp(&other.start.code_point_offset()))
-            // Secondary key: end offset.
-            .then_with(|| self.end.offset().cmp(&other.end.offset()))
-            // Then the remaining end metadata.
-            .then_with(|| self.end.line().cmp(&other.end.line()))
-            .then_with(|| self.end.column().cmp(&other.end.column()))
-            .then_with(|| self.end.index().cmp(&other.end.index()))
-            .then_with(|| self.end.utf8_offset().cmp(&other.end.utf8_offset()))
-            .then_with(|| self.end.code_point_offset().cmp(&other.end.code_point_offset()))
+        self.start.cmp(&other.start).then_with(|| self.end.cmp(&other.end))
     }
 }

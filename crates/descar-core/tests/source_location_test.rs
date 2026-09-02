@@ -63,13 +63,22 @@ fn create_rejects_offsets_that_do_not_fit_in_index() {
 }
 
 #[test]
-fn ordering_depends_only_on_offset() {
-    let low = location(99, 99, 10);
-    let same_offset = location(1, 1, 10);
+fn ordering_is_consistent_with_equality() {
+    // Same offset but different line/column → not equal, not Equal under cmp.
+    // line 1 < line 99, so a comes before b.
+    let a = location(1, 1, 10);
+    let b = location(99, 99, 10);
+    assert!(a < b);
+    assert_eq!(a.cmp(&b), std::cmp::Ordering::Less);
+
+    // Only truly identical locations compare Equal.
+    let dup = location(1, 1, 10);
+    assert_eq!(a.cmp(&dup), std::cmp::Ordering::Equal);
+
+    // Higher offset on the same line/column is still greater.
     let high = location(1, 1, 11);
-    assert_eq!(low.cmp(&same_offset), std::cmp::Ordering::Equal);
-    assert!(low < high);
-    assert!(high > low);
+    assert!(a < high);
+    assert!(high > a);
 }
 
 #[test]
