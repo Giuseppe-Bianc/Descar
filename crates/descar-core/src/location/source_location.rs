@@ -1,4 +1,3 @@
-
 use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
@@ -58,12 +57,7 @@ pub struct SourceLocation {
 impl SourceLocation {
     /// Equivalente del "compact constructor" Java: valida tutti i campi.
     pub fn try_new(
-        line: i32,
-        column: i32,
-        offset: i64,
-        index: i32,
-        utf8_offset: i64,
-        code_point_offset: i64,
+        line: i32, column: i32, offset: i64, index: i32, utf8_offset: i64, code_point_offset: i64,
     ) -> Result<Self, SourceLocationError> {
         if line < MIN_1_BASED {
             return Err(SourceLocationError::InvalidLine(line));
@@ -84,33 +78,20 @@ impl SourceLocation {
             return Err(SourceLocationError::InvalidCodePointOffset(code_point_offset));
         }
 
-        Ok(Self {
-            line,
-            column,
-            offset,
-            index,
-            utf8_offset,
-            code_point_offset,
-        })
+        Ok(Self { line, column, offset, index, utf8_offset, code_point_offset })
     }
 
     /// Crea una posizione minimale con line, column e offset soltanto.
     ///
     /// `index` viene derivato da `offset`, come `Math.toIntExact` in Java.
     pub fn create(line: i32, column: i32, offset: i64) -> Result<Self, SourceLocationError> {
-        let index =
-            i32::try_from(offset).map_err(|_| SourceLocationError::OffsetTooLarge(offset))?;
+        let index = i32::try_from(offset).map_err(|_| SourceLocationError::OffsetTooLarge(offset))?;
         Self::try_new(line, column, offset, index, UNKNOWN, UNKNOWN)
     }
 
     /// Crea una posizione completa con tutte le varianti di offset.
     pub fn create_full(
-        line: i32,
-        column: i32,
-        offset: i64,
-        index: i32,
-        utf8_offset: i64,
-        code_point_offset: i64,
+        line: i32, column: i32, offset: i64, index: i32, utf8_offset: i64, code_point_offset: i64,
     ) -> Result<Self, SourceLocationError> {
         Self::try_new(line, column, offset, index, utf8_offset, code_point_offset)
     }
@@ -147,18 +128,12 @@ impl SourceLocation {
 
     /// Restituisce una copia con il nuovo offset UTF-8.
     pub fn with_utf8_offset(&self, new_utf8_offset: i64) -> Self {
-        Self {
-            utf8_offset: new_utf8_offset,
-            ..*self
-        }
+        Self { utf8_offset: new_utf8_offset, ..*self }
     }
 
     /// Restituisce una copia con il nuovo offset in code point.
     pub fn with_code_point_offset(&self, cp_offset: i64) -> Self {
-        Self {
-            code_point_offset: cp_offset,
-            ..*self
-        }
+        Self { code_point_offset: cp_offset, ..*self }
     }
 
     /// Indica se l'offset UTF-8 è stato calcolato.

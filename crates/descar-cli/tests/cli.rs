@@ -39,8 +39,7 @@ fn parses_compile_command_with_all_options() {
 
 #[test]
 fn parses_compile_command_with_minimum_options() {
-    let args = Args::try_parse_from(["descar", "compile", "program.dr"])
-        .expect("minimal compile command should parse");
+    let args = Args::try_parse_from(["descar", "compile", "program.dr"]).expect("minimal compile command should parse");
 
     let Some(Command::Compile(args)) = args.command else {
         panic!("expected compile command");
@@ -75,8 +74,8 @@ fn parses_all_optimization_levels() {
 
 #[test]
 fn parses_check_command_with_quiet() {
-    let args = Args::try_parse_from(["descar", "check", "program.dr", "-vvv", "--quiet"])
-        .expect("check command should parse");
+    let args =
+        Args::try_parse_from(["descar", "check", "program.dr", "-vvv", "--quiet"]).expect("check command should parse");
 
     let Some(Command::Check(args)) = args.command else {
         panic!("expected check command");
@@ -89,8 +88,7 @@ fn parses_check_command_with_quiet() {
 
 #[test]
 fn parses_check_command_with_minimum_options() {
-    let args = Args::try_parse_from(["descar", "check", "program.dr"])
-        .expect("minimal check command should parse");
+    let args = Args::try_parse_from(["descar", "check", "program.dr"]).expect("minimal check command should parse");
 
     let Some(Command::Check(args)) = args.command else {
         panic!("expected check command");
@@ -121,15 +119,8 @@ fn supports_repeated_short_verbosity_flags() {
 
 #[test]
 fn accepts_long_flag_forms() {
-    let args = Args::try_parse_from([
-        "descar",
-        "check",
-        "program.dr",
-        "--verbose",
-        "--verbose",
-        "--quiet",
-    ])
-    .expect("long flag forms should parse");
+    let args = Args::try_parse_from(["descar", "check", "program.dr", "--verbose", "--verbose", "--quiet"])
+        .expect("long flag forms should parse");
 
     let Some(Command::Check(args)) = args.command else {
         panic!("expected check command");
@@ -142,21 +133,14 @@ fn accepts_long_flag_forms() {
 #[test]
 fn accepts_dr_extension_case_insensitively() {
     for path in ["program.dr", "program.DR", "PROGRAM.Dr"] {
-        Args::try_parse_from(["descar", "check", path])
-            .expect(".dr extension should be accepted case-insensitively");
+        Args::try_parse_from(["descar", "check", path]).expect(".dr extension should be accepted case-insensitively");
     }
 }
 
 #[test]
 fn accepts_nested_and_dotted_source_paths() {
-    for path in [
-        "examples/hello.dr",
-        "src/program.main.dr",
-        "../shared/test-file.dr",
-        "./program.dr",
-    ] {
-        let args = Args::try_parse_from(["descar", "check", path])
-            .expect("valid .dr source path should parse");
+    for path in ["examples/hello.dr", "src/program.main.dr", "../shared/test-file.dr", "./program.dr"] {
+        let args = Args::try_parse_from(["descar", "check", path]).expect("valid .dr source path should parse");
 
         let Some(Command::Check(args)) = args.command else {
             panic!("expected check command");
@@ -168,14 +152,8 @@ fn accepts_nested_and_dotted_source_paths() {
 
 #[test]
 fn preserves_output_path_without_normalization() {
-    let args = Args::try_parse_from([
-        "descar",
-        "compile",
-        "src/program.dr",
-        "--output",
-        "build/../dist/program",
-    ])
-    .expect("compile command with output path should parse");
+    let args = Args::try_parse_from(["descar", "compile", "src/program.dr", "--output", "build/../dist/program"])
+        .expect("compile command with output path should parse");
 
     let Some(Command::Compile(args)) = args.command else {
         panic!("expected compile command");
@@ -214,12 +192,6 @@ fn rejects_unknown_compile_option() {
 
 #[test]
 fn rejects_invalid_optimization_level() {
-    let result = Args::try_parse_from([
-        "descar",
-        "compile",
-        "program.dr",
-        "--optimize",
-        "turbo",
-    ]);
+    let result = Args::try_parse_from(["descar", "compile", "program.dr", "--optimize", "turbo"]);
     assert!(result.is_err());
 }

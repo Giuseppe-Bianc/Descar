@@ -1,0 +1,12 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {"matcher": "", "hooks": [{"type": "command", "command": "cargo fmt --all"}]}
+    ],
+    "PostToolUse": [
+      {"matcher": "", "hooks": [{"type": "command", "command": "cargo clippy --workspace --all-targets --all-features -- -D warnings"}]}
+    ,
+      {"matcher": "", "hooks": [{"type": "command", "command": "cargo test --workspace --all-features"}]}
+    ]
+  }
+}

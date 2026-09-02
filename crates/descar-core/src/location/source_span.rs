@@ -4,7 +4,7 @@ use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
 
-use crate::source_location::SourceLocation; // adatta il path al tuo modulo
+use crate::location::source_location::SourceLocation;
 
 /// Errore sollevato durante la costruzione o l'uso di uno [`Span`].
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -18,13 +18,9 @@ pub enum SpanError {
 impl fmt::Display for SpanError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::EndBeforeStart {
-                start_offset,
-                end_offset,
-            } => write!(
-                f,
-                "end offset ({end_offset}) must not precede start offset ({start_offset})"
-            ),
+            Self::EndBeforeStart { start_offset, end_offset } => {
+                write!(f, "end offset ({end_offset}) must not precede start offset ({start_offset})")
+            }
             Self::OffsetOutOfRange(v) => write!(f, "offset {v} does not fit into usize"),
         }
     }
@@ -45,10 +41,7 @@ impl Span {
     /// Compact constructor equivalente: valida l'ordinamento start/end.
     pub fn try_new(start: SourceLocation, end: SourceLocation) -> Result<Self, SpanError> {
         if end.offset() < start.offset() {
-            return Err(SpanError::EndBeforeStart {
-                start_offset: start.offset(),
-                end_offset: end.offset(),
-            });
+            return Err(SpanError::EndBeforeStart { start_offset: start.offset(), end_offset: end.offset() });
         }
         Ok(Self { start, end })
     }
@@ -61,10 +54,7 @@ impl Span {
     /// Crea uno span di lunghezza zero nella posizione data.
     pub fn point(location: SourceLocation) -> Self {
         // Uno span punto è sempre valido: start == end.
-        Self {
-            start: location,
-            end: location,
-        }
+        Self { start: location, end: location }
     }
 
     /// Posizione di inizio (inclusiva).
@@ -105,21 +95,10 @@ impl Span {
 
     /// Restituisce lo span minimo che contiene entrambi gli span.
     pub fn merge(&self, other: &Span) -> Span {
-        let merged_start = if self.start.offset() <= other.start.offset() {
-            self.start
-        } else {
-            other.start
-        };
-        let merged_end = if self.end.offset() >= other.end.offset() {
-            self.end
-        } else {
-            other.end
-        };
+        let merged_start = if self.start.offset() <= other.start.offset() { self.start } else { other.start };
+        let merged_end = if self.end.offset() >= other.end.offset() { self.end } else { other.end };
         // L'ordinamento è garantito dalla monotonia di start/end originali.
-        Span {
-            start: merged_start,
-            end: merged_end,
-        }
+        Span { start: merged_start, end: merged_end }
     }
 
     /// Estrae il testo coperto da questo span dalla sorgente data.
@@ -127,24 +106,17 @@ impl Span {
     /// # Errori
     /// Ritorna [`SpanError::OffsetOutOfRange`] se gli offset non entrano in `usize`
     /// o non cadono su un confine di carattere UTF-8 valido.
-    pub fn extract_from(&self, source: &str) -> Result<&str, SpanError> {
-        let start = usize::try_from(self.start.offset())
-            .map_err(|_| SpanError::OffsetOutOfRange(self.start.offset()))?;
-        let end = usize::try_from(self.end.offset())
-            .map_err(|_| SpanError::OffsetOutOfRange(self.end.offset()))?;
+    pub fn extract_from<'a>(&self, source: &'a str) -> Result<&'a str, SpanError> {
+        let start =
+            usize::try_from(self.start.offset()).map_err(|_| SpanError::OffsetOutOfRange(self.start.offset()))?;
+        let end = usize::try_from(self.end.offset()).map_err(|_| SpanError::OffsetOutOfRange(self.end.offset()))?;
 
-        source
-            .get(start..end)
-            .ok_or(SpanError::OffsetOutOfRange(self.end.offset()))
+        source.get(start..end).ok_or(SpanError::OffsetOutOfRange(self.end.offset()))
     }
 }
 
 impl fmt::Display for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_empty() {
-            write!(f, "{}", self.start)
-        } else {
-            write!(f, "{}-{}", self.start, self.end)
-        }
+        if self.is_empty() { write!(f, "{}", self.start) } else { write!(f, "{}-{}", self.start, self.end) }
     }
 }

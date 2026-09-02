@@ -10,8 +10,7 @@ fn snapshots_root_command() {
 
 #[test]
 fn snapshots_compile_minimal_configuration() {
-    let args = Args::try_parse_from(["descar", "compile", "program.dr"])
-        .expect("minimal compile command should parse");
+    let args = Args::try_parse_from(["descar", "compile", "program.dr"]).expect("minimal compile command should parse");
     assert_snapshot!("compile_minimal", format!("{args:#?}"));
 }
 
@@ -62,29 +61,22 @@ fn snapshots_invalid_source_extension_error() {
 #[test]
 fn snapshots_missing_input_errors() {
     for command in ["compile", "check"] {
-        let error = Args::try_parse_from(["descar", command])
-            .expect_err("missing source path should be rejected");
+        let error = Args::try_parse_from(["descar", command]).expect_err("missing source path should be rejected");
         assert_snapshot!(format!("missing_input_{command}"), error.to_string());
     }
 }
 
 #[test]
 fn snapshots_unknown_command_error() {
-    let error = Args::try_parse_from(["descar", "build", "program.dr"])
-        .expect_err("unknown command should be rejected");
+    let error =
+        Args::try_parse_from(["descar", "build", "program.dr"]).expect_err("unknown command should be rejected");
     assert_snapshot!("unknown_command", error.to_string());
 }
 
 #[test]
 fn snapshots_invalid_optimization_error() {
-    let error = Args::try_parse_from([
-        "descar",
-        "compile",
-        "program.dr",
-        "--optimize",
-        "turbo",
-    ])
-    .expect_err("invalid optimization level should be rejected");
+    let error = Args::try_parse_from(["descar", "compile", "program.dr", "--optimize", "turbo"])
+        .expect_err("invalid optimization level should be rejected");
     assert_snapshot!("invalid_optimization", error.to_string());
 }
 

@@ -1,24 +1,23 @@
-use std::path::PathBuf;
 use std::fmt;
+use std::path::PathBuf;
 
 /// Identifica la sorgente. L'ID è valido per l'intera compilazione.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum SourceId {
     /// Sorgente corrispondente a un file sul filesystem.
     FilePath { path: PathBuf },
-    
+
     /// Sorgente di una risorsa virtuale (URI, JAR, URL).
     VirtualResource { uri: String },
-    
+
     /// Sorgente di un modulo in memoria (REPL, eval).
     InMemoryModule { module_name: String },
-    
+
     /// Sorgente generata dal compilatore (macro, ecc.).
     Generated { description: String },
 }
 
 impl SourceId {
-
     pub fn file_path(path: PathBuf) -> Self {
         // PathBuf in Rust non può essere nullo.
         SourceId::FilePath { path }
@@ -44,7 +43,7 @@ impl SourceId {
         }
         Ok(SourceId::Generated { description })
     }
-    
+
     /// Identificatore testuale stabile della sorgente.
     pub fn identifier(&self) -> String {
         match self {
