@@ -1,0 +1,43 @@
+crates/descar-core/src/location/source_span.rs
+  h_361662506da91f 8,20-21,51,90,92-96
+  s_57ecb8cd943678::t_454f435d0325f3 22,98,100
+crates/descar-core/tests/source_location_test.rs
+  h_361662506da91f 3-4,9
+crates/descar-core/tests/source_span_snapshots.rs
+  h_361662506da91f 5-6,11-12,25,27-29
+crates/descar-core/src/lib.rs
+  h_361662506da91f 8
+crates/descar-core/src/location/source_location.rs
+  h_361662506da91f 4,9,11-16,20-22,29,35,41,47,53,59
+crates/descar-core/src/error/compile_error.rs
+  h_361662506da91f 71,82-86,116,145,174,203,233,265,295
+crates/descar-core/tests/source_location_snapshots.rs
+  h_361662506da91f 6-7,9-15,18-19
+crates/descar-core/src/utils/mod.rs
+  h_361662506da91f 1-494
+crates/descar-core/tests/source_span_test.rs
+  h_361662506da91f 4-5,11,23,32,41-46,60-61,64,71,84,89
+crates/descar-core/tests/compile_error_tests.rs
+  h_361662506da91f 1-236
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "de5f14ecfe7eaaaf62d7d2c7c484777dc8f1c4db",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_57ecb8cd943678": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6e78008-1ea0-421e-b4e1-0ce47df84469",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
