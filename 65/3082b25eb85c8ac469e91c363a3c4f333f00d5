@@ -1,0 +1,24 @@
+crates/descar-core/tests/source_location_test.rs
+  h_361662506da91f 1-83
+crates/descar-core/tests/source_id_snapshots.rs
+  h_361662506da91f 1-20
+crates/descar-core/tests/source_span_snapshots.rs
+  h_361662506da91f 1-38
+crates/descar-core/tests/source_span_test.rs
+  h_361662506da91f 1-97
+crates/descar-core/tests/source_location_snapshots.rs
+  h_361662506da91f 1-24
+crates/descar-core/tests/source_id_test.rs
+  h_361662506da91f 1-58
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "653082b25eb85c8ac469e91c363a3c4f333f00d5",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
