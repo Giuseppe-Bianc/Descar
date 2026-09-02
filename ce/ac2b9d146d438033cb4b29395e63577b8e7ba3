@@ -1,0 +1,25 @@
+.claude/settings.json
+  h_361662506da91f 2-35
+  s_6b929a0bd1ae18::t_17db8b42db34b8 36-64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ceac2b9d146d438033cb4b29395e63577b8e7ba3",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_6b929a0bd1ae18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1923643-ba9a-44c9-a5e2-067fe759e0e4",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
