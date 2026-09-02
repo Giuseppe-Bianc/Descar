@@ -56,7 +56,17 @@ pub struct SourceLocation {
 
 impl SourceLocation {
     /// Equivalente del "compact constructor" Java: valida tutti i campi.
-    pub fn try_new(
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if any field violates its invariant:
+    /// - `line` < 1 → [`SourceLocationError::InvalidLine`]
+    /// - `column` < 1 → [`SourceLocationError::InvalidColumn`]
+    /// - `offset` < 0 → [`SourceLocationError::InvalidOffset`]
+    /// - `index` < 0 → [`SourceLocationError::InvalidIndex`]
+    /// - `utf8_offset` < 0 and not `UNKNOWN` → [`SourceLocationError::InvalidUtf8Offset`]
+    /// - `code_point_offset` < 0 and not `UNKNOWN` → [`SourceLocationError::InvalidCodePointOffset`]
+    pub const fn try_new(
         line: i32, column: i32, offset: i64, index: i32, utf8_offset: i64, code_point_offset: i64,
     ) -> Result<Self, SourceLocationError> {
         if line < MIN_1_BASED {
@@ -84,65 +94,98 @@ impl SourceLocation {
     /// Crea una posizione minimale con line, column e offset soltanto.
     ///
     /// `index` viene derivato da `offset`, come `Math.toIntExact` in Java.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if any field is invalid (see [`Self::try_new`]) or if
+    /// `offset` does not fit into an `i32` index → [`SourceLocationError::OffsetTooLarge`].
     pub fn create(line: i32, column: i32, offset: i64) -> Result<Self, SourceLocationError> {
         let index = i32::try_from(offset).map_err(|_| SourceLocationError::OffsetTooLarge(offset))?;
         Self::try_new(line, column, offset, index, UNKNOWN, UNKNOWN)
     }
 
     /// Crea una posizione completa con tutte le varianti di offset.
-    pub fn create_full(
+    ///
+    /// # Errors
+    ///
+    /// Returns `Err` if any field is invalid (see [`Self::try_new`]).
+    pub const fn create_full(
         line: i32, column: i32, offset: i64, index: i32, utf8_offset: i64, code_point_offset: i64,
     ) -> Result<Self, SourceLocationError> {
         Self::try_new(line, column, offset, index, utf8_offset, code_point_offset)
     }
 
     /// Numero di riga (1-based).
-    pub fn line(&self) -> i32 {
+    #[must_use]
+    pub const fn line(&self) -> i32 {
         self.line
     }
 
     /// Numero di colonna (1-based).
-    pub fn column(&self) -> i32 {
+    #[must_use]
+    pub const fn column(&self) -> i32 {
         self.column
     }
 
     /// Offset in byte (0-based).
-    pub fn offset(&self) -> i64 {
+    #[must_use]
+    pub const fn offset(&self) -> i64 {
         self.offset
     }
 
     /// Indice di carattere (0-based).
-    pub fn index(&self) -> i32 {
+    #[must_use]
+    pub const fn index(&self) -> i32 {
         self.index
     }
 
     /// Offset UTF-8, o `UNKNOWN` se non calcolato.
-    pub fn utf8_offset(&self) -> i64 {
+    #[must_use]
+    pub const fn utf8_offset(&self) -> i64 {
         self.utf8_offset
     }
 
     /// Offset in code point, o `UNKNOWN` se non calcolato.
-    pub fn code_point_offset(&self) -> i64 {
+    #[must_use]
+    pub const fn code_point_offset(&self) -> i64 {
         self.code_point_offset
     }
 
     /// Restituisce una copia con il nuovo offset UTF-8.
-    pub fn with_utf8_offset(&self, new_utf8_offset: i64) -> Self {
-        Self { utf8_offset: new_utf8_offset, ..*self }
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SourceLocationError::InvalidUtf8Offset`] if `new_utf8_offset`
+    /// is negative and not [`UNKNOWN`].
+    pub const fn with_utf8_offset(&self, new_utf8_offset: i64) -> Result<Self, SourceLocationError> {
+        if new_utf8_offset != UNKNOWN && new_utf8_offset < MIN_0_BASED {
+            return Err(SourceLocationError::InvalidUtf8Offset(new_utf8_offset));
+        }
+        Ok(Self { utf8_offset: new_utf8_offset, ..*self })
     }
 
     /// Restituisce una copia con il nuovo offset in code point.
-    pub fn with_code_point_offset(&self, cp_offset: i64) -> Self {
-        Self { code_point_offset: cp_offset, ..*self }
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SourceLocationError::InvalidCodePointOffset`] if `cp_offset`
+    /// is negative and not [`UNKNOWN`].
+    pub const fn with_code_point_offset(&self, cp_offset: i64) -> Result<Self, SourceLocationError> {
+        if cp_offset != UNKNOWN && cp_offset < MIN_0_BASED {
+            return Err(SourceLocationError::InvalidCodePointOffset(cp_offset));
+        }
+        Ok(Self { code_point_offset: cp_offset, ..*self })
     }
 
     /// Indica se l'offset UTF-8 è stato calcolato.
-    pub fn has_utf8_offset(&self) -> bool {
+    #[must_use]
+    pub const fn has_utf8_offset(&self) -> bool {
         self.utf8_offset != UNKNOWN
     }
 
     /// Indica se l'offset in code point è stato calcolato.
-    pub fn has_code_point_offset(&self) -> bool {
+    #[must_use]
+    pub const fn has_code_point_offset(&self) -> bool {
         self.code_point_offset != UNKNOWN
     }
 }
@@ -154,8 +197,16 @@ impl PartialOrd for SourceLocation {
 }
 
 impl Ord for SourceLocation {
+    /// Confronta tutti i campi nell'ordine di dichiarazione, coerente con [`Eq`]:
+    /// `line` → `column` → `offset` → `index` → `utf8_offset` → `code_point_offset`.
     fn cmp(&self, other: &Self) -> Ordering {
-        self.offset.cmp(&other.offset)
+        self.line
+            .cmp(&other.line)
+            .then_with(|| self.column.cmp(&other.column))
+            .then_with(|| self.offset.cmp(&other.offset))
+            .then_with(|| self.index.cmp(&other.index))
+            .then_with(|| self.utf8_offset.cmp(&other.utf8_offset))
+            .then_with(|| self.code_point_offset.cmp(&other.code_point_offset))
     }
 }
 
