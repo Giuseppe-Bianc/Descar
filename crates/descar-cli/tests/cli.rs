@@ -40,8 +40,8 @@ fn parses_compile_command() {
 
 #[test]
 fn parses_check_command_with_quiet() {
-    let args =
-        Args::try_parse_from(["descar", "check", "program.dr", "-vvv", "--quiet"]).expect("check command should parse");
+    let args = Args::try_parse_from(["descar", "check", "program.dr", "-vvv", "--quiet"])
+        .expect("check command should parse");
 
     let Some(Command::Check(args)) = args.command else {
         panic!("expected check command");
@@ -57,17 +57,14 @@ fn rejects_invalid_source_extension() {
     let result = Args::try_parse_from(["descar", "check", "program.txt"]);
     let error = result.expect_err("non-.dr input must be rejected");
 
-    assert_snapshot!(error.to_string(), @"
-    error: invalid value 'program.txt' for '<FILE>': expected a path to a .dr file
-
-    For more information, try '--help'.
-    ");
+    assert_snapshot!("invalid_source_extension", error.to_string());
 }
 
 #[test]
 fn accepts_dr_extension_case_insensitively() {
     for path in ["program.dr", "program.DR", "PROGRAM.Dr"] {
-        Args::try_parse_from(["descar", "check", path]).expect(".dr extension should be accepted case-insensitively");
+        Args::try_parse_from(["descar", "check", path])
+            .expect(".dr extension should be accepted case-insensitively");
     }
 }
 
@@ -91,22 +88,18 @@ fn snapshots_compile_configuration() {
         panic!("expected compile command");
     };
 
-    assert_snapshot!(format!(
+    let snapshot = format!(
         "input={}\noutput={}\noptimize={:?}\nemit_ir={}\ndiagnostics={}\nverbose={}\nquiet={}",
         args.input.display(),
-        args.output.as_deref().map_or_else(|| "<none>".to_string(), |path| path.display().to_string()),
+        args.output
+            .as_deref()
+            .map_or_else(|| "<none>".to_string(), |path| path.display().to_string()),
         args.optimize,
         args.emit_ir,
         args.diagnostics,
         args.logging.verbose,
         args.logging.quiet,
-    ), @"
-input=examples/hello.dr
-output=build/hello
-optimize=Basic
-emit_ir=true
-diagnostics=true
-verbose=2
-quiet=false
-");
+    );
+
+    assert_snapshot!("compile_configuration", snapshot);
 }
