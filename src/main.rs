@@ -1,6 +1,6 @@
 mod cli;
 
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 use cli::{Args, Command};
 
 fn main() {
