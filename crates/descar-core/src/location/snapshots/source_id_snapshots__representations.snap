@@ -1,0 +1,19 @@
+---
+source: crates/descar-core/src/location/source_id_snapshots.rs
+expression: rendered
+---
+identifier=src/main.dr
+describe=file: src/main.dr
+display=file: src/main.dr
+---
+identifier=jar:file:///lib/foo.jar!/Foo.dr
+describe=virtual: jar:file:///lib/foo.jar!/Foo.dr
+display=virtual: jar:file:///lib/foo.jar!/Foo.dr
+---
+identifier=repl::session_1
+describe=in-memory module: repl::session_1
+display=in-memory module: repl::session_1
+---
+identifier=<generated:macro expansion #42>
+describe=generated: macro expansion #42
+display=generated: macro expansion #42
