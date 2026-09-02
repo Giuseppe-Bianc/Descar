@@ -1,0 +1,7 @@
+---
+source: crates/descar-cli/tests/cli.rs
+expression: error.to_string()
+---
+error: invalid value 'program.txt' for '<FILE>': expected a path to a .dr file
+
+For more information, try '--help'.

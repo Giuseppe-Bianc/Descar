@@ -1,0 +1,11 @@
+---
+source: crates/descar-cli/tests/cli.rs
+expression: snapshot
+---
+input=examples/hello.dr
+output=build/hello
+optimize=Basic
+emit_ir=true
+diagnostics=true
+verbose=2
+quiet=false
