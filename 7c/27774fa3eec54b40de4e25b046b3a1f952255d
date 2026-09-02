@@ -1,0 +1,37 @@
+.claude/settings.json
+  h_361662506da91f 35,39,44-47,51-59
+  s_6b929a0bd1ae18::t_6cc4bcf9354360 48-50
+Cargo.lock
+  s_0dbe2d84e91c0c::t_620e0d033843be 181-183
+crates/descar-core/Cargo.toml
+  s_0dbe2d84e91c0c::t_9f97bf8e72680b 14-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7c27774fa3eec54b40de4e25b046b3a1f952255d",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0dbe2d84e91c0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aed10efa-2262-4eef-a197-6b10aabde008",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    },
+    "s_6b929a0bd1ae18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1923643-ba9a-44c9-a5e2-067fe759e0e4",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
