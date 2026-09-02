@@ -1,6 +1,7 @@
 use clap::Parser;
 use descar_cli::cli::{Args, Command, OptimizationLevel};
 use insta::assert_snapshot;
+use std::path::PathBuf;
 
 #[test]
 fn parses_root_command_without_subcommand() {
@@ -28,8 +29,8 @@ fn parses_compile_command() {
         panic!("expected compile command");
     };
 
-    assert_eq!(args.input, "program.dr".into());
-    assert_eq!(args.output, Some("program".into()));
+    assert_eq!(args.input, PathBuf::from("program.dr"));
+    assert_eq!(args.output, Some(PathBuf::from("program")));
     assert_eq!(args.optimize, OptimizationLevel::Aggressive);
     assert!(args.emit_ir);
     assert!(args.diagnostics);
@@ -46,7 +47,7 @@ fn parses_check_command_with_quiet() {
         panic!("expected check command");
     };
 
-    assert_eq!(args.input, "program.dr".into());
+    assert_eq!(args.input, PathBuf::from("program.dr"));
     assert_eq!(args.logging.verbose, 3);
     assert!(args.logging.quiet);
 }
