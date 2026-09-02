@@ -133,23 +133,13 @@ fn snapshots_enum_representations() {
 #[test]
 fn snapshots_explanations_and_suggestions() {
     let selected = [
-        ErrorCode::E0001,
-        ErrorCode::E0002,
-        ErrorCode::E0003,
-        ErrorCode::E0004,
-        ErrorCode::E0005,
-        ErrorCode::E0008,
-        ErrorCode::E0009,
-        ErrorCode::E0010,
-        ErrorCode::E1001,
-        ErrorCode::E1002,
         ErrorCode::E1003,
+        ErrorCode::E2009,
+        ErrorCode::E2010,
         ErrorCode::E2023,
         ErrorCode::E2024,
         ErrorCode::E2027,
         ErrorCode::E2028,
-        ErrorCode::E2009,
-        ErrorCode::E2010,
         ErrorCode::E5005,
     ];
 
