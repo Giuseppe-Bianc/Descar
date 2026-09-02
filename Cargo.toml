@@ -1,33 +1,11 @@
-[package]
-name = "Descar"
-version = "0.1.0"
-edition = "2024"
-authors = ["Giuseppe Bianconi (Giuseppe-Bianc) <bianconig6@gmail.com>"]
-repository = "https://github.com/Giuseppe-Bianc/Descar"
-license = "Apache-2.0"
-readme = "README.md"
-keywords = ["rust", "lexer"]
-categories = ["compilers"]
+[workspace]
+resolver = "3"
+members = [
+    "crates/descar-core",
+    "crates/descar-cli",
+]
 
-[lib]
-name = "descar"
-path = "src/lib.rs"
-bench = false
-doctest = false
-
-[[bin]]
-name = "descar"
-path = "src/main.rs"
-bench = false
-
-[dependencies]
-clap = { version = "4.6.6", features = ["cargo", "derive"] }
-
-[dev-dependencies]
-insta = { version = "1.48.0", features = ["yaml", "redactions", "filters"] }
-
-
-[lints.clippy]
+[workspace.lints.clippy]
 pedantic = "warn"
 nursery = "warn"
 # Performance
