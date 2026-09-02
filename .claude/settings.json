@@ -1,12 +1,64 @@
 {
-  "hooks": {
-    "PreToolUse": [
-      {"matcher": "", "hooks": [{"type": "command", "command": "cargo fmt --all"}]}
-    ],
-    "PostToolUse": [
-      {"matcher": "", "hooks": [{"type": "command", "command": "cargo clippy --workspace --all-targets --all-features -- -D warnings"}]}
-    ,
-      {"matcher": "", "hooks": [{"type": "command", "command": "cargo test --workspace --all-features"}]}
-    ]
-  }
+    "permissions": {
+        "allow": [
+            "Bash(cargo build:*)",
+            "Bash(cargo check:*)",
+            "Bash(cargo test:*)",
+            "Bash(cargo fmt:*)",
+            "Bash(cargo clippy:*)",
+            "Bash(cargo run:*)",
+            "Bash(git status)",
+            "Bash(git diff:*)",
+            "Bash(git log:*)",
+            "Bash(git add:*)",
+            "Bash(git commit:*)",
+            "Read(**)",
+            "Grep(**)",
+            "Glob(**)",
+            "Edit(crates/**)",
+            "Edit(Cargo.toml)",
+            "Edit(rustfmt.toml)",
+            "Write(crates/**)"
+        ],
+        "deny": [
+            "Bash(rm -rf:*)",
+            "Bash(git push:*)",
+            "Bash(curl:*)",
+            "Bash(wget:*)",
+            "Bash(sudo:*)",
+            "Read(.env)",
+            "Read(**/*.pem)",
+            "Read(**/id_rsa*)",
+            "Edit(.github/workflows/**)",
+            "Write(.github/workflows/**)"
+        ]
+    },
+    "hooks": {
+        "PreToolUse": [
+            {
+                "matcher": "",
+                "hooks": [{ "type": "command", "command": "cargo fmt --all" }]
+            }
+        ],
+        "PostToolUse": [
+            {
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "cargo clippy --workspace --all-targets --all-features -- -D warnings"
+                    }
+                ]
+            },
+            {
+                "matcher": "",
+                "hooks": [
+                    {
+                        "type": "command",
+                        "command": "cargo test --workspace --all-features"
+                    }
+                ]
+            }
+        ]
+    }
 }
