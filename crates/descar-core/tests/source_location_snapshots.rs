@@ -1,4 +1,4 @@
-use super::source_location::{SourceLocation, UNKNOWN};
+use descar_core::location::source_location::{SourceLocation, UNKNOWN};
 use insta::assert_snapshot;
 
 #[test]

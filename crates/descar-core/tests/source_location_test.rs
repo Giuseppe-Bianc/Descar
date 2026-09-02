@@ -1,4 +1,4 @@
-use super::source_location::{SourceLocation, SourceLocationError, UNKNOWN};
+use descar_core::location::source_location::{SourceLocation, SourceLocationError, UNKNOWN};
 
 fn location(line: i32, column: i32, offset: i64) -> SourceLocation {
     SourceLocation::create(line, column, offset).expect("test location should be valid")

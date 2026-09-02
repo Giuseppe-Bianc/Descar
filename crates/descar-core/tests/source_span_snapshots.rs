@@ -1,5 +1,5 @@
-use super::source_location::SourceLocation;
-use super::source_span::Span;
+use descar_core::location::source_location::SourceLocation;
+use descar_core::location::source_span::Span;
 use insta::assert_snapshot;
 
 fn location(line: i32, column: i32, offset: i64) -> SourceLocation {

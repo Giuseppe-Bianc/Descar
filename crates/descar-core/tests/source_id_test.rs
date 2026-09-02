@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use super::source_id::SourceId;
+use descar_core::location::source_id::SourceId;
 
 #[test]
 fn file_path_preserves_path() {
