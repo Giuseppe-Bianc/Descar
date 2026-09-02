@@ -32,29 +32,29 @@
     "hooks": {
         "PreToolUse": [
             {
-                "matcher": "",
-                "hooks": [{ "type": "command", "command": "cargo fmt --all" }]
-            }
-        ],
-        "PostToolUse": [
-            {
-                "matcher": "",
+                "matcher": "Edit|Write|MultiEdit",
                 "hooks": [
                     {
                         "type": "command",
-                        "command": "cargo clippy --workspace --all-targets --all-features -- -D warnings"
-                    }
-                ]
-            },
-            {
-                "matcher": "",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "cargo test --workspace --all-features"
+                        "command": "file=$(jq -r '.tool_input.file_path // empty'); if [[ \"$file\" == *.rs ]]; then cargo fmt --all; fi"
                     }
                 ]
             }
         ]
-    }
+    },
+    "PostToolUse": [
+        {
+            "matcher": "Edit|Write|MultiEdit",
+            "hooks": [
+                {
+                    "type": "command",
+                    "command": "file=$(jq -r '.tool_input.file_path // empty'); if [[ \"$file\" == *.rs ]]; then cargo clippy --workspace --all-targets --all-features -- -D warnings; fi"
+                },
+                {
+                    "type": "command",
+                    "command": "file=$(jq -r '.tool_input.file_path // empty'); if [[ \"$file\" == *.rs ]]; then cargo test --workspace --all-features; fi"
+                }
+            ]
+        }
+    ]
 }

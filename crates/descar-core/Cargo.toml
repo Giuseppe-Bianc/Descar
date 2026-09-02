@@ -11,3 +11,6 @@ categories = ["compilers"]
 
 [lints]
 workspace = true
+
+[dependencies]
+insta = { workspace = true }

@@ -178,6 +178,9 @@ dependencies = [
 [[package]]
 name = "descar-core"
 version = "0.1.0"
+dependencies = [
+ "insta",
+]
 
 [[package]]
 name = "digest"
