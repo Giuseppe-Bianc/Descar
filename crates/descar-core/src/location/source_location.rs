@@ -157,9 +157,7 @@ impl SourceLocation {
     ///
     /// Returns [`SourceLocationError::InvalidUtf8Offset`] if `new_utf8_offset`
     /// is negative and not [`UNKNOWN`].
-    pub const fn with_utf8_offset(
-        &self, new_utf8_offset: i64,
-    ) -> Result<Self, SourceLocationError> {
+    pub const fn with_utf8_offset(&self, new_utf8_offset: i64) -> Result<Self, SourceLocationError> {
         if new_utf8_offset != UNKNOWN && new_utf8_offset < MIN_0_BASED {
             return Err(SourceLocationError::InvalidUtf8Offset(new_utf8_offset));
         }
@@ -172,9 +170,7 @@ impl SourceLocation {
     ///
     /// Returns [`SourceLocationError::InvalidCodePointOffset`] if `cp_offset`
     /// is negative and not [`UNKNOWN`].
-    pub const fn with_code_point_offset(
-        &self, cp_offset: i64,
-    ) -> Result<Self, SourceLocationError> {
+    pub const fn with_code_point_offset(&self, cp_offset: i64) -> Result<Self, SourceLocationError> {
         if cp_offset != UNKNOWN && cp_offset < MIN_0_BASED {
             return Err(SourceLocationError::InvalidCodePointOffset(cp_offset));
         }

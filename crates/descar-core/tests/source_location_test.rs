@@ -107,21 +107,12 @@ fn with_code_point_offset_accepts_zero_and_positive_and_unknown() {
 fn with_utf8_offset_rejects_negative_non_unknown() {
     let base = SourceLocation::create(1, 1, 0).unwrap();
     assert_eq!(base.with_utf8_offset(-2), Err(SourceLocationError::InvalidUtf8Offset(-2)));
-    assert_eq!(
-        base.with_utf8_offset(i64::MIN),
-        Err(SourceLocationError::InvalidUtf8Offset(i64::MIN))
-    );
+    assert_eq!(base.with_utf8_offset(i64::MIN), Err(SourceLocationError::InvalidUtf8Offset(i64::MIN)));
 }
 
 #[test]
 fn with_code_point_offset_rejects_negative_non_unknown() {
     let base = SourceLocation::create(1, 1, 0).unwrap();
-    assert_eq!(
-        base.with_code_point_offset(-3),
-        Err(SourceLocationError::InvalidCodePointOffset(-3))
-    );
-    assert_eq!(
-        base.with_code_point_offset(i64::MIN),
-        Err(SourceLocationError::InvalidCodePointOffset(i64::MIN))
-    );
+    assert_eq!(base.with_code_point_offset(-3), Err(SourceLocationError::InvalidCodePointOffset(-3)));
+    assert_eq!(base.with_code_point_offset(i64::MIN), Err(SourceLocationError::InvalidCodePointOffset(i64::MIN)));
 }
