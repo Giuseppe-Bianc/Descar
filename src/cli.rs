@@ -5,7 +5,7 @@
 
 use clap::{
     builder::{styling::{AnsiColor, Effects}, Styles},
-    Args as ClapArgs, Parser, Subcommand,
+    ArgAction, Args as ClapArgs, Parser, Subcommand, ValueEnum,
 };
 use std::path::PathBuf;
 
@@ -46,6 +46,30 @@ fn parse_dr_file(value: &str) -> Result<PathBuf, String> {
     }
 }
 
+/// Optimization levels accepted by the compiler CLI.
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, ValueEnum)]
+pub enum OptimizationLevel {
+    /// Disable compiler optimizations.
+    #[default]
+    None,
+    /// Enable basic optimizations.
+    Basic,
+    /// Enable aggressive optimizations.
+    Aggressive,
+}
+
+/// Logging controls shared by CLI subcommands.
+#[derive(Clone, Debug, Default, ClapArgs)]
+pub struct LoggingArgs {
+    /// Increase log verbosity. Repeatable: `-v`, `-vv`, `-vvv`.
+    #[arg(short, long, action = ArgAction::Count)]
+    pub verbose: u8,
+
+    /// Suppress non-essential output.
+    #[arg(short, long)]
+    pub quiet: bool,
+}
+
 /// Root command-line arguments for the Descar compiler.
 #[derive(Debug, Parser)]
 #[command(
@@ -55,14 +79,12 @@ fn parse_dr_file(value: &str) -> Result<PathBuf, String> {
     about = "Modern compiler for the Descar programming language.",
     long_about = None,
     help_template = HELP_STR,
-    styles = custom_styles(),
-    subcommand_required = true,
-    arg_required_else_help = true
+    styles = custom_styles()
 )]
 pub struct Args {
     /// Descar operation to execute.
     #[command(subcommand)]
-    pub command: Command,
+    pub command: Option<Command>,
 }
 
 /// Top-level Descar CLI commands.
@@ -75,7 +97,7 @@ pub enum Command {
     Check(CheckArgs),
 }
 
-/// Arguments shared by compilation-oriented commands.
+/// Arguments for the `compile` command.
 #[derive(Debug, ClapArgs)]
 pub struct CompileArgs {
     /// Source `.dr` file to compile.
@@ -86,26 +108,39 @@ pub struct CompileArgs {
     #[arg(short, long, value_name = "FILE")]
     pub output: Option<PathBuf>,
 
-    /// Show verbose compiler output.
-    #[arg(short, long)]
-    pub verbose: bool,
+    /// Optimization level: none, basic, aggressive.
+    #[arg(short = 'O', long, value_enum, default_value_t)]
+    pub optimize: OptimizationLevel,
+
+    /// Also emit the intermediate representation (IR).
+    #[arg(long)]
+    pub emit_ir: bool,
+
+    /// Enable advanced diagnostics such as extended warnings and statistics.
+    #[arg(long)]
+    pub diagnostics: bool,
+
+    /// Logging configuration.
+    #[command(flatten)]
+    pub logging: LoggingArgs,
 }
 
-/// Arguments for source validation.
+/// Arguments for the `check` command.
 #[derive(Debug, ClapArgs)]
 pub struct CheckArgs {
     /// Source `.dr` file to check.
     #[arg(value_name = "FILE", value_parser = parse_dr_file)]
     pub input: PathBuf,
 
-    /// Show verbose compiler output.
-    #[arg(short, long)]
-    pub verbose: bool,
+    /// Logging configuration.
+    #[command(flatten)]
+    pub logging: LoggingArgs,
 }
 
 #[cfg(test)]
 mod tests {
-    use super::parse_dr_file;
+    use super::{parse_dr_file, Args, Command, OptimizationLevel};
+    use clap::Parser;
 
     #[test]
     fn accepts_dr_extension_case_insensitively() {
@@ -117,5 +152,51 @@ mod tests {
     fn rejects_non_dr_extension() {
         assert!(parse_dr_file("program.txt").is_err());
         assert!(parse_dr_file("program").is_err());
+    }
+
+    #[test]
+    fn no_subcommand_is_allowed() {
+        let args = Args::try_parse_from(["descar"]).expect("root command should parse");
+        assert!(args.command.is_none());
+    }
+
+    #[test]
+    fn parses_compile_options() {
+        let args = Args::try_parse_from([
+            "descar",
+            "compile",
+            "program.dr",
+            "-o",
+            "program",
+            "-O",
+            "aggressive",
+            "--emit-ir",
+            "--diagnostics",
+            "-vv",
+        ])
+        .expect("compile command should parse");
+
+        let Some(Command::Compile(args)) = args.command else {
+            panic!("expected compile command");
+        };
+
+        assert_eq!(args.optimize, OptimizationLevel::Aggressive);
+        assert!(args.emit_ir);
+        assert!(args.diagnostics);
+        assert_eq!(args.logging.verbose, 2);
+        assert!(!args.logging.quiet);
+    }
+
+    #[test]
+    fn quiet_overrides_verbose_configuration_at_the_cli_level() {
+        let args = Args::try_parse_from(["descar", "check", "program.dr", "-vvv", "--quiet"])
+            .expect("check command should parse");
+
+        let Some(Command::Check(args)) = args.command else {
+            panic!("expected check command");
+        };
+
+        assert_eq!(args.logging.verbose, 3);
+        assert!(args.logging.quiet);
     }
 }
