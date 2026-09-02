@@ -3,22 +3,20 @@ use insta::assert_snapshot;
 
 #[test]
 fn snapshots_representations_and_errors() {
-    let complete = SourceLocation::create_full(12, 34, 56, 56, 78, 90).unwrap();
-    let unknown = SourceLocation::create(1, 1, 0).unwrap();
+    let complete = SourceLocation::new(12, 34, 56, 56, 78, 90);
+    let unknown = SourceLocation::new(1, 1, 0, 0, 0, 0);
     let errors = [
-        SourceLocation::create(0, 1, 0).unwrap_err(),
-        SourceLocation::create(1, 0, 0).unwrap_err(),
-        SourceLocation::create(1, 1, -1).unwrap_err(),
-        SourceLocation::create_full(1, 1, 0, -1, UNKNOWN, UNKNOWN).unwrap_err(),
-        SourceLocation::create_full(1, 1, 0, 0, -2, UNKNOWN).unwrap_err(),
-        SourceLocation::create_full(1, 1, 0, 0, UNKNOWN, -2).unwrap_err(),
-        SourceLocation::create(1, 1, i64::from(i32::MAX) + 1).unwrap_err(),
+        SourceLocation::new(0, 1, 0, usize::MAX, UNKNOWN, UNKNOWN),
+        SourceLocation::new(1, 0, 0, usize::MAX, UNKNOWN, UNKNOWN),
+        SourceLocation::new(1, 1, usize::MAX - 1, usize::MAX, UNKNOWN, UNKNOWN),
+        SourceLocation::new(1, 1, 0, usize::MAX, UNKNOWN, UNKNOWN),
+        SourceLocation::new(1, 1, 0, 0, usize::MAX, UNKNOWN),
+        SourceLocation::new(1, 1, 0, 0, UNKNOWN, usize::MAX),
+        SourceLocation::new(1, 1, usize::MAX, usize::MAX, UNKNOWN, UNKNOWN),
     ];
     let rendered = format!(
-        "complete={complete:?}\ndisplay={complete}\nunknown={unknown:?}\nflags=utf8:{} code_point:{}\nerrors=\n{}",
-        complete.has_utf8_offset(),
-        complete.has_code_point_offset(),
-        errors.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n")
+        "complete={complete:?}\ndisplay={complete}\nunknown={unknown:?}\nerrors=\n{}",
+        errors.iter().map(|e| format!("{e:?}")).collect::<Vec<_>>().join("\n")
     );
     assert_snapshot!("representations_and_errors", rendered);
 }

@@ -68,7 +68,7 @@ pub enum CompileError {
         .code.map_or(String::new(), |c| format!("[{}] ", c.code())),
         .help.as_ref().map_or(String::new(), |h| format!("\nhelp: {h}"))
     )]
-    IrGeneratorError { code: Option<ErrorCode>, message: Arc<str>, span: Span, help: Option<String> },
+    IrGeneratorError { code: Option<ErrorCode>, message: Arc<str>, span: SourceSpan, help: Option<String> },
 
     /// Error during assembly code generation.
     ///
@@ -79,6 +79,11 @@ pub enum CompileError {
         .code.map_or(String::new(), |c| format!("[{}] ", c.code()))
     )]
     AsmGeneratorError { code: Option<ErrorCode>, message: Arc<str> },*/
+    /// I/O operation failure during compilation (e.g., file access issues).
+    ///
+    /// Wraps the standard [`std::io::Error`] for seamless error propagation.
+    #[error("I/O error: {0}")]
+    IoError(#[from] std::io::Error),
 }
 
 impl CompileError {
@@ -108,6 +113,7 @@ impl CompileError {
             Self::LexerError { code, .. } | Self::SyntaxError { code, .. } | Self::TypeError { code, .. } => {
                 code.as_ref()
             }
+            Self::IoError(_) => None,
         }
     }
 
@@ -136,6 +142,7 @@ impl CompileError {
             Self::LexerError { message, .. } | Self::SyntaxError { message, .. } | Self::TypeError { message, .. } => {
                 Some(message)
             }
+            Self::IoError(_) => None,
         }
     }
 
@@ -164,6 +171,7 @@ impl CompileError {
     pub const fn span(&self) -> Option<&Span> {
         match self {
             Self::LexerError { span, .. } | Self::SyntaxError { span, .. } | Self::TypeError { span, .. } => Some(span),
+            Self::IoError(_) => None,
         }
     }
 
@@ -192,6 +200,7 @@ impl CompileError {
             Self::LexerError { help, .. } | Self::SyntaxError { help, .. } | Self::TypeError { help, .. } => {
                 help.as_deref()
             }
+            Self::IoError(_) => None,
         }
     }
 
@@ -221,6 +230,7 @@ impl CompileError {
             Self::LexerError { message, .. } | Self::SyntaxError { message, .. } | Self::TypeError { message, .. } => {
                 *message = new_message;
             }
+            Self::IoError(_) => {}
         }
     }
 
@@ -252,6 +262,7 @@ impl CompileError {
             Self::LexerError { span, .. } | Self::SyntaxError { span, .. } | Self::TypeError { span, .. } => {
                 *span = new_span;
             }
+            Self::IoError(_) => {}
         }
     }
 
@@ -281,6 +292,7 @@ impl CompileError {
             Self::LexerError { help, .. } | Self::SyntaxError { help, .. } | Self::TypeError { help, .. } => {
                 *help = new_help;
             }
+            Self::IoError(_) => {}
         }
     }
 }

@@ -2,15 +2,14 @@ use descar_core::location::source_location::SourceLocation;
 use descar_core::location::source_span::Span;
 use insta::assert_snapshot;
 
-fn location(line: i32, column: i32, offset: i64) -> SourceLocation {
-    SourceLocation::create(line, column, offset).expect("test location should be valid")
+const fn location(line: usize, column: usize, offset: usize) -> SourceLocation {
+    SourceLocation::new(line, column, offset, 0, usize::MAX, usize::MAX)
 }
-
 #[test]
 fn snapshots_representations() {
     let point = Span::point(location(2, 3, 7));
-    let regular = Span::create(location(1, 1, 0), location(2, 4, 5)).unwrap();
-    let nested = Span::create(location(1, 2, 1), location(1, 3, 4)).unwrap();
+    let regular = Span::new(location(1, 1, 0), location(2, 4, 5));
+    let nested = Span::new(location(1, 2, 1), location(1, 3, 4));
     let merged = regular.merge(&nested);
     let rendered = format!(
         "point={point:?}\npoint_display={point}\npoint_length={}\nregular={regular:?}\nregular_display={regular}\nregular_length={}\nregular_multiline={}\nmerged={merged:?}",
@@ -23,11 +22,11 @@ fn snapshots_representations() {
 
 #[test]
 fn snapshots_extraction_and_errors() {
-    let reversed = Span::create(location(1, 1, 8), location(1, 1, 3)).unwrap_err();
+    let reversed = Span::new(location(1, 1, 8), location(1, 1, 3));
     let source = "a€b";
-    let valid = Span::create(location(1, 1, 1), location(1, 1, 4)).unwrap();
-    let invalid_boundary = Span::create(location(1, 1, 2), location(1, 1, 4)).unwrap();
-    let out_of_range = Span::create(location(1, 1, 0), location(1, 1, 99)).unwrap();
+    let valid = Span::new(location(1, 1, 1), location(1, 1, 4));
+    let invalid_boundary = Span::new(location(1, 1, 2), location(1, 1, 4));
+    let out_of_range = Span::new(location(1, 1, 0), location(1, 1, 99));
     let rendered = format!(
         "reversed={reversed:?}\n\
      valid_extract={:?}\n\

@@ -2,16 +2,6 @@
 
 use thiserror::Error;
 
-#[derive(Debug, Error, PartialEq, Eq)]
-pub enum SpanError {
-    /// `end` precedes `start`.
-    #[error("end offset ({end_offset}) must not precede start offset ({start_offset})")]
-    EndBeforeStart { start_offset: i64, end_offset: i64 },
-
-    #[error("offset ({offset}) is out of range for usize")]
-    OffsetOutOfRange { offset: i64 },
-}
-
 /// Errors that can occur while processing Descar source code.
 #[derive(Debug, Error)]
 pub enum DescarError {
@@ -22,12 +12,6 @@ pub enum DescarError {
     /// A source file could not be read.
     #[error("failed to read source file `{path}`: {message}")]
     SourceRead { path: String, message: String },
-
-    #[error("error from span: {source}")]
-    SpanError {
-        #[from]
-        source: SpanError,
-    },
 
     /// I/O operation failure during compilation (e.g., file access issues).
     ///
