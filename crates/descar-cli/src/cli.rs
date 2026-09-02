@@ -10,6 +10,7 @@ use clap::{
         styling::{AnsiColor, Effects},
     },
 };
+use descar_core::error::DescarError;
 use std::path::PathBuf;
 
 /// Custom help template used by the Descar CLI.
@@ -21,7 +22,7 @@ const HELP_STR: &str = r"
 
 {all-args}{after-help}";
 
-/// Creates the custom styles used by the clap help output.
+/// Creates the custom styles used by the Descar CLI.
 #[must_use]
 pub fn custom_styles() -> Styles {
     Styles::styled()
@@ -35,14 +36,24 @@ pub fn custom_styles() -> Styles {
 }
 
 /// Validates and parses a Descar source file path.
-fn parse_dr_file(value: &str) -> Result<PathBuf, String> {
+fn parse_dr_file(value: &str) -> Result<PathBuf, DescarError> {
     let path = PathBuf::from(value);
     let is_dr = path
         .extension()
         .and_then(|extension| extension.to_str())
         .is_some_and(|extension| extension.eq_ignore_ascii_case("dr"));
 
-    if is_dr { Ok(path) } else { Err("expected a path to a .dr file".into()) }
+    if is_dr {
+        Ok(path)
+    } else {
+        let extension = path
+            .extension()
+            .and_then(|value| value.to_str())
+            .unwrap_or("<none>")
+            .to_owned();
+
+        Err(DescarError::UnsupportedSourceExtension { extension })
+    }
 }
 
 /// Optimization levels accepted by the compiler CLI.
