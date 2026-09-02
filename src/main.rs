@@ -1,7 +1,5 @@
-mod cli;
-
 use clap::{CommandFactory, Parser};
-use cli::{Args, Command};
+use descar::cli::{Args, Command};
 
 fn main() {
     let args = Args::parse();
