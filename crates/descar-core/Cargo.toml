@@ -14,3 +14,4 @@ workspace = true
 
 [dependencies]
 insta = { workspace = true }
+thiserror = { workspace = true }
