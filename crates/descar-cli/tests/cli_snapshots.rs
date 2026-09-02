@@ -1,18 +1,18 @@
 use clap::Parser;
 use descar_cli::cli::{Args, Command};
-use insta::{assert_snapshot, assert_yaml_snapshot};
+use insta::assert_snapshot;
 
 #[test]
 fn snapshots_root_command() {
     let args = Args::try_parse_from(["descar"]).expect("root command should parse");
-    assert_yaml_snapshot!("root_command", args);
+    assert_snapshot!("root_command", format!("{args:#?}"));
 }
 
 #[test]
 fn snapshots_compile_minimal_configuration() {
     let args = Args::try_parse_from(["descar", "compile", "program.dr"])
         .expect("minimal compile command should parse");
-    assert_yaml_snapshot!("compile_minimal", args);
+    assert_snapshot!("compile_minimal", format!("{args:#?}"));
 }
 
 #[test]
@@ -31,14 +31,14 @@ fn snapshots_compile_full_configuration() {
         "--quiet",
     ])
     .expect("fully configured compile command should parse");
-    assert_yaml_snapshot!("compile_full", args);
+    assert_snapshot!("compile_full", format!("{args:#?}"));
 }
 
 #[test]
 fn snapshots_check_full_configuration() {
     let args = Args::try_parse_from(["descar", "check", "examples/hello.dr", "-vvv", "--quiet"])
         .expect("fully configured check command should parse");
-    assert_yaml_snapshot!("check_full", args);
+    assert_snapshot!("check_full", format!("{args:#?}"));
 }
 
 #[test]
@@ -47,9 +47,9 @@ fn snapshots_case_insensitive_source_paths() {
     let parsed: Vec<_> = paths
         .into_iter()
         .map(|path| Args::try_parse_from(["descar", "check", path]).expect("path should parse"))
-        .collect();
+        .collect::<Vec<_>>();
 
-    assert_yaml_snapshot!("case_insensitive_source_paths", parsed);
+    assert_snapshot!("case_insensitive_source_paths", format!("{parsed:#?}"));
 }
 
 #[test]
@@ -112,5 +112,5 @@ fn snapshots_output_path_edge_case() {
         panic!("expected compile command");
     };
 
-    assert_yaml_snapshot!("output_path_edge_case", args);
+    assert_snapshot!("output_path_edge_case", format!("{args:#?}"));
 }
