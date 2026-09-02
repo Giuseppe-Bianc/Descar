@@ -12,7 +12,7 @@ fn snapshots_representations_and_errors() {
         SourceLocation::create_full(1, 1, 0, -1, UNKNOWN, UNKNOWN).unwrap_err(),
         SourceLocation::create_full(1, 1, 0, 0, -2, UNKNOWN).unwrap_err(),
         SourceLocation::create_full(1, 1, 0, 0, UNKNOWN, -2).unwrap_err(),
-        SourceLocation::create(1, 1, i32::MAX as i64 + 1).unwrap_err(),
+        SourceLocation::create(1, 1, i64::from(i32::MAX) + 1).unwrap_err(),
     ];
     let rendered = format!(
         "complete={complete:?}\ndisplay={complete}\nunknown={unknown:?}\nflags=utf8:{} code_point:{}\nerrors=\n{}",

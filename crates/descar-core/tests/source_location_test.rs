@@ -21,7 +21,7 @@ fn create_derives_index_and_marks_optional_offsets_unknown() {
 fn accepts_minimum_and_maximum_representable_values() {
     let minimum = SourceLocation::create(1, 1, 0).unwrap();
     assert_eq!(minimum.index(), 0);
-    let maximum_index = SourceLocation::create(i32::MAX, i32::MAX, i32::MAX as i64).unwrap();
+    let maximum_index = SourceLocation::create(i32::MAX, i32::MAX, i64::from(i32::MAX)).unwrap();
     assert_eq!(maximum_index.index(), i32::MAX);
     let full = SourceLocation::create_full(1, 1, 0, 0, 0, i64::MAX).unwrap();
     assert_eq!(full.utf8_offset(), 0);
@@ -39,7 +39,10 @@ fn rejects_invalid_required_fields() {
 #[test]
 fn rejects_invalid_optional_offsets_but_accepts_unknown() {
     assert_eq!(SourceLocation::create_full(1, 1, 0, 0, -2, UNKNOWN), Err(SourceLocationError::InvalidUtf8Offset(-2)));
-    assert_eq!(SourceLocation::create_full(1, 1, 0, 0, UNKNOWN, -2), Err(SourceLocationError::InvalidCodePointOffset(-2)));
+    assert_eq!(
+        SourceLocation::create_full(1, 1, 0, 0, UNKNOWN, -2),
+        Err(SourceLocationError::InvalidCodePointOffset(-2))
+    );
     let unknown = SourceLocation::create_full(1, 1, 0, 0, UNKNOWN, UNKNOWN).unwrap();
     assert!(!unknown.has_utf8_offset());
     assert!(!unknown.has_code_point_offset());
@@ -52,7 +55,10 @@ fn validation_reports_the_first_invalid_field() {
 
 #[test]
 fn create_rejects_offsets_that_do_not_fit_in_index() {
-    assert_eq!(SourceLocation::create(1, 1, i32::MAX as i64 + 1), Err(SourceLocationError::OffsetTooLarge(i32::MAX as i64 + 1)));
+    assert_eq!(
+        SourceLocation::create(1, 1, i64::from(i32::MAX) + 1),
+        Err(SourceLocationError::OffsetTooLarge(i64::from(i32::MAX) + 1))
+    );
     assert_eq!(SourceLocation::create(1, 1, i64::MAX), Err(SourceLocationError::OffsetTooLarge(i64::MAX)));
 }
 
