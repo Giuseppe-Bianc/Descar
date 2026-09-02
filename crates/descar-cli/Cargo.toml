@@ -1,0 +1,24 @@
+[package]
+name = "descar-cli"
+version = "0.1.0"
+edition = "2024"
+authors = ["Giuseppe Bianconi (Giuseppe-Bianc) <bianconig6@gmail.com>"]
+repository = "https://github.com/Giuseppe-Bianc/Descar"
+license = "Apache-2.0"
+readme = "../../README.md"
+keywords = ["rust", "compiler", "cli"]
+categories = ["command-line-utilities"]
+
+[dependencies]
+clap = { version = "4.6.6", features = ["cargo", "derive"] }
+descar-core = { path = "../descar-core" }
+
+[dev-dependencies]
+insta = { version = "1.48.0", features = ["yaml", "redactions", "filters"] }
+
+[lints]
+workspace = true
+
+[[bin]]
+name = "descar"
+path = "src/main.rs"
