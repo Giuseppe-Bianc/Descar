@@ -1,5 +1,6 @@
+use descar_core::error::internal::SpanError;
 use descar_core::location::source_location::SourceLocation;
-use descar_core::location::source_span::{Span, SpanError};
+use descar_core::location::source_span::Span;
 
 fn location(line: i32, column: i32, offset: i64) -> SourceLocation {
     SourceLocation::create(line, column, offset).expect("test location should be valid")
@@ -104,11 +105,11 @@ fn extracts_utf8_only_at_valid_byte_boundaries() {
     let euro = Span::create(location(1, 1, 1), location(1, 1, 4)).unwrap();
     assert_eq!(euro.extract_from(source), Ok("€"));
     let invalid_boundary = Span::create(location(1, 1, 2), location(1, 1, 4)).unwrap();
-    assert_eq!(invalid_boundary.extract_from(source), Err(SpanError::OffsetOutOfRange(4)));
+    assert_eq!(invalid_boundary.extract_from(source), Err(SpanError::OffsetOutOfRange { offset: 4 }));
 }
 
 #[test]
 fn extract_rejects_end_beyond_source() {
     let span = Span::create(location(1, 1, 0), location(1, 1, 100)).unwrap();
-    assert_eq!(span.extract_from("short"), Err(SpanError::OffsetOutOfRange(100)));
+    assert_eq!(span.extract_from("short"), Err(SpanError::OffsetOutOfRange { offset: 100 }));
 }

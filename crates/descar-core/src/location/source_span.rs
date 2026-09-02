@@ -4,29 +4,8 @@ use std::cmp::Ordering;
 use std::convert::TryFrom;
 use std::fmt;
 
+use crate::error::internal::SpanError;
 use crate::location::source_location::SourceLocation;
-
-/// Errore sollevato durante la costruzione o l'uso di uno [`Span`].
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum SpanError {
-    /// `end` precede `start`.
-    EndBeforeStart { start_offset: i64, end_offset: i64 },
-    /// Un offset non entra in un `usize` (per l'estrazione del testo).
-    OffsetOutOfRange(i64),
-}
-
-impl fmt::Display for SpanError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::EndBeforeStart { start_offset, end_offset } => {
-                write!(f, "end offset ({end_offset}) must not precede start offset ({start_offset})")
-            }
-            Self::OffsetOutOfRange(v) => write!(f, "offset {v} does not fit into usize"),
-        }
-    }
-}
-
-impl std::error::Error for SpanError {}
 
 /// Extent of a token in the source text.
 ///
@@ -129,11 +108,13 @@ impl Span {
     /// Returns [`SpanError::OffsetOutOfRange`] if either offset does not fit into
     /// `usize` or does not fall on a valid UTF-8 character boundary.
     pub fn extract_from<'a>(&self, source: &'a str) -> Result<&'a str, SpanError> {
-        let start =
-            usize::try_from(self.start.offset()).map_err(|_| SpanError::OffsetOutOfRange(self.start.offset()))?;
-        let end = usize::try_from(self.end.offset()).map_err(|_| SpanError::OffsetOutOfRange(self.end.offset()))?;
+        let start = usize::try_from(self.start.offset())
+            .map_err(|_| SpanError::OffsetOutOfRange { offset: self.start.offset() })?;
 
-        source.get(start..end).ok_or_else(|| SpanError::OffsetOutOfRange(self.end.offset()))
+        let end = usize::try_from(self.end.offset())
+            .map_err(|_| SpanError::OffsetOutOfRange { offset: self.end.offset() })?;
+
+        source.get(start..end).ok_or_else(|| SpanError::OffsetOutOfRange { offset: self.end.offset() })
     }
 }
 

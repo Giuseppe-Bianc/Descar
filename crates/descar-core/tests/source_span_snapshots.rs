@@ -29,7 +29,10 @@ fn snapshots_extraction_and_errors() {
     let invalid_boundary = Span::create(location(1, 1, 2), location(1, 1, 4)).unwrap();
     let out_of_range = Span::create(location(1, 1, 0), location(1, 1, 99)).unwrap();
     let rendered = format!(
-        "reversed={reversed:?}\nreversed_display={reversed}\nvalid_extract={:?}\ninvalid_boundary={:?}\nout_of_range={:?}",
+        "reversed={reversed:?}\n\
+     valid_extract={:?}\n\
+     invalid_boundary={:?}\n\
+     out_of_range={:?}",
         valid.extract_from(source),
         invalid_boundary.extract_from(source),
         out_of_range.extract_from(source)
