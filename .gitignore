@@ -1,1 +1,56 @@
-/target
+# Build artifacts
+/target/
+
+# Cargo lock — keep for binaries, remove this line for libraries
+# Cargo.lock
+
+# Compiled binaries and shared libs
+*.exe
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.pdb
+
+# Coverage & profiling
+lcov.info
+*.profraw
+*.profdata
+tarpaulin-report.html
+cobertura.xml
+
+# Benchmarks output
+criterion/
+
+# IDE and editor
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Logs
+*.log
+logs/
+
+# Docs generated output
+/doc/
+
+# Dist / release packaging
+dist/
+release/

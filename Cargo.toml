@@ -2,5 +2,11 @@
 name = "Descar"
 version = "0.1.0"
 edition = "2024"
+repository = "https://github.com/Giuseppe-Bianc/Descar"
+license = "Apache-2.0"
+readme = "README.md"
+keywords = ["rust", "lexer"]
+categories = ["compilers"]
+
 
 [dependencies]

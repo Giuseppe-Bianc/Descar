@@ -1,0 +1,59 @@
+# ─── Default behaviour ────────────────────────────────────────────────────────
+# Normalise line endings to LF in the repository; check out as-is on all OSes.
+* text=auto eol=lf
+
+# ─── Rust sources ─────────────────────────────────────────────────────────────
+*.rs        text eol=lf linguist-language=Rust
+*.toml      text eol=lf
+*.lock      text eol=lf -diff   # treat Cargo.lock as opaque in diffs
+
+# ─── Build & CI configuration ─────────────────────────────────────────────────
+Makefile    text eol=lf
+*.sh        text eol=lf
+*.bash      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.json      text eol=lf
+*.env       text eol=lf
+
+# ─── Documentation & markup ───────────────────────────────────────────────────
+*.md        text eol=lf
+*.txt       text eol=lf
+*.rst       text eol=lf
+LICENSE     text eol=lf
+README*     text eol=lf
+CHANGELOG*  text eol=lf
+
+# ─── Binary files — never diff, never merge ───────────────────────────────────
+*.exe       binary
+*.dll       binary
+*.so        binary
+*.dylib     binary
+*.a         binary
+*.lib       binary
+*.pdb       binary
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.svg       text eol=lf
+*.wasm      binary
+*.zip       binary
+*.tar.gz    binary
+*.tgz       binary
+
+# ─── Export-ignore (files excluded from `git archive` / release tarballs) ─────
+.gitattributes   export-ignore
+.gitignore       export-ignore
+.github/         export-ignore
+.vscode/         export-ignore
+.idea/           export-ignore
+tests/           export-ignore
+benches/         export-ignore
+*.md             export-ignore
+
+# ─── Merge strategies ─────────────────────────────────────────────────────────
+# Cargo.lock: always take "ours" to avoid noisy merge conflicts in CI;
+# resolve conflicts manually when upgrading deps.
+Cargo.lock  merge=ours
