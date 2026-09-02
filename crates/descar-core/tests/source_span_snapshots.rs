@@ -7,7 +7,7 @@ fn location(line: i32, column: i32, offset: i64) -> SourceLocation {
 }
 
 #[test]
-fn representations_are_stable() {
+fn snapshots_representations() {
     let point = Span::point(location(2, 3, 7));
     let regular = Span::create(location(1, 1, 0), location(2, 4, 5)).unwrap();
     let nested = Span::create(location(1, 2, 1), location(1, 3, 4)).unwrap();
@@ -18,18 +18,11 @@ fn representations_are_stable() {
         regular.length(),
         regular.is_multiline()
     );
-    assert_snapshot!(rendered, @r###"point=Span { start: SourceLocation { line: 2, column: 3, offset: 7, index: 7, utf8_offset: -1, code_point_offset: -1 }, end: SourceLocation { line: 2, column: 3, offset: 7, index: 7, utf8_offset: -1, code_point_offset: -1 } }
-point_display=line 2:column 3
-point_length=0
-regular=Span { start: SourceLocation { line: 1, column: 1, offset: 0, index: 0, utf8_offset: -1, code_point_offset: -1 }, end: SourceLocation { line: 2, column: 4, offset: 5, index: 5, utf8_offset: -1, code_point_offset: -1 } }
-regular_display=line 1:column 1-line 2:column 4
-regular_length=5
-regular_multiline=true
-merged=Span { start: SourceLocation { line: 1, column: 1, offset: 0, index: 0, utf8_offset: -1, code_point_offset: -1 }, end: SourceLocation { line: 2, column: 4, offset: 5, index: 5, utf8_offset: -1, code_point_offset: -1 } }"###);
+    assert_snapshot!("representations", rendered);
 }
 
 #[test]
-fn extraction_and_errors_are_stable() {
+fn snapshots_extraction_and_errors() {
     let reversed = Span::create(location(1, 1, 8), location(1, 1, 3)).unwrap_err();
     let source = "a€b";
     let valid = Span::create(location(1, 1, 1), location(1, 1, 4)).unwrap();
@@ -41,9 +34,5 @@ fn extraction_and_errors_are_stable() {
         invalid_boundary.extract_from(source),
         out_of_range.extract_from(source)
     );
-    assert_snapshot!(rendered, @r###"reversed=EndBeforeStart { start_offset: 8, end_offset: 3 }
-reversed_display=end offset (3) must not precede start offset (8)
-valid_extract=Ok("€")
-invalid_boundary=Err(OffsetOutOfRange(4))
-out_of_range=Err(OffsetOutOfRange(99))"###);
+    assert_snapshot!("extraction_and_errors", rendered);
 }
