@@ -13,12 +13,9 @@
             "Bash(git add:*)",
             "Bash(git commit:*)",
             "Read(**)",
-            "Grep(**)",
-            "Glob(**)",
             "Edit(crates/**)",
             "Edit(Cargo.toml)",
-            "Edit(rustfmt.toml)",
-            "Write(crates/**)"
+            "Edit(rustfmt.toml)"
         ],
         "deny": [
             "Bash(rm -rf:*)",
@@ -29,8 +26,7 @@
             "Read(.env)",
             "Read(**/*.pem)",
             "Read(**/id_rsa*)",
-            "Edit(.github/workflows/**)",
-            "Write(.github/workflows/**)"
+            "Edit(.github/workflows/**)"
         ]
     },
     "hooks": {
