@@ -140,7 +140,8 @@ pub struct CheckArgs {
 #[cfg(test)]
 mod tests {
     use super::{parse_dr_file, Args, Command, OptimizationLevel};
-    use clap::Parser;
+    use clap::{CommandFactory, Parser};
+    use insta::assert_snapshot;
 
     #[test]
     fn accepts_dr_extension_case_insensitively() {
@@ -198,5 +199,52 @@ mod tests {
 
         assert_eq!(args.logging.verbose, 3);
         assert!(args.logging.quiet);
+    }
+
+    #[test]
+    fn snapshots_root_help_contract() {
+        let help = Args::command().render_help().to_string();
+        assert_snapshot!(help);
+    }
+
+    #[test]
+    fn snapshots_compile_configuration() {
+        let args = Args::try_parse_from([
+            "descar",
+            "compile",
+            "examples/hello.dr",
+            "--output",
+            "build/hello",
+            "--optimize",
+            "basic",
+            "--emit-ir",
+            "--diagnostics",
+            "-vv",
+        ])
+        .expect("compile command should parse");
+
+        let Some(Command::Compile(args)) = args.command else {
+            panic!("expected compile command");
+        };
+
+        let snapshot = format!(
+            "input={}\noutput={}\noptimize={:?}\nemit_ir={}\ndiagnostics={}\nverbose={}\nquiet={}",
+            args.input.display(),
+            args.output.as_deref().map_or("<none>".to_string(), |path| path.display().to_string()),
+            args.optimize,
+            args.emit_ir,
+            args.diagnostics,
+            args.logging.verbose,
+            args.logging.quiet,
+        );
+
+        assert_snapshot!(snapshot);
+    }
+
+    #[test]
+    fn snapshots_invalid_source_extension_error() {
+        let error = Args::try_parse_from(["descar", "check", "program.txt"])
+            .expect_err("non-.dr input must be rejected");
+        assert_snapshot!(error.to_string());
     }
 }
