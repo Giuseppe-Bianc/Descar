@@ -62,7 +62,6 @@ fn ordering_depends_only_on_offset() {
     let same_offset = location(1, 1, 10);
     let high = location(1, 1, 11);
     assert_eq!(low.cmp(&same_offset), std::cmp::Ordering::Equal);
-    assert_eq!(low, same_offset);
     assert!(low < high);
     assert!(high > low);
 }

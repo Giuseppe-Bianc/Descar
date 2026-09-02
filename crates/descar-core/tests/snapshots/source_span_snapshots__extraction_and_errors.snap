@@ -1,0 +1,9 @@
+---
+source: crates/descar-core/tests/source_span_snapshots.rs
+expression: rendered
+---
+reversed=EndBeforeStart { start_offset: 8, end_offset: 3 }
+reversed_display=end offset (3) must not precede start offset (8)
+valid_extract=Ok("€")
+invalid_boundary=Err(OffsetOutOfRange(4))
+out_of_range=Err(OffsetOutOfRange(99))
