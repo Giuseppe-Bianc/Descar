@@ -2,13 +2,15 @@ name: Rust CI
 
 on:
   push:
-    branches: [ '*' ]  # All branches
-    tags: [ '*' ]      # All tags
+    branches: [ '*' ]
+    tags: [ '*' ]
   pull_request:
-    branches: [ '*' ]  # PRs to all branches
+    branches: [ '*' ]
+
 env:
   CARGO_TERM_COLOR: always
   RUST_BACKTRACE: 1
+  INSTA_UPDATE: no
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -59,6 +61,9 @@ jobs:
             ${{ runner.os }}-cargo-${{ matrix.rust }}-
             ${{ runner.os }}-cargo-
 
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+
       - name: Cargo Check
         uses: actions-rs/cargo@v1
         with:
@@ -67,33 +72,12 @@ jobs:
 
       - name: Run Tests
         uses: actions-rs/cargo@v1
-        env:
-          INSTA_UPDATE: force  # Force update snapshots (use with caution!)
         with:
           command: test
           args: --all-features --verbose
-
-
-      #         - name: Check Formatting
-      #           run: cargo fmt --all -- --check
 
       - name: Clippy Lints
         uses: actions-rs/cargo@v1
         with:
           command: clippy
           args: --all-targets --all-features --verbose -- -D warnings
-
-
-#     - name: Build Release
-#       if: matrix.rust == 'stable'
-#       uses: actions-rs/cargo@v1
-#       with:
-#         command: build
-#         args: --release --verbose
-
-#    - name: Upload Artifacts
-#      if: matrix.rust == 'stable' && github.event_name == 'push' && matrix.os == 'ubuntu-latest'
-#      uses: actions/upload-artifact@v3
-#      with:
-#        name: release-binaries
-#        path: target/release
