@@ -8,5 +8,15 @@ readme = "README.md"
 keywords = ["rust", "lexer"]
 categories = ["compilers"]
 
+[lib]
+name = "descar"
+path = "src/lib.rs"
+bench = false
+doctest = false
+
+[[bin]]
+name = "descar"
+path = "src/main.rs"
+bench = false
 
 [dependencies]
