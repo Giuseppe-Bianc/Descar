@@ -78,8 +78,12 @@ impl Span {
         self.end
     }
 
-    /// Lunghezza in unità di codice UTF-16 (coerente con `String::len` di Java,
-    /// non con `str::len()` di Rust che è in byte).
+    /// Length of the span in UTF-8 bytes, consistent with [`SourceLocation::offset`]
+    /// (which is a 0-based byte offset) and with the byte ranges used by
+    /// [`Span::extract_from`].
+    ///
+    /// Note: this is Rust's `str::len()` semantics — a multi-byte character
+    /// such as `'€'` (U+20AC) contributes **3** to the length, not 1.
     #[must_use]
     pub const fn length(&self) -> i64 {
         self.end.offset() - self.start.offset()
@@ -139,13 +143,14 @@ impl fmt::Display for Span {
     }
 }
 
-/// Ordinamento per offset: prima per `start`, poi per `end` a parità di `start`.
+/// Ordinamento deterministico coerente con [`PartialEq`].
 ///
-/// Nota: questo ordinamento è basato esclusivamente sugli offset numerici e non
-/// tiene conto di eventuali altri campi (es. riga/colonna) presenti in
-/// [`SourceLocation`]. Due span con lo stesso offset ma metadati diversi
-/// risulteranno "uguali" secondo `cmp`, pur non essendo necessariamente
-/// `==` secondo `PartialEq`.
+/// Confronta prima per `start.offset()`, poi per `end.offset()`, e usa tutti
+/// gli altri campi di [`SourceLocation`] come tiebreaker in modo che due span
+/// distinti secondo `==` non risultino mai uguali secondo `cmp`.
+///
+/// Ordine dei tiebreaker (applicati a `start` prima, poi a `end`):
+/// `offset` → `line` → `column` → `index` → `utf8_offset` → `code_point_offset`.
 impl PartialOrd for Span {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -154,6 +159,23 @@ impl PartialOrd for Span {
 
 impl Ord for Span {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.start.offset().cmp(&other.start.offset()).then_with(|| self.end.offset().cmp(&other.end.offset()))
+        // Primary key: start offset.
+        self.start
+            .offset()
+            .cmp(&other.start.offset())
+            // Then the remaining start metadata.
+            .then_with(|| self.start.line().cmp(&other.start.line()))
+            .then_with(|| self.start.column().cmp(&other.start.column()))
+            .then_with(|| self.start.index().cmp(&other.start.index()))
+            .then_with(|| self.start.utf8_offset().cmp(&other.start.utf8_offset()))
+            .then_with(|| self.start.code_point_offset().cmp(&other.start.code_point_offset()))
+            // Secondary key: end offset.
+            .then_with(|| self.end.offset().cmp(&other.end.offset()))
+            // Then the remaining end metadata.
+            .then_with(|| self.end.line().cmp(&other.end.line()))
+            .then_with(|| self.end.column().cmp(&other.end.column()))
+            .then_with(|| self.end.index().cmp(&other.end.index()))
+            .then_with(|| self.end.utf8_offset().cmp(&other.end.utf8_offset()))
+            .then_with(|| self.end.code_point_offset().cmp(&other.end.code_point_offset()))
     }
 }

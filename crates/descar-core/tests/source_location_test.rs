@@ -75,8 +75,8 @@ fn ordering_depends_only_on_offset() {
 #[test]
 fn with_offsets_preserves_all_other_fields() {
     let original = SourceLocation::create_full(2, 5, 10, 10, UNKNOWN, UNKNOWN).unwrap();
-    let with_utf8 = original.with_utf8_offset(12);
-    let with_code_point = with_utf8.with_code_point_offset(8);
+    let with_utf8 = original.with_utf8_offset(12).unwrap();
+    let with_code_point = with_utf8.with_code_point_offset(8).unwrap();
     assert_eq!(with_utf8.line(), original.line());
     assert_eq!(with_utf8.column(), original.column());
     assert_eq!(with_utf8.offset(), original.offset());
@@ -85,4 +85,43 @@ fn with_offsets_preserves_all_other_fields() {
     assert_eq!(with_code_point.code_point_offset(), 8);
     assert!(with_code_point.has_utf8_offset());
     assert!(with_code_point.has_code_point_offset());
+}
+
+#[test]
+fn with_utf8_offset_accepts_zero_and_positive_and_unknown() {
+    let base = SourceLocation::create(1, 1, 0).unwrap();
+    assert_eq!(base.with_utf8_offset(0).unwrap().utf8_offset(), 0);
+    assert_eq!(base.with_utf8_offset(99).unwrap().utf8_offset(), 99);
+    assert_eq!(base.with_utf8_offset(UNKNOWN).unwrap().utf8_offset(), UNKNOWN);
+}
+
+#[test]
+fn with_code_point_offset_accepts_zero_and_positive_and_unknown() {
+    let base = SourceLocation::create(1, 1, 0).unwrap();
+    assert_eq!(base.with_code_point_offset(0).unwrap().code_point_offset(), 0);
+    assert_eq!(base.with_code_point_offset(99).unwrap().code_point_offset(), 99);
+    assert_eq!(base.with_code_point_offset(UNKNOWN).unwrap().code_point_offset(), UNKNOWN);
+}
+
+#[test]
+fn with_utf8_offset_rejects_negative_non_unknown() {
+    let base = SourceLocation::create(1, 1, 0).unwrap();
+    assert_eq!(base.with_utf8_offset(-2), Err(SourceLocationError::InvalidUtf8Offset(-2)));
+    assert_eq!(
+        base.with_utf8_offset(i64::MIN),
+        Err(SourceLocationError::InvalidUtf8Offset(i64::MIN))
+    );
+}
+
+#[test]
+fn with_code_point_offset_rejects_negative_non_unknown() {
+    let base = SourceLocation::create(1, 1, 0).unwrap();
+    assert_eq!(
+        base.with_code_point_offset(-3),
+        Err(SourceLocationError::InvalidCodePointOffset(-3))
+    );
+    assert_eq!(
+        base.with_code_point_offset(i64::MIN),
+        Err(SourceLocationError::InvalidCodePointOffset(i64::MIN))
+    );
 }

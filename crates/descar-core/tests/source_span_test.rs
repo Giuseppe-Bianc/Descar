@@ -82,6 +82,23 @@ fn extracts_ascii_and_empty_ranges() {
 }
 
 #[test]
+fn length_is_utf8_byte_count_for_non_ascii_span() {
+    // "a€b": 'a' = 1 byte, '€' (U+20AC) = 3 bytes, 'b' = 1 byte → total 5 bytes.
+    let source = "a€b";
+    assert_eq!(source.len(), 5, "sanity-check: source is 5 UTF-8 bytes");
+
+    // Whole string: offsets 0..5 → length 5.
+    let whole = Span::create(location(1, 1, 0), location(1, 4, 5)).unwrap();
+    assert_eq!(whole.length(), 5);
+    assert_eq!(whole.extract_from(source), Ok("a€b"));
+
+    // Euro sign only: offsets 1..4 → length 3.
+    let euro = Span::create(location(1, 2, 1), location(1, 3, 4)).unwrap();
+    assert_eq!(euro.length(), 3);
+    assert_eq!(euro.extract_from(source), Ok("€"));
+}
+
+#[test]
 fn extracts_utf8_only_at_valid_byte_boundaries() {
     let source = "a€b";
     let euro = Span::create(location(1, 1, 1), location(1, 1, 4)).unwrap();

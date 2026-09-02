@@ -152,15 +152,33 @@ impl SourceLocation {
     }
 
     /// Restituisce una copia con il nuovo offset UTF-8.
-    #[must_use]
-    pub const fn with_utf8_offset(&self, new_utf8_offset: i64) -> Self {
-        Self { utf8_offset: new_utf8_offset, ..*self }
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SourceLocationError::InvalidUtf8Offset`] if `new_utf8_offset`
+    /// is negative and not [`UNKNOWN`].
+    pub const fn with_utf8_offset(
+        &self, new_utf8_offset: i64,
+    ) -> Result<Self, SourceLocationError> {
+        if new_utf8_offset != UNKNOWN && new_utf8_offset < MIN_0_BASED {
+            return Err(SourceLocationError::InvalidUtf8Offset(new_utf8_offset));
+        }
+        Ok(Self { utf8_offset: new_utf8_offset, ..*self })
     }
 
     /// Restituisce una copia con il nuovo offset in code point.
-    #[must_use]
-    pub const fn with_code_point_offset(&self, cp_offset: i64) -> Self {
-        Self { code_point_offset: cp_offset, ..*self }
+    ///
+    /// # Errors
+    ///
+    /// Returns [`SourceLocationError::InvalidCodePointOffset`] if `cp_offset`
+    /// is negative and not [`UNKNOWN`].
+    pub const fn with_code_point_offset(
+        &self, cp_offset: i64,
+    ) -> Result<Self, SourceLocationError> {
+        if cp_offset != UNKNOWN && cp_offset < MIN_0_BASED {
+            return Err(SourceLocationError::InvalidCodePointOffset(cp_offset));
+        }
+        Ok(Self { code_point_offset: cp_offset, ..*self })
     }
 
     /// Indica se l'offset UTF-8 è stato calcolato.
