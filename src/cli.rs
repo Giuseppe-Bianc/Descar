@@ -238,13 +238,15 @@ mod tests {
             args.logging.quiet,
         );
 
-        assert_snapshot!(snapshot, @"input=examples/hello.dr
+        assert_snapshot!(snapshot, @"
+input=examples/hello.dr
 output=build/hello
 optimize=Basic
 emit_ir=true
 diagnostics=true
 verbose=2
-quiet=false");
+quiet=false
+");
     }
 
     #[test]
