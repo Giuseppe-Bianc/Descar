@@ -46,11 +46,7 @@ fn parse_dr_file(value: &str) -> Result<PathBuf, DescarError> {
     if is_dr {
         Ok(path)
     } else {
-        let extension = path
-            .extension()
-            .and_then(|value| value.to_str())
-            .unwrap_or("<none>")
-            .to_owned();
+        let extension = path.extension().and_then(|value| value.to_str()).unwrap_or("<none>").to_owned();
 
         Err(DescarError::UnsupportedSourceExtension { extension })
     }

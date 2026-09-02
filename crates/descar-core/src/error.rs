@@ -24,34 +24,21 @@ mod tests {
 
     #[test]
     fn formats_unsupported_extension() {
-        let error = DescarError::UnsupportedSourceExtension {
-            extension: "txt".into(),
-        };
+        let error = DescarError::UnsupportedSourceExtension { extension: "txt".into() };
 
-        assert_eq!(
-            error.to_string(),
-            "unsupported source file extension: expected `.dr`, found `txt`"
-        );
+        assert_eq!(error.to_string(), "unsupported source file extension: expected `.dr`, found `txt`");
     }
 
     #[test]
     fn preserves_source_read_context() {
-        let error = DescarError::SourceRead {
-            path: "examples/hello.dr".into(),
-            message: "permission denied".into(),
-        };
+        let error = DescarError::SourceRead { path: "examples/hello.dr".into(), message: "permission denied".into() };
 
-        assert_eq!(
-            error.to_string(),
-            "failed to read source file `examples/hello.dr`: permission denied"
-        );
+        assert_eq!(error.to_string(), "failed to read source file `examples/hello.dr`: permission denied");
     }
 
     #[test]
     fn formats_syntax_error() {
-        let error = DescarError::Syntax {
-            message: "expected expression".into(),
-        };
+        let error = DescarError::Syntax { message: "expected expression".into() };
 
         assert_eq!(error.to_string(), "invalid syntax: expected expression");
     }
