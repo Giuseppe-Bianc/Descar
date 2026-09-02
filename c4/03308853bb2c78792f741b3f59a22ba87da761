@@ -1,0 +1,16 @@
+crates/descar-core/src/error/mod.rs
+  h_361662506da91f 1
+crates/descar-cli/src/cli.rs
+  h_361662506da91f 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c403308853bb2c78792f741b3f59a22ba87da761",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
