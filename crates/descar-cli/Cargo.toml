@@ -18,7 +18,3 @@ insta = { version = "1.48.0", features = ["yaml", "redactions", "filters"] }
 
 [lints]
 workspace = true
-
-[[bin]]
-name = "descar"
-path = "src/main.rs"
