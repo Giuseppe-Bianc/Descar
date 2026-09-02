@@ -1,0 +1,8 @@
+---
+source: crates/descar-cli/tests/cli_snapshots.rs
+expression: error.to_string()
+---
+error: invalid value 'turbo' for '--optimize <OPTIMIZE>'
+  [possible values: none, basic, aggressive]
+
+For more information, try '--help'.

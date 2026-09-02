@@ -1,0 +1,45 @@
+---
+source: crates/descar-cli/tests/cli_snapshots.rs
+expression: "format!(\"{parsed:#?}\")"
+---
+[
+    Args {
+        command: Some(
+            Check(
+                CheckArgs {
+                    input: "program.dr",
+                    logging: LoggingArgs {
+                        verbose: 0,
+                        quiet: false,
+                    },
+                },
+            ),
+        ),
+    },
+    Args {
+        command: Some(
+            Check(
+                CheckArgs {
+                    input: "program.DR",
+                    logging: LoggingArgs {
+                        verbose: 0,
+                        quiet: false,
+                    },
+                },
+            ),
+        ),
+    },
+    Args {
+        command: Some(
+            Check(
+                CheckArgs {
+                    input: "PROGRAM.Dr",
+                    logging: LoggingArgs {
+                        verbose: 0,
+                        quiet: false,
+                    },
+                },
+            ),
+        ),
+    },
+]

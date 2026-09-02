@@ -1,0 +1,23 @@
+---
+source: crates/descar-cli/tests/cli_snapshots.rs
+expression: "format!(\"{args:#?}\")"
+---
+Args {
+    command: Some(
+        Compile(
+            CompileArgs {
+                input: "examples/hello.dr",
+                output: Some(
+                    "build/hello",
+                ),
+                optimize: Aggressive,
+                emit_ir: true,
+                diagnostics: true,
+                logging: LoggingArgs {
+                    verbose: 3,
+                    quiet: true,
+                },
+            },
+        ),
+    ),
+}

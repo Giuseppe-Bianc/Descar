@@ -1,0 +1,17 @@
+---
+source: crates/descar-cli/tests/cli_snapshots.rs
+expression: "format!(\"{args:#?}\")"
+---
+CompileArgs {
+    input: "src/program.main.dr",
+    output: Some(
+        "build/../dist/program",
+    ),
+    optimize: Basic,
+    emit_ir: false,
+    diagnostics: false,
+    logging: LoggingArgs {
+        verbose: 0,
+        quiet: false,
+    },
+}

@@ -1,0 +1,11 @@
+---
+source: crates/descar-cli/tests/cli_snapshots.rs
+expression: error.to_string()
+---
+error: unexpected argument '--unknown' found
+
+  tip: to pass '--unknown' as a value, use '-- --unknown'
+
+Usage: descar compile <FILE>
+
+For more information, try '--help'.

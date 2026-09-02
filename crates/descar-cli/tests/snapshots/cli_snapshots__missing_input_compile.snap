@@ -1,0 +1,10 @@
+---
+source: crates/descar-cli/tests/cli_snapshots.rs
+expression: error.to_string()
+---
+error: the following required arguments were not provided:
+  <FILE>
+
+Usage: descar compile <FILE>
+
+For more information, try '--help'.

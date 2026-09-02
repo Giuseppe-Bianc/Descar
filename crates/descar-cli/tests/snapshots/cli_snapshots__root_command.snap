@@ -1,0 +1,7 @@
+---
+source: crates/descar-cli/tests/cli_snapshots.rs
+expression: "format!(\"{args:#?}\")"
+---
+Args {
+    command: None,
+}

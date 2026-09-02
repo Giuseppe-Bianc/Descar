@@ -1,0 +1,9 @@
+---
+source: crates/descar-cli/tests/cli_snapshots.rs
+expression: error.to_string()
+---
+error: unrecognized subcommand 'build'
+
+Usage: descar [COMMAND]
+
+For more information, try '--help'.
