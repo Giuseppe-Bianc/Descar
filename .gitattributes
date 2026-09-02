@@ -5,7 +5,8 @@
 # ─── Rust sources ─────────────────────────────────────────────────────────────
 *.rs        text eol=lf linguist-language=Rust
 *.toml      text eol=lf
-*.lock      text eol=lf -diff   # treat Cargo.lock as opaque in diffs
+# Cargo.lock is treated as opaque in diffs
+*.lock      text eol=lf -diff
 
 # ─── Build & CI configuration ─────────────────────────────────────────────────
 Makefile    text eol=lf
