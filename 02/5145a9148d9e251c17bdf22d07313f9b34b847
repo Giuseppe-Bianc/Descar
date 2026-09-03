@@ -1,0 +1,25 @@
+crates/descar-core/src/location/source_span.rs
+  h_361662506da91f 1-7,15-23,25-27,30,32,34,39,41-42,44-47,53-57,60,64,70,76-81,84,86-88,91,94,100-101,107-108,114-118,124-129,138,140,144-145,161-165,178-179,182-183,186-188
+  s_57ecb8cd943678::t_92a5288d41c94e 139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "025145a9148d9e251c17bdf22d07313f9b34b847",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_57ecb8cd943678": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b6e78008-1ea0-421e-b4e1-0ce47df84469",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
