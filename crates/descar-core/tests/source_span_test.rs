@@ -66,29 +66,3 @@ fn merge_returns_minimum_covering_span() {
     let nested = Span::new(Arc::from("asd/dd.dr"), location(2, 2, 12), location(2, 3, 18));
     assert_eq!(first.merge(&nested), first);
 }
-
-#[test]
-fn extracts_ascii_and_empty_ranges() {
-    let source = "hello world";
-    let span = Span::new(Arc::from("asd/dd.dr"), location(1, 1, 0), location(1, 1, 5));
-    assert_eq!(span.extract_from(source), "hello");
-    let empty = Span::point(Arc::from("asd/dd.dr"), location(1, 1, 5));
-    assert_eq!(empty.extract_from(source), "");
-}
-
-#[test]
-fn length_is_utf8_byte_count_for_non_ascii_span() {
-    // "a€b": 'a' = 1 byte, '€' (U+20AC) = 3 bytes, 'b' = 1 byte → total 5 bytes.
-    let source = "a€b";
-    assert_eq!(source.len(), 5, "sanity-check: source is 5 UTF-8 bytes");
-
-    // Whole string: offsets 0..5 → length 5.
-    let whole = Span::new(Arc::from("asd/dd.dr"), location(1, 1, 0), location(1, 4, 5));
-    assert_eq!(whole.length(), 5);
-    assert_eq!(whole.extract_from(source), "a€b");
-
-    // Euro sign only: offsets 1..4 → length 3.
-    let euro = Span::new(Arc::from("asd/dd.dr"), location(1, 2, 1), location(1, 3, 4));
-    assert_eq!(euro.length(), 3);
-    assert_eq!(euro.extract_from(source), "€");
-}

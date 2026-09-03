@@ -68,15 +68,6 @@ static UUID_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 /// # Returns
 ///
 /// A default `SourceSpan` with no meaningful location data.
-///
-/// # Examples
-///
-/// ```
-/// let expr = Expr::Literal {
-///     value: LiteralValue::Bool(true),
-///     span: dummy_span(),
-/// };
-/// ```
 #[must_use]
 pub fn dummy_span() -> Span {
     Span::default()

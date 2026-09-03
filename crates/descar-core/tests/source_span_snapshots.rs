@@ -21,22 +21,3 @@ fn snapshots_representations() {
     );
     assert_snapshot!("representations", rendered);
 }
-
-#[test]
-fn snapshots_extraction_and_errors() {
-    let reversed = Span::new(Arc::from("asd/dd.dr"), location(1, 1, 8), location(1, 1, 3));
-    let source = "a€b";
-    let valid = Span::new(Arc::from("asd/dd.dr"), location(1, 1, 1), location(1, 1, 4));
-    let invalid_boundary = Span::new(Arc::from("asd/dd.dr"), location(1, 1, 2), location(1, 1, 4));
-    let out_of_range = Span::new(Arc::from("asd/dd.dr"), location(1, 1, 0), location(1, 1, 99));
-    let rendered = format!(
-        "reversed={reversed:?}\n\
-     valid_extract={:?}\n\
-     invalid_boundary={:?}\n\
-     out_of_range={:?}",
-        valid.extract_from(source),
-        invalid_boundary.extract_from(source),
-        out_of_range.extract_from(source)
-    );
-    assert_snapshot!("extraction_and_errors", rendered);
-}

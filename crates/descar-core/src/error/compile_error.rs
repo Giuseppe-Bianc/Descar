@@ -95,9 +95,9 @@ impl CompileError {
     ///
     /// # Examples
     /// ```
-    /// use jsavrs::error::compile_error::CompileError;
-    /// use jsavrs::error::error_code::ErrorCode;
-    /// use jsavrs::location::source_span::SourceSpan;
+    /// use descar_core::error::compile_error::CompileError;
+    /// use descar_core::error::error_code::ErrorCode;
+    /// use descar_core::location::source_span::SourceSpan;
     /// use std::sync::Arc;
     /// let err = CompileError::TypeError {
     ///     code: Some(ErrorCode::E2023),
@@ -126,12 +126,12 @@ impl CompileError {
     /// # Examples
     /// ```
     /// use descar_core::error::compile_error::CompileError;
-    /// use descar_core::location::source_span::Span;
+    /// use descar_core::location::source_span::SourceSpan;
     /// use std::sync::Arc;
     /// let err = CompileError::LexerError {
     ///     code: None,
     ///     message: Arc::from("Invalid token"),
-    ///     span: Span::default(),
+    ///     span: SourceSpan::default(),
     ///     help: None,
     /// };
     /// assert_eq!(err.message(), Some("Invalid token"));
@@ -157,8 +157,8 @@ impl CompileError {
     /// use std::sync::Arc;
     /// use descar_core::error::compile_error::CompileError;
     /// use descar_core::location::source_location::SourceLocation;
-    /// use descar_core::location::source_span::Span;
-    /// let span = Span::new(Arc::from("file"), SourceLocation::new(1,1,1), SourceLocation::new(1,1,1));
+    /// use descar_core::location::source_span::SourceSpan;
+    /// let span = SourceSpan::new(Arc::from("file"), SourceLocation::new(1,1,1,1,1,1), SourceLocation::new(1,1,1,1,1,1));
     /// let err = CompileError::SyntaxError {
     ///     code: None,
     ///     message: Arc::from("Unexpected token"),
@@ -184,12 +184,12 @@ impl CompileError {
     /// # Examples
     /// ```
     /// use descar_core::error::compile_error::CompileError;
-    /// use descar_core::location::source_span::Span;
+    /// use descar_core::location::source_span::SourceSpan;
     /// use std::sync::Arc;
     /// let err = CompileError::TypeError {
     ///     code: None,
     ///     message: Arc::from("Type mismatch"),
-    ///     span: Span::default(),
+    ///     span: SourceSpan::default(),
     ///     help: Some("Try adding a type annotation".to_string()),
     /// };
     /// assert_eq!(err.help(), Some("Try adding a type annotation"));
@@ -214,12 +214,12 @@ impl CompileError {
     /// # Examples
     /// ```
     /// use descar_core::error::compile_error::CompileError;
-    /// use descar_core::location::source_span::Span;
+    /// use descar_core::location::source_span::SourceSpan;
     /// use std::sync::Arc;
     /// let mut err = CompileError::LexerError {
     ///     code: None,
     ///     message: Arc::from("Old message"),
-    ///     span: Span::default(),
+    ///     span: SourceSpan::default(),
     ///     help: None,
     /// };
     /// err.set_message(Arc::from("New message"));
@@ -246,14 +246,14 @@ impl CompileError {
     /// use std::sync::Arc;
     /// use descar_core::error::compile_error::CompileError;
     /// use descar_core::location::source_location::SourceLocation;
-    /// use descar_core::location::source_span::Span;
+    /// use descar_core::location::source_span::SourceSpan;
     /// let mut err = CompileError::SyntaxError {
     ///     code: None,
     ///     message: Arc::from(""),
-    ///     span: Span::new(Arc::from("file"), SourceLocation::new(1,1,1), SourceLocation::new(1,1,1)),
+    ///     span: SourceSpan::new(Arc::from("file"), SourceLocation::new(1,1,1,1,1,1), SourceLocation::new(1,1,1,1,1,1)),
     ///     help: None,
     /// };
-    /// let new_span = Span::new(Arc::from("file"), SourceLocation::new(1,2,1), SourceLocation::new(1,2,1));
+    /// let new_span = SourceSpan::new(Arc::from("file"), SourceLocation::new(1,2,1,1,1,1), SourceLocation::new(1,2,1,1,1,1));
     /// err.set_span(new_span.clone());
     /// assert_eq!(err.span(), Some(&new_span));
     /// ```
@@ -276,12 +276,12 @@ impl CompileError {
     /// # Examples
     /// ```
     /// use descar_core::error::compile_error::CompileError;
-    /// use descar_core::location::source_span::Span;
+    /// use descar_core::location::source_span::SourceSpan;
     /// use std::sync::Arc;
     /// let mut err = CompileError::TypeError {
     ///     code: None,
     ///     message: Arc::from("Type mismatch"),
-    ///     span: Span::default(),
+    ///     span: SourceSpan::default(),
     ///     help: None,
     /// };
     /// err.set_help(Some("Try adding a type annotation".to_string()));

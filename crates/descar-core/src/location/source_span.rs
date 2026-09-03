@@ -134,23 +134,6 @@ impl SourceSpan {
 
         Self { file_path: self.file_path.clone(), start: merged_start, end: merged_end }
     }
-
-    /// Extracts the text covered by this span from the given source.
-    ///
-    /// Uses the byte offsets of `start` and `end` to index into `source`.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the span's bounds are outside `source` or do not correspond
-    /// to valid UTF-8 character boundaries.
-    #[must_use]
-    pub fn extract_from<'a>(&self, source: &'a str) -> &'a str {
-        let start = self.start.offset();
-
-        let end = self.end.offset();
-
-        source.get(start..end).unwrap_or_else(|| panic!("Span bounds are out of range"))
-    }
 }
 
 impl std::fmt::Display for SourceSpan {
@@ -190,7 +173,7 @@ impl std::fmt::Display for SourceSpan {
 /// # Examples
 /// ```
 /// use std::path::Path;
-/// use jsavrs::location::source_span::truncate_path;
+/// use descar_core::location::source_span::truncate_path;
 /// let path = if cfg!(unix) {
 ///         "/project/src/module/file.lang"
 ///     } else {
