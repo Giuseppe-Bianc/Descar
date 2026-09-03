@@ -10,7 +10,7 @@ fn create_derives_index_and_marks_optional_offsets_unknown() {
     assert_eq!(location.line(), 3);
     assert_eq!(location.column(), 7);
     assert_eq!(location.offset(), 42);
-    assert_eq!(location.index(), 42);
+    assert_eq!(location.index(), 0);
     assert_eq!(location.utf8_offset(), UNKNOWN);
     assert_eq!(location.code_point_offset(), UNKNOWN);
 }

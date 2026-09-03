@@ -1,8 +1,8 @@
 use descar_core::error::compile_error::CompileError;
 use descar_core::location::source_location::SourceLocation;
-use descar_core::location::source_span::Span;
+use descar_core::location::source_span::SourceSpan;
 use descar_core::{make_error, utils::t_span};
-//use std::sync::Arc;
+use std::sync::Arc;
 
 #[test]
 fn test_io_error_display() {
@@ -14,26 +14,22 @@ fn test_io_error_display() {
 #[test]
 fn test_lexer_error_display_with_help() {
     make_error!(error, LexerError, 1, Some("Check the syntax".into()));
-    //let expected = "Unexpected token \"@\" at test_file:line 1:column 1 - line 1:column 2\nhelp: Check the syntax";
-    let expected = "Unexpected token \"@\" at line 1:column 1-line 1:column 2\nhelp: Check the syntax";
+    let expected = "Unexpected token \"@\" at test_file:line 1:column 1-line 1:column 2\nhelp: Check the syntax";
     assert_eq!(format!("{error}"), expected);
 }
 
 #[test]
 fn test_parser_error_display_with_help() {
     make_error!(error, SyntaxError, 2, Some("Ensure all brackets are closed".into()));
-    //let expected = "let expected = "Syntax error: Unexpected token \"@\" at test_file:line 2:column 1 - line 2:column 2\nhelp: Ensure all brackets are closed";
-    let expected =
-        "Syntax error: Unexpected token \"@\" at line 2:column 1-line 2:column 2\nhelp: Ensure all brackets are closed";
+    let expected = "Syntax error: Unexpected token \"@\" at test_file:line 2:column 1-line 2:column 2\nhelp: Ensure all brackets are closed";
     assert_eq!(format!("{error}"), expected);
 }
 
 #[test]
 fn test_type_error_display_with_help() {
     make_error!(error, TypeError, 3, Some("Check variable types".into()));
-    /*let expected =
-    "Type error: Unexpected token \"@\" at test_file:line 3:column 1 - line 3:column 2\nhelp: Check variable types";*/
-    let expected = "Type error: Unexpected token \"@\" at line 3:column 1-line 3:column 2\nhelp: Check variable types";
+    let expected =
+        "Type error: Unexpected token \"@\" at test_file:line 3:column 1-line 3:column 2\nhelp: Check variable types";
     assert_eq!(format!("{error}"), expected);
 }
 
@@ -43,8 +39,7 @@ macro_rules! generate_display_test {
         fn $test_name() {
             make_error!(error, $error_type, $line);
             let expected =
-                //format!("Unexpected token \"@\" at test_file:line {}:column 1 - line {}:column 2", $line, $line);
-				format!("Unexpected token \"@\" at line {}:column 1-line {}:column 2", $line, $line);
+                format!("Unexpected token \"@\" at test_file:line {}:column 1-line {}:column 2", $line, $line);
             assert_eq!(format!("{} at {}", error.message().unwrap(), error.span().unwrap()), expected);
         }
     };
@@ -52,14 +47,8 @@ macro_rules! generate_display_test {
         #[test]
         fn $test_name() {
             make_error!(error, $error_type, $line, $help);
-            /*let expected = format!(
-                "Unexpected token \"@\" at test_file:line {}:column 1 - line {}:column 2\nhelp: {}",
-                $line,
-                $line,
-                $help.unwrap()
-            );*/
-			let expected = format!(
-                "Unexpected token \"@\" at line {}:column 1-line {}:column 2\nhelp: {}",
+            let expected = format!(
+                "Unexpected token \"@\" at test_file:line {}:column 1-line {}:column 2\nhelp: {}",
                 $line,
                 $line,
                 $help.unwrap()
@@ -153,7 +142,8 @@ macro_rules! generate_set_span_test {
         fn $test_name() {
             make_error!(mut error, $error_type, $initial_line);
 
-            let new_span = Span::new(
+            let new_span = SourceSpan::new(
+                Arc::from("test_file"),
                 SourceLocation::new($new_line, 1, 2, 0, usize::MAX, usize::MAX),
                 SourceLocation::new($new_line, 2, 3, 0, usize::MAX, usize::MAX),
             );

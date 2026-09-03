@@ -20,8 +20,9 @@ use crate::tokens::token_kind::TokenKind;
 use regex::Regex;*/
 use crate::location::source_location::SourceLocation;
 use crate::location::source_location::UNKNOWN;
-use crate::location::source_span::Span;
+use crate::location::source_span::SourceSpan as Span;
 
+use std::sync::Arc;
 //use std::collections::HashMap;
 //use std::fmt::Display;
 //use std::fmt::Write;
@@ -343,10 +344,9 @@ pub fn num_token(n: f64) -> Token {
 
 // Test di merging
 #[must_use]
-pub const fn create_span(
-    _file_path: &str, start_line: usize, start_col: usize, end_line: usize, end_col: usize,
-) -> Span {
+pub fn create_span(file_path: &str, start_line: usize, start_col: usize, end_line: usize, end_col: usize) -> Span {
     Span::new(
+        Arc::from(file_path),
         SourceLocation::new(start_line, start_col, 0, 0, UNKNOWN, UNKNOWN),
         SourceLocation::new(end_line, end_col, 1, 1, UNKNOWN, UNKNOWN),
     )
@@ -354,7 +354,7 @@ pub const fn create_span(
 
 /// Helper function to create a `SourceSpan` for a given line.
 #[must_use]
-pub const fn t_span(line: usize) -> Span {
+pub fn t_span(line: usize) -> Span {
     create_span("test_file", line, 1, line, 2)
 }
 

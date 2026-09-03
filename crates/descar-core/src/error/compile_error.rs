@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 // src/error/compile_error.rs
 use crate::error::error_code::ErrorCode;
-use crate::location::source_span::Span;
+use crate::location::source_span::SourceSpan as Span;
 use thiserror::Error;
 
 /// Represents compilation errors that occur during different phases of compilation.
@@ -257,7 +257,7 @@ impl CompileError {
     /// err.set_span(new_span.clone());
     /// assert_eq!(err.span(), Some(&new_span));
     /// ```
-    pub const fn set_span(&mut self, new_span: Span) {
+    pub fn set_span(&mut self, new_span: Span) {
         match self {
             Self::LexerError { span, .. } | Self::SyntaxError { span, .. } | Self::TypeError { span, .. } => {
                 *span = new_span;
