@@ -1,4 +1,5 @@
 // src/location/line_tracker.rs
+use crate::location::source_location::UNKNOWN;
 use crate::location::{source_location::SourceLocation, source_span::SourceSpan};
 use std::sync::Arc;
 
@@ -36,7 +37,7 @@ impl LineTracker {
     ///
     /// # Examples
     /// ```
-    /// use jsavrs::location::line_tracker::LineTracker;
+    /// use descar_core::location::line_tracker::LineTracker;
     /// let tracker = LineTracker::new("example.lang", "print(1);\nprint(2);".to_string());
     /// ```
     #[must_use]
@@ -70,12 +71,12 @@ impl LineTracker {
     ///
     /// # Examples
     /// ```
-    /// use jsavrs::location::line_tracker::LineTracker;
+    /// use descar_core::location::line_tracker::LineTracker;
     /// let src = "a\nbc";
     /// let tracker = LineTracker::new("test.lang", src.to_string());
     /// let loc = tracker.location_for(3);
-    /// assert_eq!(loc.line, 2);
-    /// assert_eq!(loc.column, 2);
+    /// assert_eq!(loc.line(), 2);
+    /// assert_eq!(loc.column(), 2);
     /// ```
     #[must_use]
     pub fn location_for(&self, offset: usize) -> SourceLocation {
@@ -87,14 +88,11 @@ impl LineTracker {
         );
 
         match self.line_starts.binary_search(&offset) {
-            // Exact match: offset is at line start
-            Ok(line) => SourceLocation::new(line + 1, 1, offset),
-
-            // Between lines: calculate column from preceding line start
+            Ok(line) => SourceLocation::new(line + 1, 1, offset, UNKNOWN, UNKNOWN, UNKNOWN),
             Err(line) => {
                 let line_index = line.saturating_sub(1);
                 let column = offset - self.line_starts[line_index] + 1;
-                SourceLocation::new(line_index + 1, column, offset)
+                SourceLocation::new(line_index + 1, column, offset, UNKNOWN, UNKNOWN, UNKNOWN)
             }
         }
     }
@@ -115,7 +113,7 @@ impl LineTracker {
     ///
     /// # Examples
     /// ```
-    /// use jsavrs::location::line_tracker::LineTracker;
+    /// use descar_core::location::line_tracker::LineTracker;
     /// let src = "fn main() {}";
     /// let tracker = LineTracker::new("test.lang", src.to_string());
     /// let span = tracker.span_for(3..8);
