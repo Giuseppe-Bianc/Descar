@@ -1,0 +1,16 @@
+crates/descar-core/src/error/compile_error.rs
+  h_361662506da91f 98-100,129,134,160-161,187,192,217,222,249,253,256,279,284
+crates/descar-core/src/location/source_span.rs
+  h_361662506da91f 176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7d72175146495c469aff1fda90e83af065e3cca7",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
