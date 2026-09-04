@@ -1,0 +1,14 @@
+crates/descar-core/src/error/error_code.rs
+  h_361662506da91f 1439
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "99c6ffa0e897230b756191bab9b3410928f58985",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
