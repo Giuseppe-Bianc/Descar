@@ -1,0 +1,14 @@
+crates/descar-core/tests/source_span_snapshots.rs
+  h_361662506da91f 2-5,11,22,24-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "895427ffc346a3b96521008039f3c791b431b23c",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
