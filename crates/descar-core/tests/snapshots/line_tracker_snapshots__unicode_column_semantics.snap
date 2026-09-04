@@ -1,0 +1,6 @@
+---
+source: crates/descar-core/tests/line_tracker_snapshots.rs
+expression: rendered
+---
+before_emoji={ line: 1, column: 2, offset: 1, index: 1, utf8_offset: 1, code_point_offset: 1 }
+before_b={ line: 1, column: 3, offset: 5, index: 3, utf8_offset: 5, code_point_offset: 2 }

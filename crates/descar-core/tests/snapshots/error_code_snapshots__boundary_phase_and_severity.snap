@@ -1,0 +1,16 @@
+---
+source: crates/descar-core/tests/error_code_snapshots.rs
+expression: rendered
+---
+E0010: numeric=10, phase=lexer, severity=error
+E1001: numeric=1001, phase=parser, severity=error
+E1015: numeric=1015, phase=parser, severity=error
+E2001: numeric=2001, phase=semantic, severity=error
+E2032: numeric=2032, phase=semantic, severity=error
+E3001: numeric=3001, phase=ir-gen, severity=error
+E3008: numeric=3008, phase=ir-gen, severity=error
+E4001: numeric=4001, phase=codegen, severity=error
+E4005: numeric=4005, phase=codegen, severity=error
+E5001: numeric=5001, phase=system, severity=error
+E5005: numeric=5005, phase=system, severity=error
+E1013: numeric=1013, phase=parser, severity=warning

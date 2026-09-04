@@ -1,0 +1,10 @@
+---
+source: crates/descar-core/tests/line_tracker_snapshots.rs
+expression: rendered
+---
+offset_0={ line: 1, column: 1, offset: 0, index: 0, utf8_offset: 0, code_point_offset: 0 }
+offset_4={ line: 2, column: 1, offset: 4, index: 4, utf8_offset: 4, code_point_offset: 4 }
+offset_8={ line: 3, column: 1, offset: 8, index: 8, utf8_offset: 8, code_point_offset: 8 }
+offset_15={ line: 4, column: 1, offset: 15, index: 15, utf8_offset: 15, code_point_offset: 15 }
+offset_22={ line: 5, column: 1, offset: 22, index: 20, utf8_offset: 22, code_point_offset: 20 }
+offset_29={ line: 6, column: 1, offset: 29, index: 25, utf8_offset: 29, code_point_offset: 25 }

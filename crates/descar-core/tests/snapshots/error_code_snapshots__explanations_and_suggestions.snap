@@ -1,0 +1,35 @@
+---
+source: crates/descar-core/tests/error_code_snapshots.rs
+expression: rendered
+---
+E1003
+explanation="Only variables and array elements can be assigned to.\nExamples: `x = 5` or `arr[0] = 1`."
+suggestions=[]
+---
+E2009
+explanation="See the error message for details."
+suggestions=["Move the statement inside a while or for loop", "Use return to exit a function instead"]
+---
+E2010
+explanation="See the error message for details."
+suggestions=["Move the statement inside a while or for loop", "Use return to exit a function instead"]
+---
+E2023
+explanation="The variable has not been declared in the current scope or any outer scope.\nDeclare the variable with `var` or `const` before using it."
+suggestions=["Declare the variable: var x: i32 = 0", "Check for typos in the variable name", "Ensure the variable is in scope"]
+---
+E2024
+explanation="Variables declared with `const` cannot be reassigned.\nUse `var` for mutable variables or remove the reassignment."
+suggestions=["Use 'var' instead of 'const' for mutable variables", "Remove the reassignment"]
+---
+E2027
+explanation="The function has not been declared.\nDefine the function with `fun` before calling it."
+suggestions=[]
+---
+E2028
+explanation="The number of arguments provided doesn't match the function's parameter count.\nCheck the function definition and provide the correct number of arguments."
+suggestions=[]
+---
+E5005
+explanation="See the error message for details."
+suggestions=[]
