@@ -1436,7 +1436,7 @@ mod tests {
     #[test]
     fn test_explanation_not_empty() {
         let explanation = ErrorCode::E2023.explanation();
-        assert!(!explanation.is_empty());
+        assert_ne!(explanation, "");
         assert!(explanation.contains("declare"));
     }
 }
