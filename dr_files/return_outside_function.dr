@@ -1,0 +1,11 @@
+// Test: return statement outside function body
+// This should produce a type error since return is only valid inside a function
+
+var x: i64 = 42
+
+// return at top level — invalid
+return x
+
+main {
+    var y: i32 = 10i32
+}

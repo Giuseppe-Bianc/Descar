@@ -1,0 +1,19 @@
+// Test: return without value in a non-void function
+// Should produce E2008: Return type mismatch, expected {expected_type} found Void
+
+fun missing_value(): i32 {
+    return  // Error: function declares i32 but return has no value
+}
+
+fun correct_return(): i32 {
+    return 42i32  // OK: returns i32 as declared
+}
+
+fun void_ok() {
+    return  // OK: void function with no return value
+}
+
+main {
+    var a: i32 = correct_return()
+    void_ok()
+}

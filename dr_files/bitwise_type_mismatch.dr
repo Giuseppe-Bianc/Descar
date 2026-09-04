@@ -1,0 +1,28 @@
+// Test: bitwise operators with type mismatch
+// Should produce E2011: Bitwise operator requires integer operand types
+
+fun test_bitwise_int() {
+    var a: i32 = 5i32
+    var b: i32 = 3i32
+    var c: i32 = a & b      // OK: both i32
+    var d: i32 = a | b      // OK: both i32
+    var e: i32 = a ^ b      // OK: both i32
+    var f: i32 = a << 1i32  // OK: i32 << i32
+    var g: i32 = a >> 1i32  // OK: i32 >> i32
+}
+
+fun test_bitwise_float() {
+    var x: f64 = 5.0
+    var y: f64 = 3.0
+    var z: f64 = x & y      // E2011: f64 & f64
+}
+
+fun test_bitwise_mixed() {
+    var a: i32 = 5i32
+    var b: f64 = 3.0
+    var c: i64 = a & b      // E2011: i32 & f64
+}
+
+main {
+
+}

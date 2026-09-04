@@ -1,0 +1,24 @@
+// Test: logical operators with type mismatch
+// Should produce E2012: Logical operator requires boolean operand types
+
+fun test_logical_int() {
+    var x: i32 = 5i32
+    var y: i32 = 3i32
+    var z: i32 = x && y     // E2012: i32 && i32
+}
+
+fun test_logical_int64() {
+    var a: i64 = 5
+    var b: i64 = 3
+    var c: i64 = a || b     // E2012: i64 || i64
+}
+
+fun test_logical_mixed() {
+    var p: i32 = 10i32
+    var q: i64 = 1
+    var r: i64 = p && q     // E2012: i32 && i64
+}
+
+main {
+
+}

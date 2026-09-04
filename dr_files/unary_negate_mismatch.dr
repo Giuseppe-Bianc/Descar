@@ -1,0 +1,18 @@
+// Test: unary negate with type mismatch
+// Should produce E2018: Negation requires numeric type operand
+
+fun test_negate_numeric() {
+    var a: i32 = 5i32
+    var b: i32 = -a          // OK: i32 is numeric
+    var c: f64 = 3.14
+    var d: f64 = -c          // OK: f64 is numeric
+}
+
+fun test_negate_string() {
+    var s: string = "hello"
+    var x: string = -s       // E2018: string is not numeric
+}
+
+main {
+
+}

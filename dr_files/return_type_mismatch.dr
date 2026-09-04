@@ -1,0 +1,25 @@
+// Test: return type mismatch
+// The function declares i32 but returns i64 — should produce E2034.
+
+fun wrong_type(): i32 {
+    var x: i64 = 42
+    return x  // Error: i64 does not match declared return type i32
+}
+
+fun wrong_type_void() {
+    return  // OK: void function with no return value
+}
+
+fun correct_type(): i32 {
+    return 99i32  // OK: explicit i32 matches declared return type
+}
+
+fun mismatch_return(): i8 {
+    var y: i64 = 100
+    return y  // Error: i64 does not match declared return type i8
+}
+
+main {
+    var b: i32 = correct_type()
+    wrong_type_void()
+}

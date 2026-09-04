@@ -1,0 +1,29 @@
+// Test: binary arithmetic operators with type mismatch
+// Should produce E2013: Binary operator requires numeric operand types
+
+fun test_arithmetic_numeric() {
+    var a: i32 = 5i32 + 3i32       // OK: both numeric
+    var b: i64 = 5 - 2             // OK: both numeric
+}
+
+fun test_char_concat() {
+    var x: char = 'a'
+    var y: char = 'b'
+    var z: string = x + y          // OK: char + char → string
+}
+
+fun test_string_concat() {
+    var s: string = "hello"
+    var t: string = "world"
+    var u: string = s + t          // OK: string + string → string
+}
+
+fun test_arithmetic_mixed() {
+    var p: char = 'x'
+    var q: string = "test"
+    var r: string = p + q          // E2013: char + string
+}
+
+main {
+
+}

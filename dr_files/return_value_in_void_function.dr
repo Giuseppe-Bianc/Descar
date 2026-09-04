@@ -1,0 +1,12 @@
+// Test: return with value inside a void function
+// This should produce a type error because the function returns void
+// but the return statement provides an i32 value.
+
+fun bad_return() {
+    //var x: i64 = 42
+    return x
+}
+
+main {
+
+}

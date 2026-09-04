@@ -1,0 +1,6 @@
+// Test: break outside of a loop
+// Should produce E2009: Break statement outside loop
+
+main {
+    break  // Error: break is only valid inside for/while loops
+}

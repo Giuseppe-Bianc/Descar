@@ -1,0 +1,17 @@
+// Test: break and continue inside loops (should be valid)
+// Also tests break/continue outside loops (should produce E2009/E2010)
+
+fun test_break_inside() {
+    for(;;) { break }
+    while(true) { break }
+}
+
+fun test_continue_inside() {
+    for(;;) { continue }
+    while(true) { continue }
+}
+
+main {
+    break      // E2009
+    continue   // E2010
+}

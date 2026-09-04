@@ -15,4 +15,4 @@ workspace = true
 [dependencies]
 insta = { workspace = true }
 thiserror = { workspace = true }
-ariadne = { workspace = true }
+console = { workspace = true }

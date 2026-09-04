@@ -1,0 +1,16 @@
+// Test: unary not with type mismatch
+// Should produce E2019: Logical not requires boolean type operand, found {expr_type}
+
+fun test_not_string() {
+    var s: string = "hello"
+    var x: string = !s          // E2019: string is not boolean
+}
+
+fun test_not_numeric() {
+    var n: i32 = 42i32
+    var y: i32 = !n             // E2019: i32 is not boolean
+}
+
+main {
+
+}

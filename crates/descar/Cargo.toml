@@ -10,8 +10,10 @@ keywords = ["rust", "compiler"]
 categories = ["compilers"]
 
 [dependencies]
-clap = { version = "4.6.6", features = ["cargo", "derive"] }
 descar-cli = { path = "../descar-cli" }
+descar-core = { path = "../descar-core" }
+clap = { workspace = true }
+console = { workspace = true }
 
 [lints]
 workspace = true
