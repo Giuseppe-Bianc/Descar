@@ -1429,8 +1429,8 @@ mod tests {
 
     #[test]
     fn test_suggestions_not_empty() {
-        let suggestions = ErrorCode::E2023.suggestions();
-        assert!(!suggestions.is_empty());
+        let suggestions: &[&str] = ErrorCode::E2023.suggestions();
+        assert_ne!(suggestions, [] as [&str; 0]);
     }
 
     #[test]
