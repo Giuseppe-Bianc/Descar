@@ -1,9 +1,0 @@
----
-source: crates/descar-core/tests/line_tracker_snapshots.rs
-expression: "rendered.join(\"\\n\")"
----
-lf={ line: 2, column: 1, offset: 2, index: 2, utf8_offset: 2, code_point_offset: 2 }
-cr={ line: 2, column: 1, offset: 2, index: 2, utf8_offset: 2, code_point_offset: 2 }
-crlf={ line: 2, column: 1, offset: 3, index: 3, utf8_offset: 3, code_point_offset: 3 }
-line_separator={ line: 2, column: 1, offset: 4, index: 2, utf8_offset: 4, code_point_offset: 2 }
-paragraph_separator={ line: 2, column: 1, offset: 4, index: 2, utf8_offset: 4, code_point_offset: 2 }

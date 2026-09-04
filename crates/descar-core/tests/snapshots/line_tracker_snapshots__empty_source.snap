@@ -1,5 +1,0 @@
----
-source: crates/descar-core/tests/line_tracker_snapshots.rs
-expression: "render_location(\"location\", location)"
----
-location={ line: 1, column: 1, offset: 0, index: 0, utf8_offset: 0, code_point_offset: 0 }
