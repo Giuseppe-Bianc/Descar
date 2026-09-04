@@ -1,0 +1,24 @@
+Cargo.toml
+  h_361662506da91f 11,13
+crates/descar/Cargo.toml
+  h_361662506da91f 14-16
+crates/descar-core/src/error/error_reporter.rs
+  h_361662506da91f 1-2,7,9,15,28,30-33,35-60,69,73-91,94,96-97,99,101-102,104-123,127-147
+crates/descar/src/main.rs
+  h_361662506da91f 1-4,7-14,20-33,37-39,42-51
+crates/descar-core/src/location/line_tracker.rs
+  h_361662506da91f 106
+crates/descar-core/Cargo.toml
+  h_361662506da91f 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1b3483b90f45475d10d9051ab6c845b7f9927599",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
