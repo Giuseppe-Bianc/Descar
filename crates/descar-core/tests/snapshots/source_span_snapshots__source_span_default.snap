@@ -1,0 +1,23 @@
+---
+source: crates/descar-core/tests/source_span_snapshots.rs
+expression: span
+---
+SourceSpan {
+    file_path: "",
+    start: SourceLocation {
+        line: 0,
+        column: 0,
+        offset: 0,
+        index: 0,
+        utf8_offset: 0,
+        code_point_offset: 0,
+    },
+    end: SourceLocation {
+        line: 0,
+        column: 0,
+        offset: 0,
+        index: 0,
+        utf8_offset: 0,
+        code_point_offset: 0,
+    },
+}
