@@ -1,0 +1,14 @@
+crates/descar-core/src/location/line_tracker.rs
+  h_361662506da91f 18,20-21,23,25-26,28,30-31,33,36,56,59,62,65,71,80-83,87,92,107-119,127,134,138-139,141-142,144-145,152-153,165,167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "6d0e4e1418666e636e03cfa6134e019063d4853a",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
