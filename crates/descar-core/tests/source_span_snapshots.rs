@@ -7,6 +7,7 @@ use insta::assert_snapshot;
 const fn location(line: usize, column: usize, offset: usize) -> SourceLocation {
     SourceLocation::new(line, column, offset, 0, usize::MAX, usize::MAX)
 }
+
 #[test]
 fn snapshots_representations() {
     let point = Span::point(Arc::from("asd/dd.dr"), location(2, 3, 7));
@@ -18,6 +19,7 @@ fn snapshots_representations() {
         point.length(),
         regular.length(),
         regular.is_multiline()
-    );
+    )
+    .replace('\\', "/");
     assert_snapshot!("representations", rendered);
 }

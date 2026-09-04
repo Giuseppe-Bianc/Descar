@@ -47,7 +47,7 @@ impl LineTracker {
     /// - CRLF (`\r\n`) as one logical line break
     /// - VT (`U+000B`)
     /// - FF (`U+000C`)
-    /// - NEXT LINE (`U+0085`)
+    /// - Unicode NEXT LINE (`U+0085`)
     /// - Unicode LINE SEPARATOR (`U+2028`)
     /// - Unicode PARAGRAPH SEPARATOR (`U+2029`)
     #[must_use]
