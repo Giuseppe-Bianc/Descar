@@ -469,10 +469,8 @@ fn location_for_extended_unicode_line_terminators() {
 
 #[test]
 fn get_line_strips_extended_unicode_line_terminators() {
-    let tracker = LineTracker::new(
-        "test.lang",
-        "one\u{000B}two\u{000C}three\u{0085}four\u{2028}five\u{2029}six".to_string(),
-    );
+    let tracker =
+        LineTracker::new("test.lang", "one\u{000B}two\u{000C}three\u{0085}four\u{2028}five\u{2029}six".to_string());
 
     assert_eq!(tracker.get_line(1), Some("one"));
     assert_eq!(tracker.get_line(2), Some("two"));
