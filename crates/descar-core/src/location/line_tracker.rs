@@ -103,6 +103,11 @@ impl LineTracker {
         }
     }
 
+    
+    pub fn source(&self) -> &str {
+        &self.source
+    }
+
     /// Converts a UTF-8 byte offset to its complete source location.
     ///
     /// The returned coordinates are:

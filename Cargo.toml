@@ -9,6 +9,7 @@ members = [
 [workspace.dependencies]
 insta = { version = "1.48.0", features = ["yaml", "redactions", "filters"] }
 thiserror = "2.0.20"
+ariadne = { version = "0.6.0", features = ["auto-color"] }
 
 [workspace.lints.clippy]
 pedantic = "warn"

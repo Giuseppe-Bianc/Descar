@@ -1,6 +1,7 @@
 use clap::{CommandFactory, Parser};
 use descar_cli::cli::{Args, Command};
-
+use descar_cli::location::line_tracker::LineTracker;
+use descar_cli::error::error_reporter::ErrorReporter;
 fn main() {
     let args = Args::parse();
 
@@ -15,6 +16,9 @@ fn main() {
                     _ => println!("Compiling {} with trace diagnostics", args.input.display()),
                 }
             }
+            let line_tracker = LineTracker::new(args.input.display().to_string(), "asss\naaaa");
+            let reporter = ErrorReporter::new(line_tracker);
+            
         }
         Some(Command::Check(args)) => {
             if !args.logging.quiet {
