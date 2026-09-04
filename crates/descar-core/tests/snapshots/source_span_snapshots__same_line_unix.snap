@@ -1,0 +1,5 @@
+---
+source: crates/descar-core/tests/source_span_snapshots.rs
+expression: span.to_string()
+---
+../src/main.vn:line 5:column 3-line 5:column 10

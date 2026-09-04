@@ -1,8 +1,0 @@
----
-source: crates/descar-core/tests/source_span_snapshots.rs
-expression: rendered
----
-reversed=EndBeforeStart { start_offset: 8, end_offset: 3 }
-valid_extract=Ok("€")
-invalid_boundary=Err(OffsetOutOfRange { offset: 4 })
-out_of_range=Err(OffsetOutOfRange { offset: 99 })

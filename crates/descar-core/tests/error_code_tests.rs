@@ -939,9 +939,9 @@ fn test_error_workflow() {
     assert_eq!(numeric, 2023);
     assert_eq!(phase, CompilerPhase::Semantic);
     assert_eq!(severity, Severity::Error);
-    assert!(!message.is_empty());
-    assert!(!explanation.is_empty());
-    assert!(!suggestions.is_empty());
+    assert_ne!(message, "");
+    assert_ne!(explanation, "");
+    assert_ne!(suggestions, [] as [&str; 0]);
 }
 
 /// Test using `ErrorCode` in error reporting context.
