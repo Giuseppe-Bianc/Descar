@@ -416,3 +416,33 @@ fn get_line_handles_unicode_line_terminators() {
     assert_eq!(tracker.get_line(2), Some("second"));
     assert_eq!(tracker.get_line(3), Some("third"));
 }
+
+#[test]
+fn location_for_next_line_character() {
+    let source = "a\u{0085}b";
+    let tracker = LineTracker::new("test.lang", source.to_string());
+
+    let offset = "a\u{0085}".len();
+    let location = tracker.location_for(offset);
+
+    assert_eq!(location.line(), 2);
+    assert_eq!(location.column(), 1);
+    assert_eq!(location.offset(), offset);
+    assert_eq!(location.index(), 2);
+    assert_eq!(location.utf8_offset(), offset);
+    assert_eq!(location.code_point_offset(), 2);
+}
+
+#[test]
+fn location_for_all_unicode_line_separators() {
+    let source = "a\u{0085}b\u{2028}c\u{2029}d";
+    let tracker = LineTracker::new("test.lang", source.to_string());
+
+    let second_line = tracker.location_for("a\u{0085}".len());
+    let third_line = tracker.location_for("a\u{0085}b\u{2028}".len());
+    let fourth_line = tracker.location_for("a\u{0085}b\u{2028}c\u{2029}".len());
+
+    assert_eq!((second_line.line(), second_line.column()), (2, 1));
+    assert_eq!((third_line.line(), third_line.column()), (3, 1));
+    assert_eq!((fourth_line.line(), fourth_line.column()), (4, 1));
+}

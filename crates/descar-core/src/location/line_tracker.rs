@@ -70,7 +70,7 @@ impl LineTracker {
             code_point_offset += 1;
 
             match ch {
-                '\n' | '\u{2028}' | '\u{2029}' => {
+                '\n' |'\u{0085}' | '\u{2028}' | '\u{2029}' => {
                     line_starts.push(byte_offset + ch.len_utf8());
                     line_char_starts.push(code_point_offset);
                 }
@@ -168,6 +168,7 @@ impl LineTracker {
             line.strip_suffix("\r\n")
                 .or_else(|| line.strip_suffix('\n'))
                 .or_else(|| line.strip_suffix('\r'))
+                .or_else(|| line.strip_suffix('\u{0085}'))
                 .or_else(|| line.strip_suffix('\u{2028}'))
                 .or_else(|| line.strip_suffix('\u{2029}'))
                 .unwrap_or(line),

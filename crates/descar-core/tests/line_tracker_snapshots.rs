@@ -191,3 +191,20 @@ fn snapshots_span_with_unicode() {
 
     assert_snapshot!("span_with_unicode", rendered);
 }
+
+#[test]
+fn snapshots_extended_unicode_line_endings() {
+    let cases = [("next_line", "a\u{0085}b"), ("line_separator", "a\u{2028}b"), ("paragraph_separator", "a\u{2029}b")];
+
+    let rendered = cases
+        .into_iter()
+        .map(|(name, source)| {
+            let tracker = LineTracker::new("test.lang", source.to_string());
+            let offset = source.find('b').expect("test source must contain b");
+            render_location(name, tracker.location_for(offset))
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    assert_snapshot!("extended_unicode_line_endings", rendered);
+}
