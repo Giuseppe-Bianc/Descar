@@ -1,0 +1,19 @@
+---
+source: crates/descar-core/tests/error_reporter_snapshots.rs
+expression: rendered
+---
+ERROR [E1002] SYNTAX: struct definition incomplete or invalid
+Location: sample.dr:line 1:column 1
+   1 │ struct Foo {
+     │ ^
+     │ ... (error spans lines 1-4)
+help: check opening and closing braces
+ERROR LEX: invalid character
+Location: sample.dr:line 2:column 5
+   2 │     a: i32,
+     │     ^
+ERROR [E1013] SYNTAX: missing semicolon
+Location: sample.dr:line 3:column 14
+   3 │     b: string,
+     │              ^
+help: insert ';' here

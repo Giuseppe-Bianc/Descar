@@ -15,18 +15,17 @@ use crate::parser::ast::{BinaryOp, Expr, LiteralValue, Parameter, Stmt, Type, Un
 use crate::semantic::symbol_table::{FunctionSymbol, Symbol, VariableSymbol};
 use crate::tokens::number::Number;
 use crate::tokens::token::Token;
-use crate::tokens::token_kind::TokenKind;
+use crate::tokens::token_kind::TokenKind;*/
 //use lazy_static::lazy_static;
-use regex::Regex;*/
 use crate::location::source_location::SourceLocation;
 use crate::location::source_location::UNKNOWN;
 use crate::location::source_span::SourceSpan as Span;
+//use regex::Regex;
 
-use std::sync::Arc;
 //use std::collections::HashMap;
 //use std::fmt::Display;
 //use std::fmt::Write;
-//use std::sync::Arc;
+use std::sync::Arc;
 //use std::sync::LazyLock;
 use std::sync::Mutex;
 
@@ -50,12 +49,9 @@ pub fn get_git_commit_hash() -> Option<String> {
     if hash.len() == 40 && hash.chars().all(|c| c.is_ascii_hexdigit()) { Some(hash.to_string()) } else { None }
 }
 
-/*static ANSI_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    #[allow(clippy::expect_used)]
-    Regex::new(r"\x1B\[[0-?]*[ -/]*[@-~]").expect("ANSI regex pattern is valid")
-});
+/*static ANSI_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\x1B\[[0-?]*[ -/]*[@-~]").expect("ANSI regex pattern is valid"));
 static UUID_REGEX: LazyLock<Regex> = LazyLock::new(|| {
-    #[allow(clippy::expect_used)]
     Regex::new(r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}")
         .expect("UUID regex pattern is valid")
 });*/

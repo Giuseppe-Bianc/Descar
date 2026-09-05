@@ -1,0 +1,19 @@
+---
+source: crates/descar-core/tests/error_reporter_snapshots.rs
+expression: rendered
+---
+ERROR [E0001] LEX: unexpected character '@'
+Location: sample.dr:line 1:column 9
+   1 │ let x = @;
+     │         ^
+help: replace with a valid literal or identifier
+ERROR [E1004] SYNTAX: unexpected token in block
+Location: sample.dr:line 2:column 5
+   2 │ fun test() {
+     │     ^^^^
+ERROR [E2001] TYPE: type mismatch: expected i32, found string
+Location: sample.dr:line 3:column 18
+   3 │     let y: i32 = "str";
+     │                  ^^^^^
+help: consider parsing the string as integer
+ERROR I/O: access denied to imported file
