@@ -1,0 +1,29 @@
+Cargo.toml
+  h_361662506da91f 14,21-25
+crates/descar-core/Cargo.toml
+  h_361662506da91f 19
+  s_0dbe2d84e91c0c::t_3db444ec57a5c5 18
+crates/descar/src/main.rs
+  h_361662506da91f 12-13,17-26,50-60,80-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a5316e87aa2b07da32dbeabdc8a11cf4bcffdf11",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0dbe2d84e91c0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aed10efa-2262-4eef-a197-6b10aabde008",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
