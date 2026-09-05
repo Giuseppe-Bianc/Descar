@@ -16,3 +16,4 @@ workspace = true
 insta = { workspace = true }
 thiserror = { workspace = true }
 console = { workspace = true }
+regex = { workspace = true }

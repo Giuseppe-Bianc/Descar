@@ -1,0 +1,30 @@
+---
+source: crates/descar-core/tests/file_snapshots.rs
+expression: rendered
+---
+[zero - 0 bytes]
+0.00 B               0.00 B              
+---
+[sub_kilo - 500 bytes]
+500.00 B             500.00 B            
+---
+[exact_1k_decimal - 1000 bytes]
+1.00 KB              1000.00 B           
+---
+[exact_1k_binary - 1024 bytes]
+1.02 KB              1.00 KiB            
+---
+[megabytes_range - 1500000 bytes]
+1.50 MB              1.43 MiB            
+---
+[gigabyte_binary - 1073741824 bytes]
+1.07 GB              1.00 GiB            
+---
+[terabyte_decimal - 1000000000000 bytes]
+1.00 TB              931.32 GiB          
+---
+[petabyte_binary - 1125899906842624 bytes]
+1.13 PB              1.00 PiB            
+---
+[u64_max - 18446744073709551615 bytes]
+18446.74 PB          16384.00 PiB

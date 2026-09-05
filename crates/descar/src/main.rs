@@ -9,8 +9,21 @@ use descar_core::error::error_code::ErrorCode::E0005;
 use descar_core::error::error_reporter::ErrorReporter;
 use descar_core::location::line_tracker::LineTracker;
 
+use descar_core::file::{FileSizeInfo, FileSizeReport, SizeSystems};
+
 fn handle_io_error<T: std::fmt::Display>(error_type: &str, e: T) {
     eprintln!("{} {}: {}\n", style("ERROR:").red().bold(), style(error_type).red(), style(e).yellow());
+}
+
+fn print_file_size_report(path: &Path) {
+    match fs::metadata(path) {
+        Ok(metadata) => {
+            let size_info = FileSizeInfo::new(metadata.len());
+            let report = FileSizeReport::new(size_info, &SizeSystems::SI_SYSTEM, &SizeSystems::IEC);
+            println!("{report}\n");
+        }
+        Err(e) => handle_io_error("File Metadata", e),
+    }
 }
 fn main() {
     let args = Args::parse();
@@ -34,9 +47,18 @@ fn main() {
             if !args.logging.quiet {
                 match args.logging.verbose {
                     0 => {}
-                    1 => println!("Compiling {file_path_str}"),
-                    2 => println!("Compiling {file_path_str} with debug diagnostics"),
-                    _ => println!("Compiling {file_path_str} with trace diagnostics"),
+                    1 => {
+                        println!("Compiling {file_path_str}");
+                        print_file_size_report(file_path);
+                    }
+                    2 => {
+                        println!("Compiling {file_path_str} with debug diagnostics");
+                        print_file_size_report(file_path);
+                    }
+                    _ => {
+                        println!("Compiling {file_path_str} with trace diagnostics");
+                        print_file_size_report(file_path);
+                    }
                 }
             }
             let line_tracker = LineTracker::new(file_path_str, input);
@@ -55,8 +77,14 @@ fn main() {
                 match args.logging.verbose {
                     0 => {}
                     1 => println!("Checking {}", args.input.display()),
-                    2 => println!("Checking {} with debug diagnostics", args.input.display()),
-                    _ => println!("Checking {} with trace diagnostics", args.input.display()),
+                    2 => {
+                        println!("Checking {} with debug diagnostics", args.input.display());
+                        print_file_size_report(&args.input);
+                    }
+                    _ => {
+                        println!("Checking {} with trace diagnostics", args.input.display());
+                        print_file_size_report(&args.input);
+                    }
                 }
             }
         }

@@ -1,0 +1,12 @@
+---
+source: crates/descar-core/tests/file_snapshots.rs
+expression: rendered
+---
+FormattedSize { value: 0.0, suffix: "B" } => 0.00 B
+FormattedSize { value: 0.004, suffix: "B" } => 0.00 B
+FormattedSize { value: 0.999, suffix: "KB" } => 1.00 KB
+FormattedSize { value: 1.0, suffix: "KiB" } => 1.00 KiB
+FormattedSize { value: 12.3456, suffix: "MB" } => 12.35 MB
+FormattedSize { value: 999.994, suffix: "GB" } => 999.99 GB
+FormattedSize { value: 1023.999, suffix: "TiB" } => 1024.00 TiB
+FormattedSize { value: 1024.0, suffix: "PiB" } => 1024.00 PiB

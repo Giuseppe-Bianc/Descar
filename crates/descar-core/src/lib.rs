@@ -4,5 +4,6 @@
 //! dependency on the command-line interface.
 
 pub mod error;
+pub mod file;
 pub mod location;
 pub mod utils;
