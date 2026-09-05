@@ -1,0 +1,16 @@
+crates/descar-core/tests/error_reporter_tests.rs
+  h_361662506da91f 1-270
+crates/descar-core/src/utils/mod.rs
+  h_361662506da91f 18,23,52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b98ee065cf9eeec9bfb96017a0ec6791f0687cb9",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
