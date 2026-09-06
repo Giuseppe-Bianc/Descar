@@ -3,16 +3,8 @@
 //! The utilities module provides helper functions, macros, and utilities used
 //! throughout the compiler. It contains common functionality that doesn't belong
 //! to a specific compilation phase.
-//!
-//! ## Phase-specific responsibilities:
-//! * Initialization: Provides helper functions for AST construction and testing
-//! * Runtime: Offers utility functions for token processing, string manipulation, and more
-//! * Termination: Provides formatting and sanitization utilities for output  
-/*use crate::ir::Module;
-use crate::location::source_location::SourceLocation;
+/*use crate::location::source_location::SourceLocation;
 use crate::location::source_span::SourceSpan;
-use crate::parser::ast::{BinaryOp, Expr, LiteralValue, Parameter, Stmt, Type, UnaryOp};
-use crate::semantic::symbol_table::{FunctionSymbol, Symbol, VariableSymbol};
 use crate::tokens::number::Number;
 use crate::tokens::token::Token;
 use crate::tokens::token_kind::TokenKind;*/
