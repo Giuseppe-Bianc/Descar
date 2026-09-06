@@ -27,6 +27,26 @@ use crate::tokens::parsers::numeric::parse_number;
 #[derive(Logos, Debug, PartialEq, Eq, Clone)]
 pub enum TokenKind {
     // Operator tokens with correct ordering (longest first)
+    #[token("&=")]
+    AndEqual,
+
+    #[token("|=")]
+    OrEqual,
+
+    #[token("~")]
+    BitwiseNot,
+
+    #[token("<<=")]
+    ShiftLeftEqual,
+
+    #[token(">>=")]
+    ShiftRightEqual,
+
+    #[token("*=")]
+    StarEqual,
+
+    #[token("/=")]
+    SlashEqual,
     #[token("+=")]
     PlusEqual,
     #[token("-=")]
@@ -269,6 +289,13 @@ impl fmt::Display for TokenKind {
             Self::ShiftRight => f.write_str("'>>'"),
             Self::PercentEqual => f.write_str("'%='"),
             Self::XorEqual => f.write_str("'^='"),
+            Self::AndEqual => f.write_str("'&='"),
+            Self::OrEqual => f.write_str("'|='"),
+            Self::BitwiseNot => f.write_str("'~'"),
+            Self::ShiftLeftEqual => f.write_str("'<<='"),
+            Self::ShiftRightEqual => f.write_str("'>>='"),
+            Self::StarEqual => f.write_str("'*='"),
+            Self::SlashEqual => f.write_str("'/='"),
             Self::Not => f.write_str("'!'"),
             Self::Xor => f.write_str("'^'"),
             Self::Percent => f.write_str("'%'"),
@@ -317,6 +344,8 @@ impl fmt::Display for TokenKind {
             Self::CloseBracket => f.write_str("']'"),
             Self::OpenBrace => f.write_str("'{'"),
             Self::CloseBrace => f.write_str("'}'"),
+
+            // Type keywords
             Self::TypeI8 => f.write_str("'i8'"),
             Self::TypeI16 => f.write_str("'i16'"),
             Self::TypeI32 => f.write_str("'i32'"),
