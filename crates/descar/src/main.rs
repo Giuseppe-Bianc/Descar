@@ -1,13 +1,11 @@
 use console::style;
+use descar_core::lex::lexer::{Lexer, lexer_tokenize_with_errors};
 use std::path::Path;
 use std::{fs, process};
 
 use clap::{CommandFactory, Parser};
 use descar_cli::cli::{Args, Command};
-use descar_core::error::compile_error::CompileError;
-use descar_core::error::error_code::ErrorCode::E0005;
 use descar_core::error::error_reporter::ErrorReporter;
-use descar_core::location::line_tracker::LineTracker;
 
 use descar_core::file::{FileSizeInfo, FileSizeReport, SizeSystems};
 
@@ -61,16 +59,18 @@ fn main() {
                     }
                 }
             }
-            let line_tracker = LineTracker::new(file_path_str, input);
-            let reporter = ErrorReporter::new(line_tracker.clone());
-            let e_span = line_tracker.span_for(3..4);
-            let error = CompileError::LexerError {
-                code: Option::Some(E0005),
-                message: "Invalid character".into(),
-                span: e_span,
-                help: None,
-            };
-            println!("{}", reporter.report_errors(vec![error]));
+
+            let mut lexer = Lexer::new(file_path_str, &input);
+            let line_tracker = lexer.get_line_tracker();
+            let error_reporter = ErrorReporter::new(line_tracker.clone());
+            let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);
+            if !lexer_errors.is_empty() {
+                eprintln!("{}", error_reporter.report_errors(lexer_errors));
+                process::exit(1);
+            }
+            for token in tokens {
+                println!("Token: {:?}, Span: {}", token.kind, token.span);
+            }
         }
         Some(Command::Check(args)) => {
             if !args.logging.quiet {
