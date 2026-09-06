@@ -1,0 +1,39 @@
+crates/descar-core/src/tokens/parsers/numeric.rs
+  h_361662506da91f 1-216
+Cargo.toml
+  h_361662506da91f 15
+crates/descar-core/src/tokens/token.rs
+  h_361662506da91f 1-31
+crates/descar-core/src/tokens/number.rs
+  h_361662506da91f 1-262
+crates/descar-core/src/tokens/mod.rs
+  h_361662506da91f 1-4
+crates/descar-core/src/tokens/token_kind.rs
+  h_361662506da91f 1-341
+crates/descar-core/src/tokens/parsers/suffix.rs
+  h_361662506da91f 1-568
+crates/descar-core/Cargo.toml
+  h_361662506da91f 20
+  s_0dbe2d84e91c0c::t_d46b7b6a530962 19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "fa3e006485d0458a46abda5ac6b0ab5c9046c00c",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0dbe2d84e91c0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aed10efa-2262-4eef-a197-6b10aabde008",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
