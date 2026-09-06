@@ -5,5 +5,7 @@
 
 pub mod error;
 pub mod file;
+pub mod lexer;
 pub mod location;
+pub mod tokens;
 pub mod utils;
