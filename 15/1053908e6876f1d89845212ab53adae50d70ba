@@ -1,0 +1,18 @@
+crates/descar-core/src/lib.rs
+  h_361662506da91f 8
+crates/descar-core/src/lex/lexer.rs
+  h_361662506da91f 1-252
+crates/descar-core/src/tokens/token_kind.rs
+  h_361662506da91f 30-49,292-298,347-348
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "151053908e6876f1d89845212ab53adae50d70ba",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
