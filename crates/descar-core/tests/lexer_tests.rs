@@ -56,7 +56,7 @@ fn operators() {
 
 #[test]
 fn decimal_numbers() {
-    let input = "123 45.67 9.01 1e5 2E-3 1.2e3 123. .456 10e5 3.4e+5 5e0 0e0";
+    let input = "123 45.67 9.01 1e5 2E-3 1.2e3 123.0 .456 10e5 3.4e+5 5e0 0e0";
     let tokens = lex_kinds(input);
     let tokens: Vec<TokenKind> = tokens.into_iter().map(|t| t.unwrap()).collect();
     assert_eq!(

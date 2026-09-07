@@ -205,7 +205,7 @@ pub enum TokenKind {
     // La regex prende anche un eventuale suffisso alfabetico.
     // Il callback decide se il suffisso è valido.
     //
-    #[regex(r"(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?(?:[A-Za-z_][A-Za-z0-9_]*)?", parse_number, priority = 10)]
+    #[regex(r"(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?(?:[uUiI](?:8|16|32)?|[fFdD])?", parse_number, priority = 10)]
     Numeric(Number),
 
     //
