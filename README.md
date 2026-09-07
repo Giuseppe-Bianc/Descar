@@ -103,6 +103,14 @@ CI runs on Linux, macOS, and Windows for stable, beta, and nightly toolchains.
 | `error: aborting due to previous error` | lint failed | run `cargo fmt --check` and `cargo clippy` |
 | `cargo test` fails | failing tests | inspect files in `dr_files/` and fix syntax |
 
+## Additional Documentation
+
+- [`CLAUDE.md`](./CLAUDE.md) contains development guidance, common Cargo commands, workspace architecture, CI details, and project contribution conventions.
+- [`SECURITY.md`](./SECURITY.md) describes the vulnerability reporting process, supported versions, security incident handling, and security practices.
+- [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) defines the project's community standards and expected behavior.
+- [`.github/ISSUE_TEMPLATE/`](./.github/ISSUE_TEMPLATE/) contains templates for bug reports and feature requests.
+- [`.github/pull_request_template.md`](./.github/pull_request_template.md) provides the pull request template used by the repository.
+
 ## License
 
 Descar is licensed under the Apache License 2.0.
