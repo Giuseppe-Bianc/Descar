@@ -321,7 +321,7 @@ pub enum TokenKind {
     #[regex(r"\p{White_Space}+", logos::skip)]
     Whitespace,
 
-    #[regex(r"//[^\n\r]*", logos::skip, allow_greedy = true)]
+    #[regex(r"//[^\n\r\u{000B}\u{000C}\u{0085}\u{2028}\u{2029}]*", logos::skip, allow_greedy = true)]
     Comment,
 
     #[regex(r"/\*[^*]*\*+(?:[^*/][^*]*\*+)*/", logos::skip)]
