@@ -52,59 +52,52 @@ impl<'a> Lexer<'a> {
         };
 
         let span = self.line_tracker.span_for(range);
+        let slice = self.inner.slice();
 
         Some(match result {
             Ok(kind) => Ok(Token { kind, span }),
 
-            Err(error) => Err(Self::convert_lex_error(error, span)),
+            Err(error) => Err(Self::convert_lex_error(error, span, slice)),
         })
     }
 
-    fn convert_lex_error(error: LexError, span: crate::location::source_span::SourceSpan) -> CompileError {
+    fn convert_lex_error(error: LexError, span: crate::location::source_span::SourceSpan, slice: &str) -> CompileError {
+        // Build error message, optionally using offending slice for clarity
         let (code, message, help) = match error {
-            LexError::InvalidToken => (
-                ErrorCode::E0001,
-                "Invalid or unrecognized token",
-                Some(
-                    "Check for unsupported characters \
-                         or malformed syntax.",
-                ),
-            ),
-
-            LexError::MalformedBinary => {
-                (ErrorCode::E0002, "Malformed binary number", Some("Binary numbers use the form #b1010."))
-            }
-
-            LexError::MalformedOctal => {
-                (ErrorCode::E0003, "Malformed octal number", Some("Octal numbers use the form #o755."))
-            }
-
+            LexError::InvalidToken => (ErrorCode::E0001, format!("Invalid or unrecognized token: \"{slice}\""), None),
+            LexError::MalformedBinary => (ErrorCode::E0002, format!("Malformed binary number: \"{slice}\""), None),
+            LexError::MalformedOctal => (ErrorCode::E0003, format!("Malformed octal number: \"{slice}\""), None),
             LexError::MalformedHexadecimal => {
-                (ErrorCode::E0004, "Malformed hexadecimal number", Some("Hexadecimal numbers use the form #xDEAD."))
+                (ErrorCode::E0004, format!("Malformed hexadecimal number: \"{slice}\""), None)
             }
-
-            LexError::UnterminatedString => {
-                (ErrorCode::E0005, "Unterminated string literal", Some("Add a closing double quote."))
-            }
-
-            LexError::UnterminatedChar => {
-                (ErrorCode::E0006, "Unterminated character literal", Some("Add a closing single quote."))
-            }
-
-            LexError::UnterminatedComment => {
-                (ErrorCode::E0008, "Unterminated multi-line comment", Some("Add a closing */ to the comment."))
-            }
-
-            LexError::InvalidNumberSuffix => {
-                (ErrorCode::E0009, "Invalid number suffix", Some("Use a supported numeric suffix."))
-            }
-
-            LexError::NumberOverflow => {
-                (ErrorCode::E0010, "Number literal overflow", Some("Use a smaller value or a compatible type."))
-            }
+            LexError::UnterminatedString => (
+                ErrorCode::E0005,
+                String::from("Unterminated string literal"),
+                Some(String::from("Add a closing double quote.")),
+            ),
+            LexError::UnterminatedChar => (
+                ErrorCode::E0006,
+                String::from("Unterminated character literal"),
+                Some(String::from("Add a closing single quote.")),
+            ),
+            LexError::UnterminatedComment => (
+                ErrorCode::E0008,
+                String::from("Unterminated multi-line comment"),
+                Some(String::from("Add a closing */ to the comment.")),
+            ),
+            LexError::InvalidNumberSuffix => (
+                ErrorCode::E0009,
+                String::from("Invalid number suffix"),
+                Some(String::from("Use a supported numeric suffix.")),
+            ),
+            LexError::NumberOverflow => (
+                ErrorCode::E0010,
+                format!("Number literal overflow: \"{slice}\""),
+                Some(String::from("Use a smaller value or a compatible type.")),
+            ),
         };
 
-        CompileError::LexerError { code: Some(code), message: Arc::from(message), span, help: help.map(str::to_owned) }
+        CompileError::LexerError { code: Some(code), message: Arc::from(message), span, help }
     }
 }
 
