@@ -56,6 +56,13 @@ Verifies syntax without producing output.
 
 ## Practical examples
 
+### Language examples
+
+- `dr_files/simple_test.dr` – basic hello‑world style program.
+- `dr_files/input.dr` – demonstrates input handling.
+- `dr_files/bitwise_type_mismatch.dr` – type mismatch error for bitwise ops.
+- `dr_files/return_missing_value.dr` – missing return value error.
+
 - Compilation with basic optimization:
 
   ```sh
