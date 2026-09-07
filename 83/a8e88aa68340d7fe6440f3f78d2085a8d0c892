@@ -1,0 +1,20 @@
+crates/descar-core/tests/file_snapshots.rs
+  h_361662506da91f 1
+crates/descar-core/src/file/file_size.rs
+  h_361662506da91f 5-6,112,114
+crates/descar-core/tests/file_tests.rs
+  h_361662506da91f 3
+crates/descar-core/src/utils/mod.rs
+  h_361662506da91f 14,46,63,80
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "83a8e88aa68340d7fe6440f3f78d2085a8d0c892",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
