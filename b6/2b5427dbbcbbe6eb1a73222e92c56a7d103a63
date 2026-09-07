@@ -1,0 +1,19 @@
+crates/descar-core/src/tokens/token_kind.rs
+  s_24275f03674654::t_f128c620e4c7aa 324
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b62b5427dbbcbbe6eb1a73222e92c56a7d103a63",
+  "prompts": {},
+  "sessions": {
+    "s_24275f03674654": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "359d22a4-7dd2-4cf8-b8de-bcde200cff36",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
