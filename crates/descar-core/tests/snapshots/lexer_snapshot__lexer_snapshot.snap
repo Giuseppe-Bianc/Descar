@@ -1,5 +1,5 @@
 ---
-source: crates/descar-core/tests/lexer_snapshot_test.rs
+source: crates/descar-core/tests/lexer_snapshot.rs
 expression: token_kinds
 ---
 [
