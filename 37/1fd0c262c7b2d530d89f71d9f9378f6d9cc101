@@ -1,0 +1,14 @@
+README.md
+  h_361662506da91f 5-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "371fd0c262c7b2d530d89f71d9f9378f6d9cc101",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
