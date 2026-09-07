@@ -2,7 +2,101 @@
 
 [![Rust CI](https://github.com/Giuseppe-Bianc/Descar/actions/workflows/rust.yml/badge.svg)](https://github.com/Giuseppe-Bianc/Descar/actions/workflows/rust.yml)
 
-## Licenza
+## Description
+
+Modern compiler for the Descar language. Converts `.dr` files into tokens, offers colorized output and detailed diagnostics, can emit intermediate representation (IR), supports three optimization levels (`none`, `basic`, `aggressive`), and provides CLI commands for compilation (`cargo run -- compile`) and syntax checking (`cargo run -- check`).
+
+## Main features
+
+- Compilation of `.dr` files
+- Syntax checking without generating output (`check`)
+- Optimization levels: `none`, `basic`, `aggressive`
+- Extended diagnostics (`--diagnostics`)
+- Verbosity control (`-v`, `-vv`, `-vvv`) and silent mode (`-q`)
+- Colorized output for tokens and spans
+
+## Prerequisites
+
+- Rust toolchain (stable, beta, or nightly) with `cargo`
+- `rustup` to manage toolchains
+
+## Installation
+
+```sh
+git clone https://github.com/Giuseppe-Bianc/Descar.git
+cd Descar
+cargo build --workspace          # compila tutti i crate
+# oppure installa il binario
+cargo install --path crates/descar
+```
+
+Alternatively, run directly without installing:
+
+```sh
+cargo run -- <comando>
+```
+
+## Basic usage
+
+```sh
+cargo run -- compile dr_files/simple_test.dr -v
+```
+
+Compiles and prints tokens. Options:
+
+- `-O <none|basic|aggressive>` select optimization level
+- `--diagnostics` enables detailed statistics
+- `-q` silences non-essential output
+
+```sh
+cargo run -- check dr_files/simple_test.dr -v
+```
+
+Verifies syntax without producing output.
+
+## Practical examples
+
+- Compilation with basic optimization:
+
+  ```sh
+  cargo run -- compile dr_files/float_test.dr -O basic
+  ```
+
+- Silent-mode check:
+
+  ```sh
+  cargo run -- check dr_files/return_missing_value.dr -q
+  ```
+
+## Repository structure
+
+- `crates/descar-core` → compiler core (tokens, error handling, file utilities)
+- `crates/descar-cli` → CLI wrapper based on **clap**
+- `crates/descar` → binary entry point linking CLI to core
+- `dr_files/` → example `.dr` files used in tests
+- `.github/workflows/rust.yml` → multi‑OS CI on GitHub Actions
+- `Cargo.toml`, `Cargo.lock` → Cargo workspace configuration
+
+## Test, build, CI
+
+```sh
+cargo test --workspace --all-features
+cargo clippy --workspace --all-targets --all-features -- -D warnings
+cargo fmt --all -- --check
+```
+
+CI runs on Linux, macOS, and Windows for stable, beta, and nightly toolchains.
+
+## Troubleshooting
+
+| Symptom | Possible cause | Action |
+|---|---|---|
+| `unsupported source file extension` | file does not end with `.dr` | rename file with correct extension |
+| `failed to read source file` | permissions or incorrect path | check path and read permissions |
+| `error: aborting due to previous error` | lint failed | run `cargo fmt --check` and `cargo clippy` |
+| `cargo test` fails | failing tests | inspect files in `dr_files/` and fix syntax |
+
+## License
 
 Descar is licensed under the Apache License 2.0.
 
