@@ -1,0 +1,26 @@
+crates/descar-core/tests/lexer_tests.rs
+  h_361662506da91f 59
+crates/descar-core/src/tokens/token_kind.rs
+  s_24275f03674654::t_9d93c999dd871f 208
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c71535b44812266b0afc188f8c499f945935c88c",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_24275f03674654": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "359d22a4-7dd2-4cf8-b8de-bcde200cff36",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
