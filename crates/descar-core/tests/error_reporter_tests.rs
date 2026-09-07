@@ -28,7 +28,7 @@ fn test_report_errors_empty() {
     let reporter = ErrorReporter::new(tracker);
 
     let output = reporter.report_errors(vec![]);
-    assert!(output.is_empty());
+    assert_eq!(output, "");
 }
 
 #[test]
