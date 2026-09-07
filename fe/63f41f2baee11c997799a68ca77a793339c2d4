@@ -1,0 +1,27 @@
+crates/descar-core/tests/lexer_tests.rs
+  h_361662506da91f 1-375
+crates/descar-core/src/lex/lexer.rs
+  h_361662506da91f 55,60,64-65,67-69,71,74,78-80,83-85,88-90,93-95,100
+  s_bfd31a72202827::t_ecb99ae87660ca 73,75-77,81-82,86-87,91-92,96-97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "fe63f41f2baee11c997799a68ca77a793339c2d4",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_bfd31a72202827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50e88ffb-d609-42c8-a88a-f81185d34ac3",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
