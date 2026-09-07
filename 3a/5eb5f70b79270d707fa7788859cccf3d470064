@@ -1,0 +1,24 @@
+crates/descar-core/tests/lexer_snapshot_test.rs
+  s_685cbcf201ae40::t_a1cc2ff6834a14 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3a5eb5f70b79270d707fa7788859cccf3d470064",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_685cbcf201ae40": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "65e0e29d-07f0-41f0-94e8-8553a628cd10",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
