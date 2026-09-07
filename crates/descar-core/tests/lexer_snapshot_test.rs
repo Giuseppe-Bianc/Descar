@@ -1,7 +1,6 @@
 // Snapshot test for lexer using insta
 
 use descar_core::lex::lexer::Lexer;
-use descar_core::tokens::token_kind::TokenKind;
 
 #[test]
 fn lexer_snapshot() {

@@ -1,0 +1,42 @@
+---
+source: crates/descar-core/tests/lexer_snapshot_test.rs
+expression: token_kinds
+---
+[
+    Ok(
+        IdentifierAscii(
+            "foo",
+        ),
+    ),
+    Ok(
+        Plus,
+    ),
+    Ok(
+        Numeric(
+            Integer(
+                123,
+            ),
+        ),
+    ),
+    Ok(
+        Minus,
+    ),
+    Ok(
+        IdentifierAscii(
+            "bar",
+        ),
+    ),
+    Ok(
+        Star,
+    ),
+    Ok(
+        Numeric(
+            Float64(
+                45.6,
+            ),
+        ),
+    ),
+    Ok(
+        Eof,
+    ),
+]
