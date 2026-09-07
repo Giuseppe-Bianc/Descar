@@ -69,7 +69,7 @@ fn main() {
                 process::exit(1);
             }
             for token in tokens {
-                println!("Token: {:?}, Span: {}", token.kind, token.span);
+                println!("{:?}, {}", style(token.kind).green(), style(token.span).blue());
             }
         }
         Some(Command::Check(args)) => {

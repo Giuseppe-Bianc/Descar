@@ -10,6 +10,7 @@ use std::fmt;
 use std::sync::Arc;
 
 // Re-export parsing modules for use by Logos callbacks
+use crate::lex::error::LexError;
 use crate::tokens::parsers::base::{parse_binary, parse_hex, parse_octal};
 use crate::tokens::parsers::numeric::parse_number;
 
@@ -25,16 +26,16 @@ use crate::tokens::parsers::numeric::parse_number;
 ///
 /// Uses Logos lexer generation with regex patterns and custom parsers.
 #[derive(Logos, Debug, PartialEq, Eq, Clone)]
+#[logos(error = LexError)]
 pub enum TokenKind {
-    // Operator tokens with correct ordering (longest first)
+    // -------------------------------------------------------------------------
+    // Operators
+    // -------------------------------------------------------------------------
     #[token("&=")]
     AndEqual,
 
     #[token("|=")]
     OrEqual,
-
-    #[token("~")]
-    BitwiseNot,
 
     #[token("<<=")]
     ShiftLeftEqual,
@@ -47,104 +48,150 @@ pub enum TokenKind {
 
     #[token("/=")]
     SlashEqual,
+
     #[token("+=")]
     PlusEqual,
+
     #[token("-=")]
     MinusEqual,
+
     #[token("==")]
     EqualEqual,
+
     #[token("!=")]
     NotEqual,
+
     #[token("<=")]
     LessEqual,
+
     #[token(">=")]
     GreaterEqual,
+
     #[token("++")]
     PlusPlus,
+
     #[token("--")]
     MinusMinus,
+
     #[token("||")]
     OrOr,
+
     #[token("&&")]
     AndAnd,
+
     #[token("<<")]
     ShiftLeft,
+
     #[token(">>")]
     ShiftRight,
+
     #[token("%=")]
     PercentEqual,
+
     #[token("^=")]
     XorEqual,
 
-    // Single-character operators
+    #[token("~")]
+    BitwiseNot,
+
     #[token("+")]
     Plus,
+
     #[token("-")]
     Minus,
+
     #[token("*")]
     Star,
+
     #[token("/")]
     Slash,
+
     #[token("<")]
     Less,
+
     #[token(">")]
     Greater,
+
     #[token("!")]
     Not,
+
     #[token("^")]
     Xor,
+
     #[token("%")]
     Percent,
+
     #[token("|")]
     Or,
+
     #[token("&")]
     And,
+
     #[token("=")]
     Equal,
+
     #[token(":")]
     Colon,
+
     #[token(",")]
     Comma,
+
     #[token(".")]
     Dot,
 
+    // -------------------------------------------------------------------------
     // Keywords
+    // -------------------------------------------------------------------------
     #[token("fun")]
     KeywordFun,
+
     #[token("if")]
     KeywordIf,
+
     #[token("else")]
     KeywordElse,
+
     #[token("return")]
     KeywordReturn,
+
     #[token("while")]
     KeywordWhile,
+
     #[token("for")]
     KeywordFor,
+
     #[token("main")]
     KeywordMain,
+
     #[token("var")]
     KeywordVar,
+
     #[token("const")]
     KeywordConst,
+
     #[token("nullptr")]
     KeywordNullptr,
+
     #[token("break")]
     KeywordBreak,
+
     #[token("continue")]
     KeywordContinue,
 
-    // Boolean literals (captures value)
     #[token("false", |_| false)]
     #[token("true", |_| true)]
     KeywordBool(bool),
 
+    // -------------------------------------------------------------------------
     // Identifiers
-    /// ASCII identifiers (letters, digits, underscores)
-    #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", |lex| Arc::from(lex.slice()), priority = 2)]
+    // -------------------------------------------------------------------------
+    #[regex(
+        r"[a-zA-Z_][a-zA-Z0-9_]*",
+        |lex| Arc::from(lex.slice()),
+        priority = 2
+    )]
     IdentifierAscii(Arc<str>),
 
-    /// Unicode identifiers (supports international characters)
     #[regex(
         r"[\p{Letter}\p{Mark}_][\p{Letter}\p{Mark}\p{Number}_]*",
         |lex| Arc::from(lex.slice()),
@@ -152,98 +199,153 @@ pub enum TokenKind {
     )]
     IdentifierUnicode(Arc<str>),
 
-    /// Numeric literals (supports integer, float, scientific, and multi-char suffixes)
-    #[regex(r"(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?([uUfFdD]|[iIuU](?:8|16|32))?", parse_number, priority = 4)]
+    //
+    // IMPORTANTE:
+    //
+    // La regex prende anche un eventuale suffisso alfabetico.
+    // Il callback decide se il suffisso è valido.
+    //
+    #[regex(r"(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?(?:[A-Za-z_][A-Za-z0-9_]*)?", parse_number, priority = 10)]
     Numeric(Number),
 
-    /// Binary literals (e.g., "#b1010u")
-    #[regex(r"#b[01]+[uU]?", parse_binary, priority = 3)]
+    //
+    // Prende l'intero candidato base-specifico.
+    //
+    #[regex(r"#b[0-9A-Za-z_]+[uU]?", parse_binary, priority = 8)]
     Binary(Number),
 
-    /// Octal literals (e.g., "#o755")
-    #[regex(r"#o[0-7]+[uU]?", parse_octal, priority = 3)]
+    #[regex(r"#o[0-9A-Za-z_]+[uU]?", parse_octal, priority = 8)]
     Octal(Number),
 
-    /// Hexadecimal literals (e.g., "#xdeadbeefu")
-    #[regex(r"#x[0-9a-fA-F]+[uU]?", parse_hex, priority = 2)]
+    #[regex(r"#x[0-9A-Za-z_]+[uU]?", parse_hex, priority = 8)]
     Hexadecimal(Number),
 
-    /// String literals (captures content without quotes)
-    #[regex(r#""([^"\\]|\\.)*""#, |lex| Arc::from(&lex.slice()[1..lex.slice().len()-1]))]
+    //
+    // Prefisso senza cifre.
+    //
+    #[token("#b", callback = invalid_binary)]
+    #[token("#o", callback = invalid_octal)]
+    #[token("#x", callback = invalid_hex)]
+    InvalidBaseNumber,
+
+    // -------------------------------------------------------------------------
+    // Strings and characters
+    // -------------------------------------------------------------------------
+    #[regex(
+        r#""([^"\\\r\n]|\\.)*""#,
+        |lex| {
+            let slice = lex.slice();
+            Arc::from(&slice[1..slice.len() - 1])
+        }
+    )]
     StringLiteral(Arc<str>),
 
-    /// Character literals (captures content without quotes)
-    #[regex(r#"'([^'\\]|\\.)'"#, |lex| {
-        let s = lex.slice();
-        Arc::from(&s[1..s.len()-1])
-    })]
+    #[regex(
+        r#"'([^'\\\r\n]|\\.)'"#,
+        |lex| {
+            let slice = lex.slice();
+            Arc::from(&slice[1..slice.len() - 1])
+        }
+    )]
     CharLiteral(Arc<str>),
 
-    // Parentheses
+    // -------------------------------------------------------------------------
+    // Punctuation
+    // -------------------------------------------------------------------------
     #[token("(")]
     OpenParen,
+
     #[token(")")]
     CloseParen,
-    // Square brackets
+
     #[token("[")]
     OpenBracket,
+
     #[token("]")]
     CloseBracket,
-    // Curly brackets
+
     #[token("{")]
     OpenBrace,
+
     #[token("}")]
     CloseBrace,
 
-    // Type keywords
+    #[token(";")]
+    Semicolon,
+
+    // -------------------------------------------------------------------------
+    // Types
+    // -------------------------------------------------------------------------
     #[token("i8")]
     TypeI8,
+
     #[token("i16")]
     TypeI16,
+
     #[token("i32")]
     TypeI32,
+
     #[token("i64")]
     TypeI64,
+
     #[token("u8")]
     TypeU8,
+
     #[token("u16")]
     TypeU16,
+
     #[token("u32")]
     TypeU32,
+
     #[token("u64")]
     TypeU64,
+
     #[token("f32")]
     TypeF32,
+
     #[token("f64")]
     TypeF64,
+
     #[token("char")]
     TypeChar,
+
     #[token("string")]
     TypeString,
+
     #[token("bool")]
     TypeBool,
 
-    // Whitespace and comments (skipped by lexer)
-    #[regex(r";")]
-    Semicolon,
+    // -------------------------------------------------------------------------
+    // Skipped input
+    // -------------------------------------------------------------------------
     #[regex(r"\p{White_Space}+", logos::skip)]
     Whitespace,
-    /// Matches single-line comments
+
     #[regex(r"//[^\n\r]*", logos::skip, allow_greedy = true)]
     Comment,
-    /// Matches multi-line comments
+
     #[regex(r"/\*[^*]*\*+(?:[^*/][^*]*\*+)*/", logos::skip)]
     MultilineComment,
 
-    /// End-of-file marker
+    // -------------------------------------------------------------------------
+    // EOF
+    // -------------------------------------------------------------------------
     Eof,
 }
 
+const fn invalid_binary(_: &mut logos::Lexer<TokenKind>) -> Result<(), LexError> {
+    Err(LexError::MalformedBinary)
+}
+
+const fn invalid_octal(_: &mut logos::Lexer<TokenKind>) -> Result<(), LexError> {
+    Err(LexError::MalformedOctal)
+}
+
+const fn invalid_hex(_: &mut logos::Lexer<TokenKind>) -> Result<(), LexError> {
+    Err(LexError::MalformedHexadecimal)
+}
+
 impl TokenKind {
-    /// Checks if the token represents a type keyword.
-    ///
-    /// # Returns
-    /// `true` for all type variants (i8, u8, f32, etc.), `false` otherwise
     #[must_use]
     pub const fn is_type(&self) -> bool {
         matches!(
@@ -255,7 +357,6 @@ impl TokenKind {
                 | Self::TypeU8
                 | Self::TypeU16
                 | Self::TypeU32
-                | Self::TypeU64
                 | Self::TypeF32
                 | Self::TypeF64
                 | Self::TypeChar
@@ -268,17 +369,16 @@ impl TokenKind {
 impl fmt::Display for TokenKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            // Operators
-            Self::Plus => f.write_str("'+'"),
-            Self::Minus => f.write_str("'-'"),
-            Self::Star => f.write_str("'*'"),
-            Self::Slash => f.write_str("'/'"),
+            Self::AndEqual => f.write_str("'&='"),
+            Self::OrEqual => f.write_str("'|='"),
+            Self::ShiftLeftEqual => f.write_str("'<<='"),
+            Self::ShiftRightEqual => f.write_str("'>>='"),
+            Self::StarEqual => f.write_str("'*='"),
+            Self::SlashEqual => f.write_str("'/='"),
             Self::PlusEqual => f.write_str("'+='"),
             Self::MinusEqual => f.write_str("'-='"),
             Self::EqualEqual => f.write_str("'=='"),
             Self::NotEqual => f.write_str("'!='"),
-            Self::Less => f.write_str("'<'"),
-            Self::Greater => f.write_str("'>'"),
             Self::LessEqual => f.write_str("'<='"),
             Self::GreaterEqual => f.write_str("'>='"),
             Self::PlusPlus => f.write_str("'++'"),
@@ -289,13 +389,13 @@ impl fmt::Display for TokenKind {
             Self::ShiftRight => f.write_str("'>>'"),
             Self::PercentEqual => f.write_str("'%='"),
             Self::XorEqual => f.write_str("'^='"),
-            Self::AndEqual => f.write_str("'&='"),
-            Self::OrEqual => f.write_str("'|='"),
             Self::BitwiseNot => f.write_str("'~'"),
-            Self::ShiftLeftEqual => f.write_str("'<<='"),
-            Self::ShiftRightEqual => f.write_str("'>>='"),
-            Self::StarEqual => f.write_str("'*='"),
-            Self::SlashEqual => f.write_str("'/='"),
+            Self::Plus => f.write_str("'+'"),
+            Self::Minus => f.write_str("'-'"),
+            Self::Star => f.write_str("'*'"),
+            Self::Slash => f.write_str("'/'"),
+            Self::Less => f.write_str("'<'"),
+            Self::Greater => f.write_str("'>'"),
             Self::Not => f.write_str("'!'"),
             Self::Xor => f.write_str("'^'"),
             Self::Percent => f.write_str("'%'"),
@@ -305,9 +405,7 @@ impl fmt::Display for TokenKind {
             Self::Colon => f.write_str("':'"),
             Self::Comma => f.write_str("','"),
             Self::Dot => f.write_str("'.'"),
-            Self::Semicolon => f.write_str("';'"),
 
-            // Keywords
             Self::KeywordFun => f.write_str("'fun'"),
             Self::KeywordIf => f.write_str("'if'"),
             Self::KeywordElse => f.write_str("'else'"),
@@ -320,32 +418,49 @@ impl fmt::Display for TokenKind {
             Self::KeywordNullptr => f.write_str("'nullptr'"),
             Self::KeywordBreak => f.write_str("'break'"),
             Self::KeywordContinue => f.write_str("'continue'"),
-            Self::KeywordBool(b) => write!(f, "boolean '{b}'"),
 
-            // Identifiers
-            Self::IdentifierAscii(s) | Self::IdentifierUnicode(s) => {
-                write!(f, "identifier '{s}'")
+            Self::KeywordBool(value) => {
+                write!(f, "boolean '{value}'")
             }
 
-            // Numeric literals
-            Self::Numeric(n) => write!(f, "number '{n}'"),
-            Self::Binary(n) => write!(f, "binary '{n}'"),
-            Self::Octal(n) => write!(f, "octal '{n}'"),
-            Self::Hexadecimal(n) => write!(f, "hexadecimal '{n}'"),
+            Self::IdentifierAscii(value) | Self::IdentifierUnicode(value) => {
+                write!(f, "identifier '{value}'")
+            }
 
-            // String/char literals
-            Self::StringLiteral(s) => write!(f, "string literal \"{s}\""),
-            Self::CharLiteral(c) => write!(f, "character literal '{c}'"),
+            Self::Numeric(value) => {
+                write!(f, "number '{value}'")
+            }
 
-            // Brackets
+            Self::Binary(value) => {
+                write!(f, "binary '{value}'")
+            }
+
+            Self::Octal(value) => {
+                write!(f, "octal '{value}'")
+            }
+
+            Self::Hexadecimal(value) => {
+                write!(f, "hexadecimal '{value}'")
+            }
+
+            Self::InvalidBaseNumber => f.write_str("invalid base number"),
+
+            Self::StringLiteral(value) => {
+                write!(f, "string literal \"{value}\"")
+            }
+
+            Self::CharLiteral(value) => {
+                write!(f, "character literal '{value}'")
+            }
+
             Self::OpenParen => f.write_str("'('"),
             Self::CloseParen => f.write_str("')'"),
             Self::OpenBracket => f.write_str("'['"),
             Self::CloseBracket => f.write_str("']'"),
             Self::OpenBrace => f.write_str("'{'"),
             Self::CloseBrace => f.write_str("'}'"),
+            Self::Semicolon => f.write_str("';'"),
 
-            // Type keywords
             Self::TypeI8 => f.write_str("'i8'"),
             Self::TypeI16 => f.write_str("'i16'"),
             Self::TypeI32 => f.write_str("'i32'"),
@@ -360,10 +475,10 @@ impl fmt::Display for TokenKind {
             Self::TypeString => f.write_str("'string'"),
             Self::TypeBool => f.write_str("'bool'"),
 
-            // Special tokens
             Self::Whitespace => f.write_str("whitespace"),
             Self::Comment => f.write_str("comment"),
             Self::MultilineComment => f.write_str("multiline comment"),
+
             Self::Eof => f.write_str("end of file"),
         }
     }
