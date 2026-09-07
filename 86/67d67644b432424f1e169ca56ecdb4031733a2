@@ -1,0 +1,14 @@
+crates/descar-core/tests/lexer_snapshot.rs
+  h_361662506da91f 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8667d67644b432424f1e169ca56ecdb4031733a2",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
