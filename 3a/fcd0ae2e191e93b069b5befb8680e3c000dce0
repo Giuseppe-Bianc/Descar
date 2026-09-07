@@ -1,0 +1,14 @@
+CONTRIBUTING.md
+  h_361662506da91f 1-395
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "3afcd0ae2e191e93b069b5befb8680e3c000dce0",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
