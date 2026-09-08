@@ -1,0 +1,29 @@
+crates/descar-core/src/lex/lexer.rs
+  h_361662506da91f 75,80,85
+crates/descar-core/src/tokens/token_kind.rs
+  h_361662506da91f 239-240,244-252,258-259,263-270,347,350-356,376-382,384-387,410,493-494,499,526
+  s_24275f03674654::t_65af42e57b5e30 271,357,383,500
+crates/descar-core/tests/lexer_tests.rs
+  h_361662506da91f 239-264,283-293
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "feab1048589235b0315aef533e5e9b2f69a11a76",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_24275f03674654": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "359d22a4-7dd2-4cf8-b8de-bcde200cff36",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
