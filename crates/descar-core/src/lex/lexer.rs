@@ -72,17 +72,17 @@ impl<'a> Lexer<'a> {
             }
             LexError::UnterminatedString => (
                 ErrorCode::E0005,
-                String::from("Unterminated string literal"),
+                format!("Unterminated string literal: \"{slice}\""),
                 Some(String::from("Add a closing double quote.")),
             ),
             LexError::UnterminatedChar => (
                 ErrorCode::E0006,
-                String::from("Unterminated character literal"),
+                format!("Unterminated character literal: \"{slice}\""),
                 Some(String::from("Add a closing single quote.")),
             ),
             LexError::UnterminatedComment => (
                 ErrorCode::E0008,
-                String::from("Unterminated multi-line comment"),
+                format!("Unterminated multi-line comment: \"{slice}\""),
                 Some(String::from("Add a closing */ to the comment.")),
             ),
             LexError::InvalidNumberSuffix => (

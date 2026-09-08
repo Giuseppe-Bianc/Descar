@@ -237,6 +237,32 @@ fn string_char_literals() {
 }
 
 #[test]
+fn unterminated_string() {
+    let mut lexer = Lexer::new("test", "\"hello");
+    let (tokens, errors) = lexer_tokenize_with_errors(&mut lexer);
+
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(tokens[0].kind, TokenKind::Eof);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(
+        errors[0].to_string(),
+        "[E0005] Unterminated string literal: \"\"hello\" at test:line 1:column 1-line 1:column 7\nhelp: Add a closing double quote."
+    );
+}
+
+#[test]
+fn unterminated_char() {
+    let mut lexer = Lexer::new("test", "'a");
+    let (tokens, errors) = lexer_tokenize_with_errors(&mut lexer);
+
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(tokens[0].kind, TokenKind::Eof);
+
+    assert_eq!(errors.len(), 1);
+}
+
+#[test]
 fn brackets() {
     use TokenKind::*;
     let input = "() [] {}";
@@ -252,6 +278,17 @@ fn types() {
     let tokens = lex_kinds(input);
     let tokens: Vec<TokenKind> = tokens.into_iter().map(|t| t.unwrap()).collect();
     assert_eq!(tokens, vec![TypeI8, TypeU16, TypeF32, TypeF64, TypeString, TypeBool, Eof]);
+}
+
+#[test]
+fn terminated_multiline_comment_is_skipped() {
+    let mut lexer = Lexer::new("test", "/* hello */ x");
+    let (tokens, errors) = lexer_tokenize_with_errors(&mut lexer);
+
+    assert!(errors.is_empty());
+    assert_eq!(tokens.len(), 2);
+    assert_eq!(tokens[0].kind, TokenKind::IdentifierAscii("x".into()));
+    assert_eq!(tokens[1].kind, TokenKind::Eof);
 }
 
 #[test]

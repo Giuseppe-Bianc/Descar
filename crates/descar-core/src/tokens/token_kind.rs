@@ -236,18 +236,38 @@ pub enum TokenKind {
         |lex| {
             let slice = lex.slice();
             Arc::from(&slice[1..slice.len() - 1])
-        }
+        },
+        priority = 10
     )]
     StringLiteral(Arc<str>),
+
+    // Detects a string that starts with `"` but reaches EOF without
+    // encountering the closing quote.
+    #[regex(
+        r#""([^"\\\r\n]|\\.)*\z"#,
+        callback = unterminated_string,
+        priority = 1
+    )]
+    UnterminatedString,
 
     #[regex(
         r#"'([^'\\\r\n]|\\.)'"#,
         |lex| {
             let slice = lex.slice();
             Arc::from(&slice[1..slice.len() - 1])
-        }
+        },
+        priority = 10
     )]
     CharLiteral(Arc<str>),
+
+    // Detects a character literal that starts with `'` but reaches EOF
+    // without encountering the closing quote.
+    #[regex(
+        r#"'([^'\\\r\n]|\\.)*\z"#,
+        callback = unterminated_char,
+        priority = 1
+    )]
+    UnterminatedChar,
 
     // -------------------------------------------------------------------------
     // Punctuation
@@ -324,8 +344,16 @@ pub enum TokenKind {
     #[regex(r"//[^\n\r\u{000B}\u{000C}\u{0085}\u{2028}\u{2029}]*", logos::skip, allow_greedy = true)]
     Comment,
 
-    #[regex(r"/\*[^*]*\*+(?:[^*/][^*]*\*+)*/", logos::skip)]
+    #[regex(r"/\*[^*]*\*+(?:[^*/][^*]*\*+)*/", logos::skip, priority = 10)]
     MultilineComment,
+
+    // Detects /* ... EOF where no closing */ exists.
+    #[regex(
+        r"/\*(?:[^*]|\*+[^*/])*\**\z",
+        callback = unterminated_comment,
+        priority = 1
+    )]
+    UnterminatedComment,
 
     // -------------------------------------------------------------------------
     // EOF
@@ -343,6 +371,18 @@ const fn invalid_octal(_: &mut logos::Lexer<TokenKind>) -> Result<(), LexError> 
 
 const fn invalid_hex(_: &mut logos::Lexer<TokenKind>) -> Result<(), LexError> {
     Err(LexError::MalformedHexadecimal)
+}
+
+const fn unterminated_string(_: &mut logos::Lexer<TokenKind>) -> Result<(), LexError> {
+    Err(LexError::UnterminatedString)
+}
+
+const fn unterminated_char(_: &mut logos::Lexer<TokenKind>) -> Result<(), LexError> {
+    Err(LexError::UnterminatedChar)
+}
+
+const fn unterminated_comment(_: &mut logos::Lexer<TokenKind>) -> Result<(), LexError> {
+    Err(LexError::UnterminatedComment)
 }
 
 impl TokenKind {
@@ -367,6 +407,7 @@ impl TokenKind {
 }
 
 impl fmt::Display for TokenKind {
+    #[allow(clippy::too_many_lines)]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::AndEqual => f.write_str("'&='"),
@@ -449,9 +490,13 @@ impl fmt::Display for TokenKind {
                 write!(f, "string literal \"{value}\"")
             }
 
+            Self::UnterminatedString => f.write_str("unterminated string literal"),
+
             Self::CharLiteral(value) => {
                 write!(f, "character literal '{value}'")
             }
+
+            Self::UnterminatedChar => f.write_str("unterminated character literal"),
 
             Self::OpenParen => f.write_str("'('"),
             Self::CloseParen => f.write_str("')'"),
@@ -478,6 +523,7 @@ impl fmt::Display for TokenKind {
             Self::Whitespace => f.write_str("whitespace"),
             Self::Comment => f.write_str("comment"),
             Self::MultilineComment => f.write_str("multiline comment"),
+            Self::UnterminatedComment => f.write_str("unterminated comment"),
 
             Self::Eof => f.write_str("end of file"),
         }
