@@ -53,6 +53,9 @@ pub enum LexError {
     /// A character literal was not terminated.
     UnterminatedChar,
 
+    /// A string or character literal contains an unsupported escape sequence.
+    InvalidEscapeSequence,
+
     /// A multi-line comment was not terminated.
     UnterminatedComment,
 }
@@ -68,6 +71,7 @@ impl fmt::Display for LexError {
             Self::NumberOverflow => f.write_str("number literal overflow"),
             Self::UnterminatedString => f.write_str("unterminated string literal"),
             Self::UnterminatedChar => f.write_str("unterminated character literal"),
+            Self::InvalidEscapeSequence => f.write_str("invalid escape sequence"),
             Self::UnterminatedComment => f.write_str("unterminated multi-line comment"),
         }
     }
