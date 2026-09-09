@@ -1,6 +1,6 @@
 use descar_core::{
     error::compile_error::CompileError,
-    lex::lexer::{lexer_tokenize_with_errors, Lexer},
+    lex::lexer::{Lexer, lexer_tokenize_with_errors},
     tokens::{number::Number, token_kind::TokenKind},
 };
 
@@ -12,7 +12,8 @@ fn lex(input: &str) -> (Vec<TokenKind>, Vec<CompileError>) {
 
 #[test]
 fn supported_integer_suffixes_are_centralized() {
-    let (tokens, errors) = lex("100 100u 100U 100i8 100I8 100i16 100I16 100i32 100I32 100u8 100U8 100u16 100U16 100u32 100U32");
+    let (tokens, errors) =
+        lex("100 100u 100U 100i8 100I8 100i16 100I16 100i32 100I32 100u8 100U8 100u16 100U16 100u32 100U32");
 
     assert!(errors.is_empty());
     assert_eq!(
@@ -45,16 +46,8 @@ fn explicit_i64_and_u64_suffixes_are_single_invalid_candidates() {
 
         assert_eq!(tokens, vec![TokenKind::Eof], "input: {input}");
         assert_eq!(errors.len(), 1, "input: {input}");
-        assert!(
-            errors[0].to_string().contains("[E0009]"),
-            "input: {input}, error: {}",
-            errors[0]
-        );
-        assert!(
-            errors[0].to_string().contains(input),
-            "input: {input}, error: {}",
-            errors[0]
-        );
+        assert!(errors[0].to_string().contains("[E0009]"), "input: {input}, error: {}", errors[0]);
+        assert!(errors[0].to_string().contains(input), "input: {input}, error: {}", errors[0]);
     }
 }
 

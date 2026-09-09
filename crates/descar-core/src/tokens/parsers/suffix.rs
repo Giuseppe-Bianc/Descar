@@ -45,9 +45,7 @@ impl NumericSuffix {
     /// Parses a suffix case-insensitively according to the language rules.
     #[must_use]
     pub fn parse(value: &str) -> Option<Self> {
-        Self::SPELLINGS
-            .iter()
-            .find_map(|(spelling, suffix)| (*spelling == value).then_some(*suffix))
+        Self::SPELLINGS.iter().find_map(|(spelling, suffix)| (*spelling == value).then_some(*suffix))
     }
 
     /// Finds the longest supported suffix at the end of a numeric candidate.
@@ -71,7 +69,7 @@ impl NumericSuffix {
 /// characters are treated as suffix text and validated separately. This is
 /// important for malformed forms such as `100i64` and `100u64`, which must be
 /// diagnosed as one invalid numeric candidate rather than split into tokens.
-fn numeric_core_end(slice: &str) -> usize {
+const fn numeric_core_end(slice: &str) -> usize {
     let bytes = slice.as_bytes();
     let len = bytes.len();
     let mut index = 0;
@@ -121,11 +119,7 @@ pub fn split_numeric_and_suffix(slice: &str) -> (&str, Option<&str>) {
 
     let numeric_end = numeric_core_end(slice);
 
-    if numeric_end < slice.len() {
-        (&slice[..numeric_end], Some(&slice[numeric_end..]))
-    } else {
-        (slice, None)
-    }
+    if numeric_end < slice.len() { (&slice[..numeric_end], Some(&slice[numeric_end..])) } else { (slice, None) }
 }
 
 /// Routes the numeric literal to the appropriate parser.
