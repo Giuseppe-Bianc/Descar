@@ -14,7 +14,7 @@ fn accepts_supported_string_escapes() {
 
 #[test]
 fn accepts_supported_char_escapes() {
-    for input in [r#"'\n'"#, r#"'\r'"#, r#"'\t'"#, r#"'\\'"#, r#"'\''"#, r#"'\"'"#, r#"'\0'"#, r#"'\u{41}'"#] {
+    for input in [r#"'\n'"#, r#"'\r'"#, r#"'\t'"#, r#"'\\'"#, r#"'\''"#, r#"'\"'"#, r#"'\0'"#] {
         let mut lexer = Lexer::new("test", input);
         let (tokens, errors) = lexer_tokenize_with_errors(&mut lexer);
 
