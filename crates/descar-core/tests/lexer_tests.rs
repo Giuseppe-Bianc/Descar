@@ -237,6 +237,65 @@ fn string_char_literals() {
 }
 
 #[test]
+fn accepts_supported_escapes() {
+    let input = r#""\n\r\t\\\'\"\0" 'a' '\\' '\''"#;
+    let tokens = lex_kinds(input);
+    assert!(tokens.iter().all(Result::is_ok));
+    let tokens: Vec<TokenKind> = tokens.into_iter().map(Result::unwrap).collect();
+    assert_eq!(tokens.len(), 5);
+    assert_eq!(tokens[4], Eof);
+}
+
+#[test]
+fn rejects_invalid_string_escape() {
+    let mut lexer = Lexer::new("test", r#""hello\q""#);
+    let (tokens, errors) = lexer_tokenize_with_errors(&mut lexer);
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(tokens[0].kind, Eof);
+    assert_eq!(errors.len(), 1);
+    assert!(errors[0].to_string().starts_with("[E0007] Invalid escape sequence:"));
+}
+
+#[test]
+fn rejects_invalid_char_escape() {
+    let mut lexer = Lexer::new("test", r"'\q'");
+    let (tokens, errors) = lexer_tokenize_with_errors(&mut lexer);
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(tokens[0].kind, Eof);
+    assert_eq!(errors.len(), 1);
+    assert!(errors[0].to_string().starts_with("[E0007] Invalid escape sequence:"));
+}
+
+#[test]
+fn accepts_valid_unicode_scalar_escape() {
+    let mut lexer = Lexer::new("test", r#""\u{1F600}""#);
+    let (tokens, errors) = lexer_tokenize_with_errors(&mut lexer);
+    assert!(errors.is_empty());
+    assert!(matches!(tokens[0].kind, TokenKind::StringLiteral(_)));
+    assert_eq!(tokens[1].kind, TokenKind::Eof);
+}
+
+#[test]
+fn rejects_invalid_unicode_scalar_escape() {
+    for input in [r#""\u{}""#, r#""\u{110000}""#, r#""\u{D800}""#] {
+        let mut lexer = Lexer::new("test", input);
+        let (tokens, errors) = lexer_tokenize_with_errors(&mut lexer);
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens[0].kind, TokenKind::Eof);
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].to_string().starts_with("[E0007] Invalid escape sequence:"));
+    }
+}
+
+#[test]
+fn invalid_escape_uses_e0007() {
+    let mut lexer = Lexer::new("test", r#""\q""#);
+    let (_, errors) = lexer_tokenize_with_errors(&mut lexer);
+    assert_eq!(errors.len(), 1);
+    assert!(errors[0].to_string().contains("[E0007]"));
+}
+
+#[test]
 fn unterminated_string() {
     let mut lexer = Lexer::new("test", "\"hello");
     let (tokens, errors) = lexer_tokenize_with_errors(&mut lexer);
@@ -310,7 +369,7 @@ fn invalid_tokens() {
 
 #[test]
 fn whitespace_handling() {
-    let input = "  \t\n\u{00A0}x"; // Various whitespace chars
+    let input = "  \t\n\u{00A0}x";
     let tokens = lex_kinds(input);
     let tokens: Vec<TokenKind> = tokens.into_iter().map(|t| t.unwrap()).collect();
     assert_eq!(tokens, vec![IdentifierAscii("x".into()), Eof]);
@@ -338,16 +397,6 @@ fn mixed_expression() {
         ]
     );
 }
-
-/*#[test]
-fn iterator_collects_all_tokens() {
-    let input = "42 + x";
-    let lexer = Lexer::new("test", input);
-    let tokens: Vec<TokenKind> = lexer.map(|res| res.map(|t| t.kind)).map(|t| t.unwrap()).collect();
-    assert_eq!(tokens, vec![Numeric(Integer(42)), Plus, IdentifierAscii("x".into()), Eof,]);
-}*/
-
-// Add the following tests to src/lexer/test.rs
 
 #[test]
 fn iterator_empty_input() {
@@ -404,8 +453,8 @@ fn iterator_mixed_valid_invalid_valid() {
 #[test]
 fn iterator_eof_emitted_once() {
     let mut lexer = Lexer::new("test", "a");
-    assert!(lexer.next().is_some()); // Identifier
-    assert!(lexer.next().is_some()); // Eof
+    assert!(lexer.next().is_some());
+    assert!(lexer.next().is_some());
     assert!(lexer.next().is_none());
     assert!(lexer.next().is_none());
 }
