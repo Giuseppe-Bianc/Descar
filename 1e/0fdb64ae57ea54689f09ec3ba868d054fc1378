@@ -1,0 +1,26 @@
+crates/descar-core/src/tokens/parsers/suffix.rs
+  h_361662506da91f 72
+crates/descar-core/src/tokens/token_kind.rs
+  s_24275f03674654::t_b67ad3d3bbb93c 19-115,161-201,215-232,237-252,260-307,311-313,315-343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1e0fdb64ae57ea54689f09ec3ba868d054fc1378",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_24275f03674654": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "359d22a4-7dd2-4cf8-b8de-bcde200cff36",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
