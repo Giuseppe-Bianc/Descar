@@ -47,6 +47,9 @@ pub enum LexError {
     /// A numeric literal could not be represented by its requested type.
     NumberOverflow,
 
+    /// A string or character literal contains an unsupported escape sequence.
+    InvalidEscapeSequence,
+
     /// A string literal was not terminated.
     UnterminatedString,
 
@@ -66,6 +69,7 @@ impl fmt::Display for LexError {
             Self::MalformedHexadecimal => f.write_str("malformed hexadecimal number"),
             Self::InvalidNumberSuffix => f.write_str("invalid number suffix"),
             Self::NumberOverflow => f.write_str("number literal overflow"),
+            Self::InvalidEscapeSequence => f.write_str("invalid escape sequence"),
             Self::UnterminatedString => f.write_str("unterminated string literal"),
             Self::UnterminatedChar => f.write_str("unterminated character literal"),
             Self::UnterminatedComment => f.write_str("unterminated multi-line comment"),
