@@ -1,0 +1,19 @@
+crates/descar-core/src/lex/lexer.rs
+  s_bfd31a72202827::t_029fc95e9bf9c7 53,62,64-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "9d1bbb41cb9851ea7f49958eb0300b5470fe8d1c",
+  "prompts": {},
+  "sessions": {
+    "s_bfd31a72202827": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "50e88ffb-d609-42c8-a88a-f81185d34ac3",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
