@@ -12,56 +12,103 @@ use crate::tokens::parsers::numeric::parse_number;
 #[derive(Logos, Debug, PartialEq, Eq, Clone)]
 #[logos(error = LexError)]
 pub enum TokenKind {
-    #[token("&=")] AndEqual,
-    #[token("|=")] OrEqual,
-    #[token("<<=")] ShiftLeftEqual,
-    #[token(">>=")] ShiftRightEqual,
-    #[token("*=")] StarEqual,
-    #[token("/=")] SlashEqual,
-    #[token("+=")] PlusEqual,
-    #[token("-=")] MinusEqual,
-    #[token("==")] EqualEqual,
-    #[token("!=")] NotEqual,
-    #[token("<=")] LessEqual,
-    #[token(">=")] GreaterEqual,
-    #[token("++")] PlusPlus,
-    #[token("--")] MinusMinus,
-    #[token("||")] OrOr,
-    #[token("&&")] AndAnd,
-    #[token("<<")] ShiftLeft,
-    #[token(">>")] ShiftRight,
-    #[token("%=")] PercentEqual,
-    #[token("^=")] XorEqual,
-    #[token("~")] BitwiseNot,
-    #[token("+")] Plus,
-    #[token("-")] Minus,
-    #[token("*")] Star,
-    #[token("/")] Slash,
-    #[token("<")] Less,
+    #[token("&=")]
+    AndEqual,
+    #[token("|=")]
+    OrEqual,
+    #[token("<<=")]
+    ShiftLeftEqual,
+    #[token(">>=")]
+    ShiftRightEqual,
+    #[token("*=")]
+    StarEqual,
+    #[token("/=")]
+    SlashEqual,
+    #[token("+=")]
+    PlusEqual,
+    #[token("-=")]
+    MinusEqual,
+    #[token("==")]
+    EqualEqual,
+    #[token("!=")]
+    NotEqual,
+    #[token("<=")]
+    LessEqual,
+    #[token(">=")]
+    GreaterEqual,
+    #[token("++")]
+    PlusPlus,
+    #[token("--")]
+    MinusMinus,
+    #[token("||")]
+    OrOr,
+    #[token("&&")]
+    AndAnd,
+    #[token("<<")]
+    ShiftLeft,
+    #[token(">>")]
+    ShiftRight,
+    #[token("%=")]
+    PercentEqual,
+    #[token("^=")]
+    XorEqual,
+    #[token("~")]
+    BitwiseNot,
+    #[token("+")]
+    Plus,
+    #[token("-")]
+    Minus,
+    #[token("*")]
+    Star,
+    #[token("/")]
+    Slash,
+    #[token("<")]
+    Less,
     #[token(">")]
     Greater,
-    #[token("!")] Not,
-    #[token("^")] Xor,
-    #[token("%")] Percent,
-    #[token("|")] Or,
-    #[token("&")] And,
-    #[token("=")] Equal,
-    #[token(":")] Colon,
-    #[token(",")] Comma,
-    #[token(".")] Dot,
+    #[token("!")]
+    Not,
+    #[token("^")]
+    Xor,
+    #[token("%")]
+    Percent,
+    #[token("|")]
+    Or,
+    #[token("&")]
+    And,
+    #[token("=")]
+    Equal,
+    #[token(":")]
+    Colon,
+    #[token(",")]
+    Comma,
+    #[token(".")]
+    Dot,
 
-    #[token("fun")] KeywordFun,
-    #[token("if")] KeywordIf,
-    #[token("else")] KeywordElse,
-    #[token("return")] KeywordReturn,
-    #[token("while")] KeywordWhile,
-    #[token("for")] KeywordFor,
-    #[token("main")] KeywordMain,
-    #[token("var")] KeywordVar,
-    #[token("const")] KeywordConst,
-    #[token("nullptr")] KeywordNullptr,
-    #[token("break")] KeywordBreak,
-    #[token("continue")] KeywordContinue,
+    #[token("fun")]
+    KeywordFun,
+    #[token("if")]
+    KeywordIf,
+    #[token("else")]
+    KeywordElse,
+    #[token("return")]
+    KeywordReturn,
+    #[token("while")]
+    KeywordWhile,
+    #[token("for")]
+    KeywordFor,
+    #[token("main")]
+    KeywordMain,
+    #[token("var")]
+    KeywordVar,
+    #[token("const")]
+    KeywordConst,
+    #[token("nullptr")]
+    KeywordNullptr,
+    #[token("break")]
+    KeywordBreak,
+    #[token("continue")]
+    KeywordContinue,
     #[token("false", |_| false)]
     #[token("true", |_| true)]
     KeywordBool(bool),
@@ -103,27 +150,47 @@ pub enum TokenKind {
     #[regex(r#"'([^'\\\r\n]|\\.)*\z"#, callback = unterminated_char, priority = 1)]
     UnterminatedChar,
 
-    #[token("(")] OpenParen,
-    #[token(")")] CloseParen,
-    #[token("[")] OpenBracket,
-    #[token("]")] CloseBracket,
-    #[token("{")] OpenBrace,
-    #[token("}")] CloseBrace,
-    #[token(";")] Semicolon,
+    #[token("(")]
+    OpenParen,
+    #[token(")")]
+    CloseParen,
+    #[token("[")]
+    OpenBracket,
+    #[token("]")]
+    CloseBracket,
+    #[token("{")]
+    OpenBrace,
+    #[token("}")]
+    CloseBrace,
+    #[token(";")]
+    Semicolon,
 
-    #[token("i8")] TypeI8,
-    #[token("i16")] TypeI16,
-    #[token("i32")] TypeI32,
-    #[token("i64")] TypeI64,
-    #[token("u8")] TypeU8,
-    #[token("u16")] TypeU16,
-    #[token("u32")] TypeU32,
-    #[token("u64")] TypeU64,
-    #[token("f32")] TypeF32,
-    #[token("f64")] TypeF64,
-    #[token("char")] TypeChar,
-    #[token("string")] TypeString,
-    #[token("bool")] TypeBool,
+    #[token("i8")]
+    TypeI8,
+    #[token("i16")]
+    TypeI16,
+    #[token("i32")]
+    TypeI32,
+    #[token("i64")]
+    TypeI64,
+    #[token("u8")]
+    TypeU8,
+    #[token("u16")]
+    TypeU16,
+    #[token("u32")]
+    TypeU32,
+    #[token("u64")]
+    TypeU64,
+    #[token("f32")]
+    TypeF32,
+    #[token("f64")]
+    TypeF64,
+    #[token("char")]
+    TypeChar,
+    #[token("string")]
+    TypeString,
+    #[token("bool")]
+    TypeBool,
 
     #[regex(r"\p{White_Space}+", logos::skip)]
     Whitespace,
@@ -161,9 +228,19 @@ impl TokenKind {
     pub const fn is_type(&self) -> bool {
         matches!(
             self,
-            Self::TypeI8 | Self::TypeI16 | Self::TypeI32 | Self::TypeI64 |
-            Self::TypeU8 | Self::TypeU16 | Self::TypeU32 | Self::TypeU64 |
-            Self::TypeF32 | Self::TypeF64 | Self::TypeChar | Self::TypeString | Self::TypeBool
+            Self::TypeI8
+                | Self::TypeI16
+                | Self::TypeI32
+                | Self::TypeI64
+                | Self::TypeU8
+                | Self::TypeU16
+                | Self::TypeU32
+                | Self::TypeU64
+                | Self::TypeF32
+                | Self::TypeF64
+                | Self::TypeChar
+                | Self::TypeString
+                | Self::TypeBool
         )
     }
 }
