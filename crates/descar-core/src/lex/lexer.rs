@@ -89,7 +89,7 @@ impl<'a> Lexer<'a> {
             ),
             LexError::InvalidNumberSuffix => (
                 ErrorCode::E0009,
-                String::from("Invalid number suffix"),
+                format!("Invalid number suffix: \"{slice}\""),
                 Some(String::from("Use a supported numeric suffix.")),
             ),
             LexError::NumberOverflow => (
