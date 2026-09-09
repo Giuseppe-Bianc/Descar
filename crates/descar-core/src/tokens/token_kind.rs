@@ -38,7 +38,8 @@ pub enum TokenKind {
     #[token("*")] Star,
     #[token("/")] Slash,
     #[token("<")] Less,
-    #[token(">" )] Greater,
+    #[token(">")]
+    Greater,
     #[token("!")] Not,
     #[token("^")] Xor,
     #[token("%")] Percent,
