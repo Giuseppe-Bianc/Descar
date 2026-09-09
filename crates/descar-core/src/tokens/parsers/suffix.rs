@@ -1,4 +1,4 @@
-use super::numeric::{handle_default_suffix, handle_float_suffix, parse_integer};
+use super::numeric::{handle_default_suffix, handle_f64_suffix, handle_float_suffix, parse_integer};
 use crate::{lex::error::LexError, tokens::number::Number};
 
 /// Supported decimal numeric suffixes.
@@ -147,6 +147,6 @@ pub fn handle_suffix(numeric_part: &str, suffix: Option<&str>) -> Result<Number,
         NumericSuffix::I16 => parse_integer::<i16>(numeric_part, Number::I16),
         NumericSuffix::I32 => parse_integer::<i32>(numeric_part, Number::I32),
         NumericSuffix::F32 => handle_float_suffix(numeric_part),
-        NumericSuffix::F64 => handle_default_suffix(numeric_part),
+        NumericSuffix::F64 => handle_f64_suffix(numeric_part),
     }
 }
