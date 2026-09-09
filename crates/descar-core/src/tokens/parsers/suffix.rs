@@ -19,10 +19,8 @@ pub enum NumericSuffix {
 }
 
 impl NumericSuffix {
-    /// Canonical spellings of all supported suffixes.
-    ///
-    /// The order is longest-first so suffix recognition follows longest-match
-    /// semantics without duplicating the supported suffix set elsewhere.
+    /// Supported spellings, kept in one place as the suffix source of truth.
+    /// Longest spellings are listed first for deterministic matching.
     const SPELLINGS: &[(&str, Self)] = &[
         ("i16", Self::I16),
         ("I16", Self::I16),
@@ -67,26 +65,66 @@ impl NumericSuffix {
     }
 }
 
+/// Finds the end of the decimal numeric core, before an optional suffix.
+///
+/// This deliberately recognizes only the numeric grammar. Any remaining
+/// characters are treated as suffix text and validated separately. This is
+/// important for malformed forms such as `100i64` and `100u64`, which must be
+/// diagnosed as one invalid numeric candidate rather than split into tokens.
+fn numeric_core_end(slice: &str) -> usize {
+    let bytes = slice.as_bytes();
+    let len = bytes.len();
+    let mut index = 0;
+
+    while index < len && bytes[index].is_ascii_digit() {
+        index += 1;
+    }
+
+    if index < len && bytes[index] == b'.' {
+        index += 1;
+        while index < len && bytes[index].is_ascii_digit() {
+            index += 1;
+        }
+    }
+
+    if index < len && matches!(bytes[index], b'e' | b'E') {
+        let exponent_start = index;
+        index += 1;
+
+        if index < len && matches!(bytes[index], b'+' | b'-') {
+            index += 1;
+        }
+
+        let digits_start = index;
+        while index < len && bytes[index].is_ascii_digit() {
+            index += 1;
+        }
+
+        if index == digits_start {
+            index = exponent_start;
+        }
+    }
+
+    index
+}
+
 /// Splits a numeric literal into its numeric part and optional suffix.
 ///
-/// Supported suffixes are matched case-insensitively while the original
-/// spelling is preserved in the returned slice. Unknown suffixes are also
-/// separated so the caller can report `InvalidNumberSuffix` for the complete
-/// malformed numeric candidate instead of splitting it into unrelated tokens.
+/// Supported suffixes are matched case-insensitively. Unknown trailing text is
+/// retained as a suffix so the caller can report `InvalidNumberSuffix` for the
+/// complete malformed numeric candidate.
 #[must_use]
 pub fn split_numeric_and_suffix(slice: &str) -> (&str, Option<&str>) {
     if let Some((numeric_part, suffix)) = NumericSuffix::split_supported(slice) {
         return (numeric_part, Some(suffix));
     }
 
-    let suffix_start = slice
-        .char_indices()
-        .find(|(_, ch)| ch.is_ascii_alphabetic())
-        .map(|(index, _)| index);
+    let numeric_end = numeric_core_end(slice);
 
-    match suffix_start {
-        Some(index) if index > 0 => (&slice[..index], Some(&slice[index..])),
-        _ => (slice, None),
+    if numeric_end < slice.len() {
+        (&slice[..numeric_end], Some(&slice[numeric_end..]))
+    } else {
+        (slice, None)
     }
 }
 
