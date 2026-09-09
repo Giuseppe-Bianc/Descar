@@ -128,17 +128,20 @@ fn base_specific_numbers_unsinged() {
 
 #[test]
 fn number_edge_cases() {
+    // Max i64 value using binary (63 ones)
     let input = "#b111111111111111111111111111111111111111111111111111111111111111";
     let tokens = lex_kinds(input);
     let tokens: Vec<TokenKind> = tokens.into_iter().map(|t| t.unwrap()).collect();
-    let expected = i64::MAX;
+    let expected = i64::MAX; // Use i64::MAX constant directly
     assert_eq!(tokens, vec![Binary(Integer(expected)), Eof]);
 
+    // Max i64 value using hex
     let input = "#x7FFFFFFFFFFFFFFF";
     let tokens = lex_kinds(input);
     let tokens: Vec<TokenKind> = tokens.into_iter().map(|t| t.unwrap()).collect();
     assert_eq!(tokens, vec![Hexadecimal(Integer(i64::MAX)), Eof]);
 
+    // Test binary overflow with 64 bits
     let input = "#b1111111111111111111111111111111111111111111111111111111111111111";
     let mut lexer = Lexer::new("test", input);
     let (tokens, errors) = lexer_tokenize_with_errors(&mut lexer);

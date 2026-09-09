@@ -50,11 +50,7 @@ impl<'a> Lexer<'a> {
                 if matches!(kind, TokenKind::StringLiteral(_) | TokenKind::CharLiteral(_))
                     && validate_escapes(slice).is_err()
                 {
-                    return Some(Err(Self::convert_lex_error(
-                        LexError::InvalidEscapeSequence,
-                        span,
-                        slice,
-                    )));
+                    return Some(Err(Self::convert_lex_error(LexError::InvalidEscapeSequence, span, slice)));
                 }
 
                 Some(Ok(Token { kind, span }))
@@ -63,32 +59,14 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn convert_lex_error(
-        error: LexError,
-        span: crate::location::source_span::SourceSpan,
-        slice: &str,
-    ) -> CompileError {
+    fn convert_lex_error(error: LexError, span: crate::location::source_span::SourceSpan, slice: &str) -> CompileError {
         let (code, message, help) = match error {
-            LexError::InvalidToken => (
-                ErrorCode::E0001,
-                format!("Invalid or unrecognized token: \"{slice}\""),
-                None,
-            ),
-            LexError::MalformedBinary => (
-                ErrorCode::E0002,
-                format!("Malformed binary number: \"{slice}\""),
-                None,
-            ),
-            LexError::MalformedOctal => (
-                ErrorCode::E0003,
-                format!("Malformed octal number: \"{slice}\""),
-                None,
-            ),
-            LexError::MalformedHexadecimal => (
-                ErrorCode::E0004,
-                format!("Malformed hexadecimal number: \"{slice}\""),
-                None,
-            ),
+            LexError::InvalidToken => (ErrorCode::E0001, format!("Invalid or unrecognized token: \"{slice}\""), None),
+            LexError::MalformedBinary => (ErrorCode::E0002, format!("Malformed binary number: \"{slice}\""), None),
+            LexError::MalformedOctal => (ErrorCode::E0003, format!("Malformed octal number: \"{slice}\""), None),
+            LexError::MalformedHexadecimal => {
+                (ErrorCode::E0004, format!("Malformed hexadecimal number: \"{slice}\""), None)
+            }
             LexError::UnterminatedString => (
                 ErrorCode::E0005,
                 format!("Unterminated string literal: \"{slice}\""),
