@@ -397,6 +397,7 @@ impl TokenKind {
                 | Self::TypeU8
                 | Self::TypeU16
                 | Self::TypeU32
+                | Self::TypeU64
                 | Self::TypeF32
                 | Self::TypeF64
                 | Self::TypeChar
@@ -523,8 +524,7 @@ impl fmt::Display for TokenKind {
             Self::Whitespace => f.write_str("whitespace"),
             Self::Comment => f.write_str("comment"),
             Self::MultilineComment => f.write_str("multiline comment"),
-            Self::UnterminatedComment => f.write_str("unterminated comment"),
-
+            Self::UnterminatedComment => f.write_str("unterminated multiline comment"),
             Self::Eof => f.write_str("end of file"),
         }
     }
