@@ -55,7 +55,15 @@ impl<'a> Lexer<'a> {
         let slice = self.inner.slice();
 
         Some(match result {
-            Ok(kind) => Ok(Token { kind, span }),
+            Ok(kind) => {
+                if matches!(kind, TokenKind::StringLiteral(_) | TokenKind::CharLiteral(_)) {
+                    if let Err(error) = validate_escapes(slice) {
+                        return Some(Err(Self::convert_lex_error(error, span, slice)));
+                    }
+                }
+
+                Ok(Token { kind, span })
+            }
 
             Err(error) => Err(Self::convert_lex_error(error, span, slice)),
         })
@@ -79,6 +87,11 @@ impl<'a> Lexer<'a> {
                 ErrorCode::E0006,
                 format!("Unterminated character literal: \"{slice}\""),
                 Some(String::from("Add a closing single quote.")),
+            ),
+            LexError::InvalidEscapeSequence => (
+                ErrorCode::E0007,
+                format!("Invalid escape sequence: \"{slice}\""),
+                Some(String::from("Use one of the supported escape sequences: \\n, \\r, \\t, \\\\, \\', \\", \\0, or \\u{XXXX}.")),
             ),
             LexError::UnterminatedComment => (
                 ErrorCode::E0008,
@@ -106,6 +119,67 @@ impl Iterator for Lexer<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.next_token()
+    }
+}
+
+/// Validates escape sequences in a string or character literal.
+///
+/// The supported escapes are the ones documented by lexical error E0007:
+/// `\\n`, `\\r`, `\\t`, `\\\\`, `\\'`, `\\"`, `\\0`, and Unicode
+/// escapes of the form `\\u{HEX}` where `HEX` identifies a Unicode scalar value.
+fn validate_escapes(slice: &str) -> Result<(), LexError> {
+    let inner = slice
+        .strip_prefix('"')
+        .and_then(|value| value.strip_suffix('"'))
+        .or_else(|| slice.strip_prefix('\\'').and_then(|value| value.strip_suffix('\\'')))
+        .ok_or(LexError::InvalidEscapeSequence)?;
+
+    let mut chars = inner.chars();
+
+    while let Some(ch) = chars.next() {
+        if ch != '\\' {
+            continue;
+        }
+
+        match chars.next() {
+            Some('n' | 'r' | 't' | '\\' | '\'' | '"' | '0') => {}
+            Some('u') => validate_unicode_escape(&mut chars)?,
+            Some(_) | None => return Err(LexError::InvalidEscapeSequence),
+        }
+    }
+
+    Ok(())
+}
+
+/// Validates the `{HEX}` payload after a `\\u` escape.
+fn validate_unicode_escape(chars: &mut std::str::Chars<'_>) -> Result<(), LexError> {
+    if chars.next() != Some('{') {
+        return Err(LexError::InvalidEscapeSequence);
+    }
+
+    let mut digits = 0;
+    let mut value = 0_u32;
+
+    loop {
+        match chars.next() {
+            Some('}') if digits > 0 => {
+                if value > 0x10_FFFF || (0xD800..=0xDFFF).contains(&value) {
+                    return Err(LexError::InvalidEscapeSequence);
+                }
+
+                return Ok(());
+            }
+            Some(ch) if ch.is_ascii_hexdigit() => {
+                if digits == 6 {
+                    return Err(LexError::InvalidEscapeSequence);
+                }
+
+                value = (value << 4)
+                    | ch.to_digit(16).ok_or(LexError::InvalidEscapeSequence)?;
+                digits += 1;
+            }
+            Some(_) | None => return Err(LexError::InvalidEscapeSequence),
+        }
     }
 }
 
