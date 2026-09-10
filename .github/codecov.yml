@@ -3,7 +3,7 @@ coverage:
   # Hold ourselves to a high bar
   range: 75..100
   round: down
-  precision: 6
+  precision: 5
   status:
     # ref: https://docs.codecov.com/docs/commit-status
     project:
