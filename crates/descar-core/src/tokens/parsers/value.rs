@@ -133,6 +133,7 @@ mod tests {
         assert_eq!(parse_integer::<u32>("42", Number::U32).unwrap(), Number::U32(42));
     }
 
+    #[allow(clippy::approx_constant)]
     #[test]
     fn parses_default_integer_and_float_values() {
         assert_eq!(handle_default_suffix("42").unwrap(), Number::Integer(42));

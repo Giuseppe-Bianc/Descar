@@ -2,7 +2,10 @@ use crate::{
     lex::error::LexError,
     tokens::{
         number::Number,
-        parsers::{suffix::{handle_suffix, split_numeric_and_suffix}, value},
+        parsers::{
+            suffix::{handle_suffix, split_numeric_and_suffix},
+            value,
+        },
         token_kind::TokenKind,
     },
 };
@@ -29,11 +32,6 @@ pub fn parse_number(lex: &mut logos::Lexer<TokenKind>) -> Result<Number, LexErro
 }
 
 pub use value::{
-    handle_default_suffix,
-    handle_f64_suffix,
-    handle_float_suffix,
-    handle_non_scientific,
-    is_valid_integer_literal,
-    parse_integer,
-    parse_scientific,
+    handle_default_suffix, handle_f64_suffix, handle_float_suffix, handle_non_scientific, is_valid_integer_literal,
+    parse_integer, parse_scientific,
 };
