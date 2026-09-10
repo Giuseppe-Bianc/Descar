@@ -1,0 +1,18 @@
+crates/descar-core/src/syntax/mod.rs
+  h_361662506da91f 1
+crates/descar-core/src/syntax/ast/mod.rs
+  h_361662506da91f 1
+crates/descar-core/src/syntax/ast/binary_op.rs
+  h_361662506da91f 1-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ec413722e7db17c6271a22b07e82caa305bd1497",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
