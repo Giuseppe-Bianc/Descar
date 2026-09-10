@@ -1,0 +1,14 @@
+.github/workflows/coverage.yml
+  h_361662506da91f 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "cbbb9edf420a2eff2f13753e30505dba2702269d",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
