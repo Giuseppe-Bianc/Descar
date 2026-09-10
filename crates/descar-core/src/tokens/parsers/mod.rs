@@ -6,14 +6,17 @@
 //!
 //! # Overview
 //!
-//! The parsers module provides three complementary submodules for parsing numeric
-//! literals: base detection, suffix parsing, and numeric value extraction.
+//! The parsers module provides four complementary submodules for parsing numeric
+//! literals: base detection, numeric entry-point parsing, suffix parsing, and
+//! numeric value construction.
 //!
 //! # Submodules
 //!
-//! - [`numeric`]: Core numeric literal parsing logic
-//! - [`suffix`]: Type suffix parsing (e.g., `u32`, `f64`)
+//! - [`numeric`]: Logos-facing numeric literal entry point
+//! - [`suffix`]: Numeric suffix parsing and dispatch
+//! - [`value`]: Numeric value construction
 //! - [`base`]: Numeric base detection (binary, octal, decimal, hexadecimal)
 pub mod base;
 pub mod numeric;
 pub mod suffix;
+pub mod value;
