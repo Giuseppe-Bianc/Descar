@@ -123,3 +123,25 @@ pub fn parse_scientific(source: &str, is_f32: bool) -> Option<Number> {
         Some(Number::Scientific64(base, exponent))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_integer_value() {
+        assert_eq!(parse_integer::<u32>("42", Number::U32).unwrap(), Number::U32(42));
+    }
+
+    #[test]
+    fn parses_default_integer_and_float_values() {
+        assert_eq!(handle_default_suffix("42").unwrap(), Number::Integer(42));
+        assert_eq!(handle_default_suffix("3.14").unwrap(), Number::Float64(3.14));
+    }
+
+    #[test]
+    fn preserves_scientific_values() {
+        assert_eq!(handle_float_suffix("6.02e23").unwrap(), Number::Scientific32(6.02, 23));
+        assert_eq!(handle_f64_suffix("6.02e23").unwrap(), Number::Scientific64(6.02, 23));
+    }
+}
