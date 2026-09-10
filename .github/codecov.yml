@@ -14,9 +14,9 @@ coverage:
 # Ignore test files and main.rs
 ignore:
   - "tests"
-  - "src/main.rs"  # <- This line ignores the main Rust file
-  - "src/cli.rs"
-  - "src/utils"
+  - "crates/descar/src/main.rs"  # <- This line ignores the main Rust file
+  - "crates/descar/src/cli.rs"
+  - "crates/descar-core/src/utils"
 
 # Make comments less noisy
 comment:
