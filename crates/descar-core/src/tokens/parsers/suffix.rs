@@ -1,4 +1,4 @@
-use super::numeric::{handle_default_suffix, handle_f64_suffix, handle_float_suffix, parse_integer};
+use super::value::{handle_default_suffix, handle_f64_suffix, handle_float_suffix, parse_integer};
 use crate::{lex::error::LexError, tokens::number::Number};
 
 /// Supported decimal numeric suffixes.
@@ -122,7 +122,10 @@ pub fn split_numeric_and_suffix(slice: &str) -> (&str, Option<&str>) {
     if numeric_end < slice.len() { (&slice[..numeric_end], Some(&slice[numeric_end..])) } else { (slice, None) }
 }
 
-/// Routes the numeric literal to the appropriate parser.
+/// Routes the numeric literal to the appropriate value parser.
+///
+/// Suffix parsing owns dispatch, while the actual `Number` construction lives
+/// in [`super::value`] so this module has no dependency on `numeric`.
 ///
 /// # Errors
 ///
