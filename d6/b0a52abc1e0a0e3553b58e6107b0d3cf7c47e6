@@ -1,0 +1,16 @@
+crates/descar-core/src/printers/ast_printer.rs
+  h_361662506da91f 2
+dr_files/input.dr
+  h_361662506da91f 2-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d6b0a52abc1e0a0e3553b58e6107b0d3cf7c47e6",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
