@@ -27,13 +27,13 @@ fn snapshots_expression_variants() {
     let rendered = expressions.iter().map(|expression| match expression {
         Expr::Binary { op, .. } => format!("Binary::{op:?}"),
         Expr::Unary { op, side, .. } => format!("Unary::{op:?}::{side:?}"),
-        Expr::Grouping { .. } => "Grouping".into(),
+        Expr::Grouping { .. } => String::from("Grouping"),
         Expr::Literal { value, .. } => format!("Literal::{value:?}"),
         Expr::ArrayLiteral { elements, .. } => format!("ArrayLiteral::len={}", elements.len()),
         Expr::Variable { name, .. } => format!("Variable::{name}"),
-        Expr::Assign { .. } => "Assign".into(),
+        Expr::Assign { .. } => String::from("Assign"),
         Expr::Call { arguments, .. } => format!("Call::arguments={}", arguments.len()),
-        Expr::ArrayAccess { .. } => "ArrayAccess".into(),
+        Expr::ArrayAccess { .. } => String::from("ArrayAccess"),
     }).collect::<Vec<_>>().join("\n");
 
     assert_snapshot!("expression_variants", rendered);
@@ -58,17 +58,17 @@ fn snapshots_statement_variants() {
     ];
 
     let rendered = statements.iter().map(|statement| match statement {
-        Stmt::Expression { .. } => "Expression",
+        Stmt::Expression { .. } => String::from("Expression"),
         Stmt::VarDeclaration { bindings, type_annotation, is_mutable, .. } => if *is_mutable { format!("VarDeclaration::{type_annotation:?}::bindings={}", bindings.len()) } else { format!("ConstDeclaration::{type_annotation:?}::bindings={}", bindings.len()) },
         Stmt::Function { name, parameters, return_type, .. } => format!("Function::{name}::{return_type:?}::parameters={}", parameters.len()),
         Stmt::If { else_branch, .. } => format!("If::else={else_branch:?}"),
-        Stmt::While { .. } => "While",
+        Stmt::While { .. } => String::from("While"),
         Stmt::For { initializer, condition, increment, .. } => format!("For::initializer={}::condition={}::increment={}", initializer.is_some(), condition.is_some(), increment.is_some()),
         Stmt::Block { statements, .. } => format!("Block::statements={}", statements.len()),
         Stmt::Return { value, .. } => format!("Return::value={}", value.is_some()),
-        Stmt::Break { .. } => "Break".into(),
-        Stmt::Continue { .. } => "Continue".into(),
-        Stmt::MainFunction { .. } => "MainFunction".into(),
+        Stmt::Break { .. } => String::from("Break"),
+        Stmt::Continue { .. } => String::from("Continue"),
+        Stmt::MainFunction { .. } => String::from("MainFunction"),
     }).collect::<Vec<_>>().join("\n");
 
     assert_snapshot!("statement_variants", rendered);
