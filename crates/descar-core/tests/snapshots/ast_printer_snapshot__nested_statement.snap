@@ -1,0 +1,11 @@
+---
+source: crates/descar-core/tests/ast_printer_snapshot.rs
+expression: strip_ansi_codes(&pretty_print_stmt(&statement))
+---
+└── If
+    ├── Condition:
+    │   └── Literal true
+    └── Then:
+        └── Return
+            └── Value:
+                └── Literal 1
