@@ -1,0 +1,35 @@
+---
+source: crates/descar-core/tests/ast_printer_snapshot.rs
+expression: rendered_stmt(&statement)
+---
+└── If
+    ├── Condition:
+    │   └── BinaryOp GREATER
+    │       ├── Left:
+    │       │   └── Variable 'count'
+    │       └── Right:
+    │           └── Literal 0
+    ├── Then:
+    │   └── While
+    │       ├── Condition:
+    │       │   └── Literal true
+    │       └── Body:
+    │           └── Break
+    └── Else:
+        └── For
+            ├── Initializer:
+            │   └── VarDeclaration
+            │       ├── Variables:
+            │       │   └── i
+            │       ├── Type:
+            │       │   └── i32
+            │       └── Initializers:
+            │           └── Literal 0
+            ├── Condition:
+            │   └── Literal true
+            ├── Increment:
+            │   └── UnaryOp INCREMENT (POSTFIX)
+            │       └── Expr:
+            │           └── Variable 'i'
+            └── Body:
+                └── Continue
