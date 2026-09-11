@@ -77,7 +77,7 @@ fn format_unary_op(op: &impl std::fmt::Debug) -> String {
     format!("{op:?}").to_uppercase()
 }
 
-fn format_unary_side(side: &UnaryOpSide) -> String {
+fn format_unary_side(side: UnaryOpSide) -> String {
     format!("{side:?}").to_uppercase()
 }
 
@@ -153,7 +153,7 @@ fn print_expr(expr: &Expr, indent: &str, branch_type: BranchType, output: &mut S
                 indent,
                 branch_type,
                 &styles.operator,
-                &format!("UnaryOp {} ({})", format_unary_op(op), format_unary_side(side)),
+                &format!("UnaryOp {} ({})", format_unary_op(op), format_unary_side(*side)),
             );
             let new_indent = get_indent(indent, &branch_type);
             print_labeled_expr("Expr:", expr, &new_indent, BranchType::Last, output, styles);
