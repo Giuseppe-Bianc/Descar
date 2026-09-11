@@ -125,7 +125,7 @@ fn pretty_print_unary_expression_covers_all_operators_and_sides() {
             };
             let output = rendered_expr(&expression);
 
-            assert!(output.contains(&format!("UnaryOp {operator:?} ({label})").to_uppercase()));
+            assert!(output.contains(&format!("UnaryOp {operator:?} ({label})")));
             assert!(output.contains("Expr:"));
             assert!(output.contains("Variable 'value'"));
         }
