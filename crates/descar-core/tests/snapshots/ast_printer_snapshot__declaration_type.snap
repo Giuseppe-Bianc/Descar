@@ -1,0 +1,9 @@
+---
+source: crates/descar-core/tests/ast_printer_snapshot.rs
+expression: strip_ansi_codes(&pretty_print_stmt(&statement))
+---
+└── ConstDeclaration
+    ├── Variables:
+    │   └── (none)
+    └── Type:
+        └── [u32; 8]
