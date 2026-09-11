@@ -1,0 +1,16 @@
+crates/descar-core/tests/ast_tests.rs
+  h_361662506da91f 95,195
+crates/descar-core/tests/ast_snapshot.rs
+  h_361662506da91f 3,6,12,17,24,30,32,36,42,47,52,77,79,86,93,99,102,104,111,114-116,119,127,133-134,136,176,184-185,225
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b0c7a2608f7847c91a771c14979cb73beae267aa",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
