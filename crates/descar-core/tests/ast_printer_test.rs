@@ -117,12 +117,7 @@ fn pretty_print_unary_expression_covers_all_operators_and_sides() {
 
     for operator in operators {
         for (side, label) in [(UnaryOpSide::Prefix, "PREFIX"), (UnaryOpSide::Postfix, "POSTFIX")] {
-            let expression = Expr::Unary {
-                op: operator,
-                side,
-                expr: Box::new(variable("value")),
-                span: span(0, 3),
-            };
+            let expression = Expr::Unary { op: operator, side, expr: Box::new(variable("value")), span: span(0, 3) };
             let output = rendered_expr(&expression);
 
             assert!(output.contains(&format!("UnaryOp {operator:?} ({label})")));
@@ -248,23 +243,12 @@ fn pretty_print_type_annotations_cover_all_type_variants() {
         (Type::Void, "void"),
         (Type::NullPtr, "nullptr"),
         (Type::Custom { name: Arc::from("UserType") }, "UserType"),
-        (
-            Type::Array {
-                element_type: Box::new(Type::U32),
-                size: Box::new(number(8)),
-            },
-            "[u32; 8]",
-        ),
+        (Type::Array { element_type: Box::new(Type::U32), size: Box::new(number(8)) }, "[u32; 8]"),
         (Type::Vector { element_type: Box::new(Type::String) }, "vector<string>"),
     ];
 
     for (type_annotation, expected) in cases {
-        let statement = Stmt::VarDeclaration {
-            bindings: vec![],
-            type_annotation,
-            is_mutable: false,
-            span: span(0, 1),
-        };
+        let statement = Stmt::VarDeclaration { bindings: vec![], type_annotation, is_mutable: false, span: span(0, 1) };
         let output = rendered_stmt(&statement);
 
         assert!(output.contains(&format!("Type:\n    └── {expected}")), "missing {expected:?} in {output:?}");
@@ -308,10 +292,7 @@ fn pretty_print_if_covers_none_block_and_else_if_branches() {
     let base_then = statement_block(vec![Stmt::Break { span: span(0, 1) }]);
     let cases = [
         (ElseBranch::None, "If\n"),
-        (
-            ElseBranch::Block(Box::new(statement_block(vec![Stmt::Continue { span: span(0, 1) }]))),
-            "Else:",
-        ),
+        (ElseBranch::Block(Box::new(statement_block(vec![Stmt::Continue { span: span(0, 1) }]))), "Else:"),
         (ElseBranch::ElseIf(Box::new(Stmt::Break { span: span(0, 1) })), "Else:\n        └── Break"),
     ];
 
@@ -368,13 +349,8 @@ fn pretty_print_control_flow_cover_while_for_and_all_for_option_combinations() {
             expr: Box::new(variable("i")),
             span: span(0, 2),
         });
-        let statement = Stmt::For {
-            initializer,
-            condition,
-            increment,
-            body: Box::new(statement_block(vec![])),
-            span: span(0, 10),
-        };
+        let statement =
+            Stmt::For { initializer, condition, increment, body: Box::new(statement_block(vec![])), span: span(0, 10) };
         let output = rendered_stmt(&statement);
 
         assert!(output.contains("For"));

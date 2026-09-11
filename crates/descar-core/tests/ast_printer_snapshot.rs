@@ -120,10 +120,7 @@ fn snapshot_declaration_and_function_printers() {
             VarBinding { name: "first".into(), initializer: Some(number(1)) },
             VarBinding { name: "second".into(), initializer: Some(Expr::new_bool_literal(true, span())) },
         ],
-        type_annotation: Type::Array {
-            element_type: Box::new(Type::U32),
-            size: Box::new(number(8)),
-        },
+        type_annotation: Type::Array { element_type: Box::new(Type::U32), size: Box::new(number(8)) },
         is_mutable: true,
         span: span(),
     };
@@ -161,10 +158,7 @@ fn snapshot_control_flow_printer() {
         }),
         then_branch: Box::new(Stmt::While {
             condition: Box::new(Expr::new_bool_literal(true, span())),
-            body: Box::new(Stmt::Block {
-                statements: vec![Stmt::Break { span: span() }],
-                span: span(),
-            }),
+            body: Box::new(Stmt::Block { statements: vec![Stmt::Break { span: span() }], span: span() }),
             span: span(),
         }),
         else_branch: ElseBranch::ElseIf(Box::new(Stmt::For {
@@ -181,10 +175,7 @@ fn snapshot_control_flow_printer() {
                 expr: Box::new(variable("i")),
                 span: span(),
             }),
-            body: Box::new(Stmt::Block {
-                statements: vec![Stmt::Continue { span: span() }],
-                span: span(),
-            }),
+            body: Box::new(Stmt::Block { statements: vec![Stmt::Continue { span: span() }], span: span() }),
             span: span(),
         })),
         span: span(),
