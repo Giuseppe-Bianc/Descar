@@ -6,6 +6,8 @@ use std::{fs, process};
 use clap::{CommandFactory, Parser};
 use descar_cli::cli::{Args, Command};
 use descar_core::error::error_reporter::ErrorReporter;
+use descar_core::printers::ast_printer::pretty_print_stmt;
+use descar_core::syntax::parser::JsavParser;
 
 use descar_core::file::{FileSizeInfo, FileSizeReport, SizeSystems};
 
@@ -68,8 +70,15 @@ fn main() {
                 eprintln!("{}", error_reporter.report_errors(lexer_errors));
                 process::exit(1);
             }
-            for token in tokens {
-                println!("{:?}, {}", style(token.kind).green(), style(token.span).blue());
+
+            let (statements, parser_errors) = JsavParser::new(&tokens).parse();
+            if !parser_errors.is_empty() {
+                eprintln!("{}", error_reporter.report_errors(parser_errors));
+                process::exit(1);
+            }
+
+            for statement in &statements {
+                print!("{}", pretty_print_stmt(statement));
             }
         }
         Some(Command::Check(args)) => {

@@ -7,6 +7,7 @@ pub mod error;
 pub mod file;
 pub mod lex;
 pub mod location;
+pub mod printers;
 pub mod syntax;
 pub mod tokens;
 pub mod utils;
