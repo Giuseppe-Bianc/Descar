@@ -1,4 +1,6 @@
 fun a(num1: i8, num2: i8): i8 {
+    ++array
+    arr++
     return 0i8
 }
 // single line comment

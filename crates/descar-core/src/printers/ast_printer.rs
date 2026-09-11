@@ -1,5 +1,6 @@
 use crate::printers::branch_type::{BranchType, StyleManager, append_line, get_indent, print_children};
-use crate::syntax::ast::{ElseBranch, Expr, LiteralValue, Stmt, Type, UnaryOpSide};
+use crate::syntax::ast::unary_op_side::UnaryOpSide;
+use crate::syntax::ast::{ElseBranch, Expr, LiteralValue, Stmt, Type};
 
 const EXPR_CAPACITY_PER_NODE: usize = 45;
 const STMT_CAPACITY_PER_NODE: usize = 50;
