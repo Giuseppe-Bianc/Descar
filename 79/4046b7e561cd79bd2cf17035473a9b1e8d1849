@@ -1,0 +1,93 @@
+crates/descar-core/src/syntax/ast/mod.rs
+  s_7021880cf767fd::t_b5fc5529de00dc 10-16
+  s_7021880cf767fd::t_1bef5debd80ada 7-9
+  s_7021880cf767fd::t_85cae10cf1d277 1,3-6
+crates/descar-core/src/syntax/precendence.rs
+  h_361662506da91f 1-17,19-65,67-80
+crates/descar-core/src/syntax/ast/expr.rs
+  h_361662506da91f 1-166
+crates/descar-core/src/syntax/ast/ast_type.rs
+  h_361662506da91f 55,64
+crates/descar-core/src/syntax/ast/stmt.rs
+  h_361662506da91f 1-162
+crates/descar-core/src/syntax/mod.rs
+  h_361662506da91f 3
+crates/descar-core/src/syntax/parser.rs
+  s_64d428041cc559::t_d827f51865b92e 530
+  s_64d428041cc559::t_93ef98c8bd2ba8 156,679
+  s_64d428041cc559::t_716838bc457694 505-509,584
+  s_8589acc4701d0a::t_92d1d459a84cb6 215-227
+  s_45f9a871f4555a::t_c3b0065c16c274 13,485,582,618-620
+  s_64d428041cc559::t_5d56c8d7fc94cf 563,632
+  h_361662506da91f 1-6,8-9,11-12,14-155,157-213,232-420,427,429-484,486-504,510-529,531-552,561-562,564-581,583,585-617,621-631,633-678,680-756
+  s_64d428041cc559::t_7629bab62cef2a 553-560
+  s_8589acc4701d0a::t_6ad5539dc654ff 7,214,228-231
+  s_45f9a871f4555a::t_c5567fd543d4b1 10,421-426,428
+crates/descar-core/src/syntax/ast/unary_op.rs
+  h_361662506da91f 1-3,6,9,12,15,18
+crates/descar-core/src/syntax/ast/else_branch.rs
+  h_361662506da91f 1-8
+crates/descar-core/src/syntax/ast/unary_op_side.rs
+  h_361662506da91f 1-12,18
+crates/descar/src/main.rs
+  s_7021880cf767fd::t_465a3846594617 10,73,75-77
+  s_7021880cf767fd::t_3d3cebfb0ad701 9,74,78-81
+crates/descar-core/src/syntax/ast/literal_value.rs
+  h_361662506da91f 4
+crates/descar-core/src/printers/mod.rs
+  h_361662506da91f 1-12
+crates/descar-core/src/syntax/ast/parameter.rs
+  h_361662506da91f 19
+crates/descar-core/src/printers/ast_printer.rs
+  s_7021880cf767fd::t_d2f2800024c9c5 461
+  s_7021880cf767fd::t_26690a325ea1f9 283,285,288-290,293,295-301,308-309,314,334,336-337,340,342,345,349-350,375,380-381,384-385,387-388,390-391,393,396,399-404,407,409-411,413,421,429,435,437,456
+  s_7021880cf767fd::t_5c07a7a108aeb5 2,153-159,249-254,302-307,310-313,315-333,352-373,394-395,397
+  s_7021880cf767fd::t_c8cc0fa35f4408 7-39
+  h_361662506da91f 1,3-6,40-152,160-247,255,257-258,267,269,271-272,274-282,284,286-287,291-292,294,335,338-339,341,343-344,346-348,351,374,376-379,382-383,386,389,392,398,405-406,408,412,414-420,422-428,430-434,436,438-455,457-460
+  s_7021880cf767fd::t_f940be7147056b 248,256,259-266,268,270,273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "794046b7e561cd79bd2cf17035473a9b1e8d1849",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_45f9a871f4555a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09090-4091-7da3-9cb8-020efb5c59dd",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    },
+    "s_64d428041cc559": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09099-d414-7593-9e26-39ac2a476eb9",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    },
+    "s_7021880cf767fd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a090c7-a032-7f70-97f1-bcf5eb90fb8e",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    },
+    "s_8589acc4701d0a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a09093-47a7-73e3-b205-c8486185e841",
+        "model": "gpt-5.6-terra"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
