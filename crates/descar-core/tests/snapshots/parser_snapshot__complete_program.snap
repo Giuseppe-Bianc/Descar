@@ -1,0 +1,16 @@
+---
+source: crates/descar-core/tests/parser_snapshot.rs
+expression: rendered
+---
+Function add(a: I32, b: I32) -> I32
+  Block statements=1
+    Return Binary(Add, Variable(a), Variable(b))
+MainFunction
+  Block statements=2
+    Var [values] : Array(size=Literal(Integer(2)), I32)
+    If Binary(Equal, ArrayAccess(Variable(values), Literal(Integer(0))), Literal(Integer(1)))
+      Block statements=1
+        Expression Call(Variable(print), [ArrayAccess(Variable(values), Literal(Integer(0)))])
+    else
+      Block statements=1
+        Expression Call(Variable(print), [Literal(StringLit("x"))])

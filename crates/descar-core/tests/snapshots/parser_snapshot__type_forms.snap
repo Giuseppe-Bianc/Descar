@@ -1,0 +1,8 @@
+---
+source: crates/descar-core/tests/parser_snapshot.rs
+expression: rendered
+---
+Var [matrix] : Array(size=Literal(Integer(3)), Array(size=Literal(Integer(2)), I32))
+Var [values] : Vector(String)
+Var [record] : Custom(Record)
+Const [flag] : Bool
