@@ -192,7 +192,7 @@ fn pretty_print_collection_expressions_handle_empty_and_non_empty_cases() {
 
 #[test]
 fn pretty_print_declarations_cover_mutability_bindings_initializers_and_types() {
-    let declarations = [
+    let declarations: [(Stmt, &[&str]); 2] = [
         (
             Stmt::VarDeclaration {
                 bindings: vec![
@@ -203,7 +203,7 @@ fn pretty_print_declarations_cover_mutability_bindings_initializers_and_types() 
                 is_mutable: true,
                 span: span(0, 12),
             },
-            ["VarDeclaration", "first", "second", "Type:", "i32", "Initializers:", "Literal 1"],
+            &["VarDeclaration", "first", "second", "Type:", "i32", "Initializers:", "Literal 1"],
         ),
         (
             Stmt::VarDeclaration {
@@ -212,7 +212,7 @@ fn pretty_print_declarations_cover_mutability_bindings_initializers_and_types() 
                 is_mutable: false,
                 span: span(0, 1),
             },
-            ["ConstDeclaration", "Variables:", "(none)", "Type:", "Widget"],
+            &["ConstDeclaration", "Variables:", "(none)", "Type:", "Widget"],
         ),
     ];
 
