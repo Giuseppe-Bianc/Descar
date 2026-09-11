@@ -1,5 +1,5 @@
 use crate::printers::branch_type::{BranchType, StyleManager, append_line, get_indent, print_children};
-use crate::syntax::ast::{ElseBranch, Expr, LiteralValue, Stmt, Type};
+use crate::syntax::ast::{ElseBranch, Expr, LiteralValue, Stmt, Type, UnaryOpSide};
 
 const EXPR_CAPACITY_PER_NODE: usize = 45;
 const STMT_CAPACITY_PER_NODE: usize = 50;
@@ -47,7 +47,10 @@ fn format_type_size(expr: &Expr) -> String {
         Expr::Binary { left, op, right, .. } => {
             format!("{} {} {}", format_type_size(left), format_binary_op(op), format_type_size(right))
         }
-        Expr::Unary { op, expr, .. } => format!("{}{}", format_unary_op(op), format_type_size(expr)),
+        Expr::Unary { op, side, expr, .. } => match side {
+            UnaryOpSide::Prefix => format!("{}{}", format_unary_op(op), format_type_size(expr)),
+            UnaryOpSide::Postfix => format!("{}{}", format_type_size(expr), format_unary_op(op)),
+        },
         Expr::Assign { target, value, .. } => {
             format!("{} = {}", format_type_size(target), format_type_size(value))
         }
@@ -71,6 +74,10 @@ fn format_binary_op(op: &impl std::fmt::Debug) -> String {
 
 fn format_unary_op(op: &impl std::fmt::Debug) -> String {
     format!("{op:?}").to_uppercase()
+}
+
+fn format_unary_side(side: &UnaryOpSide) -> String {
+    format!("{side:?}").to_uppercase()
 }
 
 #[must_use]
@@ -139,8 +146,14 @@ fn print_expr(expr: &Expr, indent: &str, branch_type: BranchType, output: &mut S
             print_labeled_expr("Left:", left, &new_indent, BranchType::Middle, output, styles);
             print_labeled_expr("Right:", right, &new_indent, BranchType::Last, output, styles);
         }
-        Expr::Unary { op, expr, .. } => {
-            append_line(output, indent, branch_type, &styles.operator, &format!("UnaryOp {}", format_unary_op(op)));
+        Expr::Unary { op, side, expr, .. } => {
+            append_line(
+                output,
+                indent,
+                branch_type,
+                &styles.operator,
+                &format!("UnaryOp {} ({})", format_unary_op(op), format_unary_side(side)),
+            );
             let new_indent = get_indent(indent, &branch_type);
             print_labeled_expr("Expr:", expr, &new_indent, BranchType::Last, output, styles);
         }
