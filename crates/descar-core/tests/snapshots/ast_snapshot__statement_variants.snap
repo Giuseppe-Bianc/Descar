@@ -3,23 +3,13 @@ source: crates/descar-core/tests/ast_snapshot.rs
 expression: rendered
 ---
 Expression
----
 VarDeclaration::I32::bindings=0
----
 Function::compute::F64::parameters=0
----
 If::else=None
----
 While
----
 For::initializer=false::condition=false::increment=false
----
 Block::statements=1
----
 Return::value=true
----
 Break
----
 Continue
----
 MainFunction

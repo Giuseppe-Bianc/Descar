@@ -3,19 +3,11 @@ source: crates/descar-core/tests/ast_snapshot.rs
 expression: rendered
 ---
 Binary::Add
----
 Unary::Increment::Postfix
----
 Grouping
----
 Literal::Numeric(Integer(42))
----
 ArrayLiteral::len=2
----
 Variable::value
----
 Assign
----
 Call::arguments=2
----
 ArrayAccess

@@ -65,17 +65,11 @@ fn binary_op_get_op_maps_supported_tokens() {
 
 #[test]
 fn binary_op_get_op_rejects_non_binary_tokens() {
-    let token = Token {
-        kind: TokenKind::IdentifierAscii("value".into()),
-        span: span(3, 8),
-    };
+    let token = Token { kind: TokenKind::IdentifierAscii("value".into()), span: span(3, 8) };
 
     let error = BinaryOp::get_op(&token).unwrap_err();
 
-    assert!(matches!(
-        error,
-        CompileError::SyntaxError { code: Some(ErrorCode::E1005), .. }
-    ));
+    assert!(matches!(error, CompileError::SyntaxError { code: Some(ErrorCode::E1005), .. }));
 }
 
 #[test]
@@ -92,19 +86,13 @@ fn expression_literal_constructors_create_expected_values() {
     );
     assert_eq!(
         Expr::new_string_literal("hello".into(), literal_span.clone()),
-        Expr::Literal {
-            value: LiteralValue::StringLit("hello".into()),
-            span: literal_span.clone(),
-        }
+        Expr::Literal { value: LiteralValue::StringLit("hello".into()), span: literal_span.clone() }
     );
     assert_eq!(
         Expr::new_char_literal("é".into(), literal_span.clone()),
         Expr::Literal { value: LiteralValue::CharLit("é".into()), span: literal_span.clone() }
     );
-    assert_eq!(
-        Expr::new_nullptr_literal(literal_span.clone()),
-        Expr::null_expr(literal_span.clone())
-    );
+    assert_eq!(Expr::new_nullptr_literal(literal_span.clone()), Expr::null_expr(literal_span.clone()));
     assert_eq!(
         Expr::null_expr(literal_span.clone()),
         Expr::Literal { value: LiteralValue::NullPtr, span: literal_span }
@@ -114,10 +102,7 @@ fn expression_literal_constructors_create_expected_values() {
 #[test]
 fn expression_span_returns_node_span_for_every_variant() {
     let node_span = span(10, 20);
-    let literal = Expr::Literal {
-        value: LiteralValue::Bool(true),
-        span: node_span.clone(),
-    };
+    let literal = Expr::Literal { value: LiteralValue::Bool(true), span: node_span.clone() };
     let variable = Expr::Variable { name: "value".into(), span: node_span.clone() };
     let expressions = [
         Expr::Binary {
@@ -183,10 +168,7 @@ fn expression_edge_cases_preserve_empty_collections_and_deep_nesting() {
 #[test]
 fn statement_span_returns_expected_span_for_every_variant() {
     let statement_span = span(4, 12);
-    let expression = Expr::Literal {
-        value: LiteralValue::Bool(false),
-        span: statement_span.clone(),
-    };
+    let expression = Expr::Literal { value: LiteralValue::Bool(false), span: statement_span.clone() };
     let parameter = Parameter::new("value".into(), Type::I64, statement_span.clone());
     let statements = [
         Stmt::Expression { expr: Box::new(expression.clone()) },
@@ -210,7 +192,7 @@ fn statement_span_returns_expected_span_for_every_variant() {
             span: statement_span.clone(),
         },
         Stmt::While {
-            condition: Box::new(expression.clone()),
+            condition: Box::new(expression),
             body: Box::new(Stmt::Block { statements: Vec::new(), span: statement_span.clone() }),
             span: statement_span.clone(),
         },
@@ -237,10 +219,7 @@ fn statement_span_returns_expected_span_for_every_variant() {
 
     let expression_span = span(20, 23);
     let expression_statement = Stmt::Expression {
-        expr: Box::new(Expr::Literal {
-            value: LiteralValue::NullPtr,
-            span: expression_span.clone(),
-        }),
+        expr: Box::new(Expr::Literal { value: LiteralValue::NullPtr, span: expression_span.clone() }),
     };
 
     assert_eq!(expression_statement.span(), &expression_span);
