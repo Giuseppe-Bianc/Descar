@@ -113,14 +113,20 @@ fn pretty_print_binary_expression_covers_every_operator() {
 
 #[test]
 fn pretty_print_unary_expression_covers_all_operators_and_sides() {
-    let operators = [UnaryOp::Negate, UnaryOp::Not, UnaryOp::BitwiseNot, UnaryOp::Increment, UnaryOp::Decrement];
+    let operators = [
+        (UnaryOp::Negate, "NEGATE"),
+        (UnaryOp::Not, "NOT"),
+        (UnaryOp::BitwiseNot, "BITWISENOT"),
+        (UnaryOp::Increment, "INCREMENT"),
+        (UnaryOp::Decrement, "DECREMENT"),
+    ];
 
-    for operator in operators {
-        for (side, label) in [(UnaryOpSide::Prefix, "PREFIX"), (UnaryOpSide::Postfix, "POSTFIX")] {
+    for (operator, operator_label) in operators {
+        for (side, side_label) in [(UnaryOpSide::Prefix, "PREFIX"), (UnaryOpSide::Postfix, "POSTFIX")] {
             let expression = Expr::Unary { op: operator, side, expr: Box::new(variable("value")), span: span(0, 3) };
             let output = rendered_expr(&expression);
 
-            assert!(output.contains(&format!("UnaryOp {operator:?} ({label})")));
+            assert!(output.contains(&format!("UnaryOp {operator_label} ({side_label})")));
             assert!(output.contains("Expr:"));
             assert!(output.contains("Variable 'value'"));
         }
@@ -251,7 +257,7 @@ fn pretty_print_type_annotations_cover_all_type_variants() {
         let statement = Stmt::VarDeclaration { bindings: vec![], type_annotation, is_mutable: false, span: span(0, 1) };
         let output = rendered_stmt(&statement);
 
-        assert!(output.contains(&format!("Type:\n    └── {expected}")), "missing {expected:?} in {output:?}");
+        assert!(output.contains(&format!("Type:\n        └── {expected}")), "missing {expected:?} in {output:?}");
     }
 }
 
