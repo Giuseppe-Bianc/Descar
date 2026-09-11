@@ -102,8 +102,8 @@ fn count_expr_nodes(expr: &Expr) -> usize {
             }
             Expr::Call { callee, arguments, .. } => {
                 stack.push(callee);
-                for arg in arguments {
-                    stack.push(arg);
+                for argument in arguments {
+                    stack.push(argument);
                 }
             }
             Expr::ArrayAccess { array, index, .. } => {
@@ -157,8 +157,9 @@ fn print_expr(
                 &styles.operator,
                 &format!("BinaryOp {}", format_binary_op(op)),
             );
-            print_labeled_expr("Left:", left, &get_indent(indent, &branch_type), BranchType::Middle, output, styles);
-            print_labeled_expr("Right:", right, &get_indent(indent, &branch_type), BranchType::Last, output, styles);
+            let new_indent = get_indent(indent, &branch_type);
+            print_labeled_expr("Left:", left, &new_indent, BranchType::Middle, output, styles);
+            print_labeled_expr("Right:", right, &new_indent, BranchType::Last, output, styles);
         }
         Expr::Unary { op, expr, .. } => {
             append_line(
@@ -168,11 +169,13 @@ fn print_expr(
                 &styles.operator,
                 &format!("UnaryOp {}", format_unary_op(op)),
             );
-            print_labeled_expr("Expr:", expr, &get_indent(indent, &branch_type), BranchType::Last, output, styles);
+            let new_indent = get_indent(indent, &branch_type);
+            print_labeled_expr("Expr:", expr, &new_indent, BranchType::Last, output, styles);
         }
         Expr::Grouping { expr, .. } => {
             append_line(output, indent, branch_type, &styles.punctuation, "Grouping");
-            print_labeled_expr("Expr:", expr, &get_indent(indent, &branch_type), BranchType::Last, output, styles);
+            let new_indent = get_indent(indent, &branch_type);
+            print_labeled_expr("Expr:", expr, &new_indent, BranchType::Last, output, styles);
         }
         Expr::Literal { value, .. } => {
             append_line(
@@ -278,12 +281,7 @@ fn count_stmt_nodes(stmt: &Stmt) -> usize {
     }
 }
 
-fn print_stmt_body(
-    stmt: &Stmt,
-    indent: &str,
-    output: &mut String,
-    styles: &StyleManager,
-) {
+fn print_stmt_body(stmt: &Stmt, indent: &str, output: &mut String, styles: &StyleManager) {
     match stmt {
         Stmt::Block { statements, .. } => {
             if statements.is_empty() {
@@ -316,12 +314,7 @@ fn append_body_label(
         }
         _ => {
             append_line(output, parent_indent, branch_type, &styles.structure, label);
-            print_stmt_body(
-                body,
-                &get_indent(parent_indent, &branch_type),
-                output,
-                styles,
-            );
+            print_stmt_body(body, &get_indent(parent_indent, &branch_type), output, styles);
         }
     }
 }
@@ -337,16 +330,11 @@ fn print_stmt(
     match stmt {
         Stmt::Expression { expr } => {
             append_line(output, indent, branch_type, &styles.keyword, "Expression");
-            append_line(
-                output,
-                &get_indent(indent, &branch_type),
-                BranchType::Last,
-                &styles.structure,
-                "Expr:",
-            );
+            let new_indent = get_indent(indent, &branch_type);
+            append_line(output, &new_indent, BranchType::Last, &styles.structure, "Expr:");
             print_expr(
                 expr,
-                &get_indent(&get_indent(indent, &branch_type), &BranchType::Last),
+                &get_indent(&new_indent, &BranchType::Last),
                 BranchType::Last,
                 output,
                 styles,
@@ -413,12 +401,11 @@ fn print_stmt(
                 name,
             );
 
-            let parameters_branch = if parameters.is_empty() { BranchType::Middle } else { BranchType::Middle };
             if parameters.is_empty() {
-                append_line(output, &new_indent, parameters_branch, &styles.structure, "Parameters: (none)");
+                append_line(output, &new_indent, BranchType::Middle, &styles.structure, "Parameters: (none)");
             } else {
-                append_line(output, &new_indent, parameters_branch, &styles.structure, "Parameters:");
-                let params_indent = get_indent(&new_indent, &parameters_branch);
+                append_line(output, &new_indent, BranchType::Middle, &styles.structure, "Parameters:");
+                let params_indent = get_indent(&new_indent, &BranchType::Middle);
                 print_children(
                     parameters,
                     &params_indent,
@@ -481,10 +468,8 @@ fn print_stmt(
                 styles,
             );
 
-            if !matches!(else_branch, ElseBranch::None) {
-                if let ElseBranch::Block(branch) | ElseBranch::ElseIf(branch) = else_branch {
-                    append_body_label("Else:", branch, &new_indent, BranchType::Last, output, styles);
-                }
+            if let ElseBranch::Block(branch) | ElseBranch::ElseIf(branch) = else_branch {
+                append_body_label("Else:", branch, &new_indent, BranchType::Last, output, styles);
             }
         }
         Stmt::MainFunction { body, .. } => {
@@ -503,16 +488,11 @@ fn print_stmt(
         Stmt::Return { value, .. } => {
             append_line(output, indent, branch_type, &styles.keyword, "Return");
             if let Some(expr) = value {
-                append_line(
-                    output,
-                    &get_indent(indent, &branch_type),
-                    BranchType::Last,
-                    &styles.structure,
-                    "Value:",
-                );
+                let new_indent = get_indent(indent, &branch_type);
+                append_line(output, &new_indent, BranchType::Last, &styles.structure, "Value:");
                 print_expr(
                     expr,
-                    &get_indent(&get_indent(indent, &branch_type), &BranchType::Last),
+                    &get_indent(&new_indent, &BranchType::Last),
                     BranchType::Last,
                     output,
                     styles,
@@ -535,38 +515,25 @@ fn print_stmt(
         Stmt::For { initializer, condition, increment, body, .. } => {
             append_line(output, indent, branch_type, &styles.keyword, "For");
             let new_indent = get_indent(indent, &branch_type);
-            let mut parts = Vec::new();
-            if initializer.is_some() {
-                parts.push("initializer");
-            }
-            if condition.is_some() {
-                parts.push("condition");
-            }
-            if increment.is_some() {
-                parts.push("increment");
-            }
-            let has_body_after_header = !parts.is_empty();
-            let mut emitted = 0usize;
 
             if let Some(init) = initializer {
-                emitted += 1;
-                let branch = if has_body_after_header || condition.is_some() || increment.is_some() { BranchType::Middle } else { BranchType::Last };
+                let branch = if condition.is_some() || increment.is_some() {
+                    BranchType::Middle
+                } else {
+                    BranchType::Last
+                };
                 append_line(output, &new_indent, branch, &styles.structure, "Initializer:");
                 print_stmt(init, &get_indent(&new_indent, &branch), BranchType::Last, output, styles);
             }
             if let Some(cond) = condition {
-                emitted += 1;
                 let branch = if increment.is_some() { BranchType::Middle } else { BranchType::Last };
                 append_line(output, &new_indent, branch, &styles.structure, "Condition:");
                 print_expr(cond, &get_indent(&new_indent, &branch), BranchType::Last, output, styles);
             }
             if let Some(inc) = increment {
-                emitted += 1;
-                let branch = BranchType::Middle;
-                append_line(output, &new_indent, branch, &styles.structure, "Increment:");
-                print_expr(inc, &get_indent(&new_indent, &branch), BranchType::Last, output, styles);
+                append_line(output, &new_indent, BranchType::Middle, &styles.structure, "Increment:");
+                print_expr(inc, &get_indent(&new_indent, &BranchType::Middle), BranchType::Last, output, styles);
             }
-            let _ = emitted;
             append_body_label("Body:", body, &new_indent, BranchType::Last, output, styles);
         }
         Stmt::Break { .. } => append_line(output, indent, branch_type, &styles.keyword, "Break"),
