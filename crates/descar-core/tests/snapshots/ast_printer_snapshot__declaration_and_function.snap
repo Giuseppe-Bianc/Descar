@@ -1,0 +1,29 @@
+---
+source: crates/descar-core/tests/ast_printer_snapshot.rs
+expression: rendered
+---
+declaration:
+└── VarDeclaration
+    ├── Variables:
+    │   ├── first
+    │   └── second
+    ├── Type:
+    │   └── [u32; 8]
+    └── Initializers:
+        ├── Literal 1
+        └── Literal true
+function:
+└── Function
+    ├── Name:
+    │   └── compute
+    ├── Parameters:
+    │   ├── Parameter 'left'
+    │   │   └── Type: i32
+    │   └── Parameter 'right'
+    │       └── Type: vector<bool>
+    ├── Return Type:
+    │   └── f64
+    └── Body:
+        └── Return
+            └── Value:
+                └── Literal 42

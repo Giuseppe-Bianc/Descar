@@ -1,0 +1,10 @@
+---
+source: crates/descar-core/tests/ast_printer_snapshot.rs
+expression: rendered
+---
+└── Literal -42
+└── Literal false
+└── Literal "hello"
+└── Literal 'é'
+└── Literal nullptr
+└── Variable 'counter'

@@ -1,0 +1,25 @@
+---
+source: crates/descar-core/tests/ast_printer_snapshot.rs
+expression: rendered
+---
+└── Function Call
+    ├── Callee:
+    │   └── Variable 'f'
+    └── Arguments:
+└── Function Call
+    ├── Callee:
+    │   └── Variable 'f'
+    └── Arguments:
+        ├── Arg:
+        │   └── Literal 1
+        ├── Arg:
+        │   └── Literal 2
+        └── Arg:
+            └── Variable 'x'
+└── Array Literal
+    └── Elements:
+└── Array Literal
+    └── Elements:
+        ├── Literal 1
+        ├── Literal 2
+        └── Variable 'x'

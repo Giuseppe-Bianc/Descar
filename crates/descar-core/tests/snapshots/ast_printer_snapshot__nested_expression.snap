@@ -1,0 +1,26 @@
+---
+source: crates/descar-core/tests/ast_printer_snapshot.rs
+expression: rendered_expr(&expression)
+---
+└── Assignment
+    ├── Target:
+    │   └── Array Access
+    │       ├── Array:
+    │       │   └── Grouping
+    │       │       └── Expr:
+    │       │           └── Variable 'items'
+    │       └── Index:
+    │           └── BinaryOp ADD
+    │               ├── Left:
+    │               │   └── Literal 1
+    │               └── Right:
+    │                   └── Literal 2
+    └── Value:
+        └── Function Call
+            ├── Callee:
+            │   └── Variable 'build'
+            └── Arguments:
+                ├── Arg:
+                │   └── Literal 10
+                └── Arg:
+                    └── Literal false
