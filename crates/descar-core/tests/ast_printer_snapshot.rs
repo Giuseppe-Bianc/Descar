@@ -3,7 +3,10 @@ use std::sync::Arc;
 use descar_core::{
     location::{source_location::SourceLocation, source_span::SourceSpan},
     printers::ast_printer::{pretty_print, pretty_print_stmt},
-    syntax::ast::{ast_type::Type, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr, literal_value::LiteralValue, stmt::Stmt},
+    syntax::ast::{
+        ast_type::Type, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr, literal_value::LiteralValue,
+        stmt::Stmt,
+    },
     tokens::number::Number,
     utils::strip_ansi_codes,
 };
