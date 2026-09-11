@@ -1,14 +1,8 @@
 use descar_core::{
     error::compile_error::CompileError,
-    lex::lexer::{lexer_tokenize_with_errors, Lexer},
+    lex::lexer::{Lexer, lexer_tokenize_with_errors},
     syntax::{
-        ast::{
-            ast_type::Type,
-            else_branch::ElseBranch,
-            expr::Expr,
-            literal_value::LiteralValue,
-            stmt::Stmt,
-        },
+        ast::{ast_type::Type, else_branch::ElseBranch, expr::Expr, stmt::Stmt},
         parser::JsavParser,
     },
 };
@@ -46,10 +40,9 @@ fn summarize_expr(expression: &Expr) -> String {
         }
         Expr::Grouping { expr, .. } => format!("Grouping({})", summarize_expr(expr)),
         Expr::Literal { value, .. } => format!("Literal({value:?})"),
-        Expr::ArrayLiteral { elements, .. } => format!(
-            "ArrayLiteral([{}])",
-            elements.iter().map(summarize_expr).collect::<Vec<_>>().join(", ")
-        ),
+        Expr::ArrayLiteral { elements, .. } => {
+            format!("ArrayLiteral([{}])", elements.iter().map(summarize_expr).collect::<Vec<_>>().join(", "))
+        }
         Expr::Variable { name, .. } => format!("Variable({name})"),
         Expr::Assign { target, value, .. } => {
             format!("Assign({}, {})", summarize_expr(target), summarize_expr(value))
@@ -106,8 +99,8 @@ fn summarize_statement(statement: &Stmt, indent: usize, lines: &mut Vec<String>)
             lines.push(format!(
                 "{prefix}For init={} condition={} increment={}",
                 initializer.is_some(),
-                condition.as_ref().map(summarize_expr).unwrap_or_else(|| "none".into()),
-                increment.as_ref().map(summarize_expr).unwrap_or_else(|| "none".into())
+                condition.as_ref().map_or_else(|| "none".into(), summarize_expr),
+                increment.as_ref().map_or_else(|| "none".into(), summarize_expr)
             ));
             if let Some(initializer) = initializer {
                 summarize_statement(initializer, indent + 1, lines);
@@ -121,10 +114,7 @@ fn summarize_statement(statement: &Stmt, indent: usize, lines: &mut Vec<String>)
             }
         }
         Stmt::Return { value, .. } => {
-            lines.push(format!(
-                "{prefix}Return {}",
-                value.as_ref().map(summarize_expr).unwrap_or_else(|| "none".into())
-            ));
+            lines.push(format!("{prefix}Return {}", value.as_ref().map_or_else(|| "none".into(), summarize_expr)));
         }
         Stmt::Break { .. } => lines.push(format!("{prefix}Break")),
         Stmt::Continue { .. } => lines.push(format!("{prefix}Continue")),

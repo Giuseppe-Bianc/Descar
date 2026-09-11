@@ -1,16 +1,10 @@
 use descar_core::{
     error::{compile_error::CompileError, error_code::ErrorCode},
-    lex::lexer::{lexer_tokenize_with_errors, Lexer},
+    lex::lexer::{Lexer, lexer_tokenize_with_errors},
     syntax::{
         ast::{
-            ast_type::Type,
-            binary_op::BinaryOp,
-            else_branch::ElseBranch,
-            expr::Expr,
-            literal_value::LiteralValue,
-            stmt::Stmt,
-            unary_op::UnaryOp,
-            unary_op_side::UnaryOpSide,
+            ast_type::Type, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr, literal_value::LiteralValue,
+            stmt::Stmt, unary_op::UnaryOp, unary_op_side::UnaryOpSide,
         },
         parser::JsavParser,
     },
@@ -198,12 +192,7 @@ fn parses_variable_and_const_declarations_with_multiple_bindings() {
     assert_eq!(statements.len(), 2);
 
     match &statements[0] {
-        Stmt::VarDeclaration {
-            bindings,
-            type_annotation,
-            is_mutable,
-            ..
-        } => {
+        Stmt::VarDeclaration { bindings, type_annotation, is_mutable, .. } => {
             assert!(*is_mutable);
             assert_eq!(*type_annotation, Type::I32);
             assert_eq!(bindings.len(), 2);
@@ -216,12 +205,7 @@ fn parses_variable_and_const_declarations_with_multiple_bindings() {
     }
 
     match &statements[1] {
-        Stmt::VarDeclaration {
-            bindings,
-            type_annotation,
-            is_mutable,
-            ..
-        } => {
+        Stmt::VarDeclaration { bindings, type_annotation, is_mutable, .. } => {
             assert!(!*is_mutable);
             assert_eq!(*type_annotation, Type::I64);
             assert_eq!(bindings.len(), 1);
@@ -240,13 +224,7 @@ fn parses_functions_and_main_with_parameters_and_return_type() {
     assert_eq!(statements.len(), 2);
 
     match &statements[0] {
-        Stmt::Function {
-            name,
-            parameters,
-            return_type,
-            body,
-            ..
-        } => {
+        Stmt::Function { name, parameters, return_type, body, .. } => {
             assert_eq!(name, "add");
             assert_eq!(parameters.len(), 2);
             assert_eq!(parameters[0].name, "a");
@@ -254,7 +232,9 @@ fn parses_functions_and_main_with_parameters_and_return_type() {
             assert_eq!(parameters[1].name, "b");
             assert_eq!(parameters[1].type_annotation, Type::I32);
             assert_eq!(*return_type, Type::I32);
-            assert!(matches!(body.as_ref(), Stmt::Block { statements, .. } if matches!(statements.as_slice(), [Stmt::Return { value: Some(_), .. }])))
+            assert!(
+                matches!(body.as_ref(), Stmt::Block { statements, .. } if matches!(statements.as_slice(), [Stmt::Return { value: Some(_), .. }]))
+            );
         }
         other => panic!("unexpected statement: {other:#?}"),
     }
@@ -316,10 +296,7 @@ fn parses_if_else_while_and_for_control_flow() {
         Stmt::While { body, .. }
         if matches!(body.as_ref(), Stmt::Block { statements, .. } if matches!(statements.as_slice(), [Stmt::Break { .. }]))
     ));
-    assert!(matches!(
-        &statements[2],
-        Stmt::For { initializer: Some(_), condition: Some(_), increment: Some(_), .. }
-    ));
+    assert!(matches!(&statements[2], Stmt::For { initializer: Some(_), condition: Some(_), increment: Some(_), .. }));
     assert!(matches!(
         &statements[3],
         Stmt::For { initializer: None, condition: None, increment: None, body, .. }

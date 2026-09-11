@@ -2,7 +2,7 @@
 source: crates/descar-core/tests/parser_snapshot.rs
 expression: rendered
 ---
-Expression Assign(Variable(x), Unary(Negate, Prefix, Grouping(Binary(Add, Variable(a), Binary(Multiply, Variable(b), Literal(Integer(2)))))))
+Expression Assign(Variable(x), Unary(Negate, Prefix, Grouping(Binary(Add, Variable(a), Binary(Multiply, Variable(b), Literal(Numeric(Integer(2))))))))
 Expression Unary(Increment, Postfix, Variable(value))
 Expression Unary(Not, Prefix, Variable(ready))
-Expression ArrayAccess(Call(Variable(sum), [Literal(Integer(1)), Literal(Integer(2))]), Literal(Integer(0)))
+Expression ArrayAccess(Call(Variable(sum), [Literal(Numeric(Integer(1))), Literal(Numeric(Integer(2)))]), Literal(Numeric(Integer(0))))
