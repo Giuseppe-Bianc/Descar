@@ -8,7 +8,6 @@ use descar_core::{
         binary_op::BinaryOp,
         else_branch::ElseBranch,
         expr::Expr,
-        literal_value::LiteralValue,
         parameter::Parameter,
         stmt::{Stmt, VarBinding},
         unary_op::UnaryOp,
@@ -52,11 +51,7 @@ fn pretty_print_expression_contains_expected_structure() {
 
 #[test]
 fn pretty_print_expression_handles_empty_collections() {
-    let expression = Expr::Call {
-        callee: Box::new(variable("f")),
-        arguments: Vec::new(),
-        span: span(0, 3),
-    };
+    let expression = Expr::Call { callee: Box::new(variable("f")), arguments: Vec::new(), span: span(0, 3) };
 
     let output = strip_ansi_codes(&pretty_print(&expression));
 
@@ -75,16 +70,8 @@ fn pretty_print_expression_covers_unary_grouping_assignment_and_array_access() {
             span: span(0, 2),
         },
         Expr::Grouping { expr: Box::new(number(1)), span: span(0, 3) },
-        Expr::Assign {
-            target: Box::new(variable("x")),
-            value: Box::new(number(2)),
-            span: span(0, 5),
-        },
-        Expr::ArrayAccess {
-            array: Box::new(variable("items")),
-            index: Box::new(number(0)),
-            span: span(0, 8),
-        },
+        Expr::Assign { target: Box::new(variable("x")), value: Box::new(number(2)), span: span(0, 5) },
+        Expr::ArrayAccess { array: Box::new(variable("items")), index: Box::new(number(0)), span: span(0, 8) },
     ];
 
     for expression in expressions {
@@ -96,10 +83,7 @@ fn pretty_print_expression_covers_unary_grouping_assignment_and_array_access() {
 #[test]
 fn pretty_print_statement_handles_expression_and_control_flow() {
     let condition = Expr::new_bool_literal(true, span(0, 1));
-    let body = Stmt::Block {
-        statements: vec![Stmt::Break { span: span(0, 1) }],
-        span: span(0, 1),
-    };
+    let body = Stmt::Block { statements: vec![Stmt::Break { span: span(0, 1) }], span: span(0, 1) };
     let statement = Stmt::If {
         condition: Box::new(condition),
         then_branch: Box::new(body),
@@ -121,12 +105,7 @@ fn pretty_print_statement_handles_expression_and_control_flow() {
 fn pretty_print_statement_handles_empty_block_and_declaration_without_bindings() {
     let cases = [
         Stmt::Block { statements: Vec::new(), span: span(0, 0) },
-        Stmt::VarDeclaration {
-            bindings: Vec::new(),
-            type_annotation: Type::I64,
-            is_mutable: false,
-            span: span(0, 0),
-        },
+        Stmt::VarDeclaration { bindings: Vec::new(), type_annotation: Type::I64, is_mutable: false, span: span(0, 0) },
     ];
 
     for statement in cases {
@@ -140,10 +119,7 @@ fn pretty_print_statement_handles_function_parameters_and_for_components() {
     let node_span = span(0, 3);
     let parameter = Parameter::new("value".into(), Type::I32, node_span.clone());
     let initializer = Stmt::VarDeclaration {
-        bindings: vec![VarBinding {
-            name: "i".into(),
-            initializer: Some(number(0)),
-        }],
+        bindings: vec![VarBinding { name: "i".into(), initializer: Some(number(0)) }],
         type_annotation: Type::I32,
         is_mutable: true,
         span: node_span.clone(),
@@ -187,10 +163,7 @@ fn pretty_print_statement_handles_all_simple_statements() {
         Stmt::Return { value: Some(number(1)), span: span.clone() },
         Stmt::Break { span: span.clone() },
         Stmt::Continue { span: span.clone() },
-        Stmt::MainFunction {
-            body: Box::new(Stmt::Block { statements: Vec::new(), span: span.clone() }),
-            span,
-        },
+        Stmt::MainFunction { body: Box::new(Stmt::Block { statements: Vec::new(), span: span.clone() }), span },
     ];
 
     for statement in statements {
@@ -204,10 +177,7 @@ fn pretty_print_handles_deeply_nested_expression_without_changing_semantics() {
     let mut expression = number(1);
 
     for _ in 0..16 {
-        expression = Expr::Grouping {
-            expr: Box::new(expression),
-            span: span(0, 3),
-        };
+        expression = Expr::Grouping { expr: Box::new(expression), span: span(0, 3) };
     }
 
     let output = strip_ansi_codes(&pretty_print(&expression));
@@ -224,10 +194,7 @@ fn pretty_print_literal_variants_are_rendered() {
         Expr::new_string_literal("hello".into(), span(0, 7)),
         Expr::new_char_literal("c".into(), span(0, 3)),
         Expr::new_nullptr_literal(span(0, 7)),
-        Expr::ArrayLiteral {
-            elements: vec![number(1), number(2)],
-            span: span(0, 6),
-        },
+        Expr::ArrayLiteral { elements: vec![number(1), number(2)], span: span(0, 6) },
     ];
 
     for expression in literals {
@@ -242,5 +209,5 @@ fn pretty_print_is_ansi_independent_for_assertions() {
     let raw = pretty_print(&expression);
     let stripped = strip_ansi_codes(&raw);
 
-    assert_eq!(stripped, "Literal true\n");
+    assert_eq!(stripped, "└── Literal true\n");
 }
