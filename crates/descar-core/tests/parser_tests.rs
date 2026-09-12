@@ -248,7 +248,7 @@ fn parses_functions_and_main_with_parameters_and_return_type() {
 
 #[test]
 fn parses_array_vector_custom_and_unicode_types() {
-    let input = "var matrix: i32[2][3] = {{1, 2, 3}, {4, 5, 6}}\nvar values: vector<string> = {\"a\", \"b\"}\nvar record: Record = value\nvar 変数: i64 = 1";
+    let input = "var matrix: i32[2][3] = {{1, 2, 3}, {4, 5, 6}}\nvar values: vector<string> = {\"a\", \"b\"}\nvar record: Record = value\nvar 變數: i64 = 1";
     let (statements, errors) = parse(input);
     assert_no_errors(&errors);
     assert_eq!(statements.len(), 4);
@@ -351,7 +351,12 @@ fn recovers_from_unexpected_tokens_and_keeps_following_statements() {
 #[test]
 fn reports_maximum_recursion_depth_for_deep_grouping() {
     let input = format!("{}42{}", "(".repeat(1_005), ")".repeat(1_005));
-    let (_, errors) = parse(&input);
+    let handle = std::thread::Builder::new()
+        .name("parser-recursion-limit".into())
+        .stack_size(8 * 1024 * 1024)
+        .spawn(move || parse(&input))
+        .expect("failed to spawn parser recursion test thread");
+    let (_, errors) = handle.join().expect("parser recursion test thread panicked");
 
     assert_has_error(&errors, ErrorCode::E1001);
 }
