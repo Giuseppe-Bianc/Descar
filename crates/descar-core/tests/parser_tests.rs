@@ -240,7 +240,7 @@ fn reports_missing_delimiters_as_syntax_errors() {
 
 #[test]
 fn recovers_from_unexpected_tokens_and_keeps_following_statements() {
-    let (statements, errors) = parse(")\n42");
+    let (statements, errors) = parse(") )\n42");
 
     assert_has_error(&errors, ErrorCode::E1004);
     assert_eq!(statements.len(), 1);
