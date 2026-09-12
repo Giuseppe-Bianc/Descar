@@ -1,16 +1,10 @@
 use descar_core::{
     error::{compile_error::CompileError, error_code::ErrorCode},
-    lex::lexer::{lexer_tokenize_with_errors, Lexer},
+    lex::lexer::{Lexer, lexer_tokenize_with_errors},
     syntax::{
         ast::{
-            ast_type::Type,
-            binary_op::BinaryOp,
-            else_branch::ElseBranch,
-            expr::Expr,
-            literal_value::LiteralValue,
-            stmt::Stmt,
-            unary_op::UnaryOp,
-            unary_op_side::UnaryOpSide,
+            ast_type::Type, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr, literal_value::LiteralValue,
+            stmt::Stmt, unary_op::UnaryOp, unary_op_side::UnaryOpSide,
         },
         parser::JsavParser,
     },
@@ -50,12 +44,24 @@ fn parses_literal_and_variable_expression_statements() {
     assert_no_errors(&errors);
     assert_eq!(statements.len(), 6);
 
-    assert!(matches!(&statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. })));
-    assert!(matches!(&statements[1], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::Bool(true), .. })));
-    assert!(matches!(&statements[2], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::NullPtr, .. })));
-    assert!(matches!(&statements[3], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::StringLit(value), .. } if value == "hello")));
-    assert!(matches!(&statements[4], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::CharLit(value), .. } if value == "a")));
-    assert!(matches!(&statements[5], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Variable { name, .. } if name == "value")));
+    assert!(
+        matches!(&statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. }))
+    );
+    assert!(
+        matches!(&statements[1], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::Bool(true), .. }))
+    );
+    assert!(
+        matches!(&statements[2], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::NullPtr, .. }))
+    );
+    assert!(
+        matches!(&statements[3], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::StringLit(value), .. } if value == "hello"))
+    );
+    assert!(
+        matches!(&statements[4], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::CharLit(value), .. } if value == "a"))
+    );
+    assert!(
+        matches!(&statements[5], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Variable { name, .. } if name == "value"))
+    );
 }
 
 #[test]
@@ -65,9 +71,15 @@ fn parses_assignment_calls_and_array_access() {
     assert_no_errors(&errors);
     assert_eq!(statements.len(), 3);
 
-    assert!(matches!(&statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Assign { target, value, .. } if matches!(target.as_ref(), Expr::Variable { name, .. } if name == "items") && matches!(value.as_ref(), Expr::ArrayLiteral { elements, .. } if elements.len() == 3))));
-    assert!(matches!(&statements[1], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::ArrayAccess { array, index, .. } if matches!(array.as_ref(), Expr::Variable { name, .. } if name == "items") && matches!(index.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. }))));
-    assert!(matches!(&statements[2], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Call { callee, arguments, .. } if matches!(callee.as_ref(), Expr::Variable { name, .. } if name == "print") && arguments.len() == 1 && matches!(arguments[0], Expr::ArrayAccess { .. }))));
+    assert!(
+        matches!(&statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Assign { target, value, .. } if matches!(target.as_ref(), Expr::Variable { name, .. } if name == "items") && matches!(value.as_ref(), Expr::ArrayLiteral { elements, .. } if elements.len() == 3)))
+    );
+    assert!(
+        matches!(&statements[1], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::ArrayAccess { array, index, .. } if matches!(array.as_ref(), Expr::Variable { name, .. } if name == "items") && matches!(index.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. })))
+    );
+    assert!(
+        matches!(&statements[2], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Call { callee, arguments, .. } if matches!(callee.as_ref(), Expr::Variable { name, .. } if name == "print") && arguments.len() == 1 && matches!(arguments[0], Expr::ArrayAccess { .. })))
+    );
 }
 
 #[test]
@@ -77,10 +89,18 @@ fn parses_prefix_and_postfix_unary_expressions() {
     assert_no_errors(&errors);
     assert_eq!(statements.len(), 4);
 
-    assert!(matches!(&statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Unary { op: UnaryOp::Increment, side: UnaryOpSide::Prefix, .. })));
-    assert!(matches!(&statements[1], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Unary { op: UnaryOp::Decrement, side: UnaryOpSide::Postfix, .. })));
-    assert!(matches!(&statements[2], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Unary { op: UnaryOp::Not, side: UnaryOpSide::Prefix, .. })));
-    assert!(matches!(&statements[3], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Unary { op: UnaryOp::BitwiseNot, side: UnaryOpSide::Prefix, .. })));
+    assert!(
+        matches!(&statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Unary { op: UnaryOp::Increment, side: UnaryOpSide::Prefix, .. }))
+    );
+    assert!(
+        matches!(&statements[1], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Unary { op: UnaryOp::Decrement, side: UnaryOpSide::Postfix, .. }))
+    );
+    assert!(
+        matches!(&statements[2], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Unary { op: UnaryOp::Not, side: UnaryOpSide::Prefix, .. }))
+    );
+    assert!(
+        matches!(&statements[3], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Unary { op: UnaryOp::BitwiseNot, side: UnaryOpSide::Prefix, .. }))
+    );
 }
 
 #[test]
@@ -88,12 +108,16 @@ fn respects_binary_precedence_and_grouping() {
     let (precedence_statements, errors) = parse("a + b * c");
     assert_no_errors(&errors);
     assert_eq!(precedence_statements.len(), 1);
-    assert!(matches!(&precedence_statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Binary { op: BinaryOp::Add, right, .. } if matches!(right.as_ref(), Expr::Binary { op: BinaryOp::Multiply, .. }))));
+    assert!(
+        matches!(&precedence_statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Binary { op: BinaryOp::Add, right, .. } if matches!(right.as_ref(), Expr::Binary { op: BinaryOp::Multiply, .. })))
+    );
 
     let (grouping_statements, errors) = parse("(a + b) * c");
     assert_no_errors(&errors);
     assert_eq!(grouping_statements.len(), 1);
-    assert!(matches!(&grouping_statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Binary { op: BinaryOp::Multiply, left, .. } if matches!(left.as_ref(), Expr::Grouping { .. }))));
+    assert!(
+        matches!(&grouping_statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Binary { op: BinaryOp::Multiply, left, .. } if matches!(left.as_ref(), Expr::Grouping { .. })))
+    );
 }
 
 #[test]
@@ -144,12 +168,16 @@ fn parses_functions_and_main_with_parameters_and_return_type() {
             assert_eq!(parameters[1].name, "b");
             assert_eq!(parameters[1].type_annotation, Type::I32);
             assert_eq!(*return_type, Type::I32);
-            assert!(matches!(body.as_ref(), Stmt::Block { statements, .. } if matches!(statements.as_slice(), [Stmt::Return { value: Some(_), .. }])));
+            assert!(
+                matches!(body.as_ref(), Stmt::Block { statements, .. } if matches!(statements.as_slice(), [Stmt::Return { value: Some(_), .. }]))
+            );
         }
         other => panic!("unexpected statement: {other:#?}"),
     }
 
-    assert!(matches!(&statements[1], Stmt::MainFunction { body, .. } if matches!(body.as_ref(), Stmt::Block { statements, .. } if matches!(statements.as_slice(), [Stmt::Return { value: None, .. }]))));
+    assert!(
+        matches!(&statements[1], Stmt::MainFunction { body, .. } if matches!(body.as_ref(), Stmt::Block { statements, .. } if matches!(statements.as_slice(), [Stmt::Return { value: None, .. }])))
+    );
 }
 
 #[test]
@@ -161,14 +189,20 @@ fn parses_array_vector_custom_and_unicode_types() {
 
     match &statements[0] {
         Stmt::VarDeclaration { type_annotation, bindings, .. } => {
-            assert!(matches!(type_annotation, Type::Array { element_type, size, .. } if matches!(element_type.as_ref(), Type::Array { element_type, .. } if matches!(element_type.as_ref(), Type::I32)) && matches!(size.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. })));
+            assert!(
+                matches!(type_annotation, Type::Array { element_type, size, .. } if matches!(element_type.as_ref(), Type::Array { element_type, .. } if matches!(element_type.as_ref(), Type::I32)) && matches!(size.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. }))
+            );
             assert!(bindings[0].initializer.is_some());
         }
         other => panic!("unexpected statement: {other:#?}"),
     }
 
-    assert!(matches!(&statements[1], Stmt::VarDeclaration { type_annotation: Type::Vector { element_type }, .. } if matches!(element_type.as_ref(), Type::String)));
-    assert!(matches!(&statements[2], Stmt::VarDeclaration { type_annotation: Type::Custom { name }, .. } if name.as_ref() == "Record"));
+    assert!(
+        matches!(&statements[1], Stmt::VarDeclaration { type_annotation: Type::Vector { element_type }, .. } if matches!(element_type.as_ref(), Type::String))
+    );
+    assert!(
+        matches!(&statements[2], Stmt::VarDeclaration { type_annotation: Type::Custom { name }, .. } if name.as_ref() == "Record")
+    );
     assert!(matches!(&statements[3], Stmt::VarDeclaration { bindings, .. } if bindings[0].name == "變數"));
 }
 
@@ -180,9 +214,13 @@ fn parses_if_else_while_and_for_control_flow() {
     assert_eq!(statements.len(), 4);
 
     assert!(matches!(&statements[0], Stmt::If { else_branch: ElseBranch::ElseIf(_), .. }));
-    assert!(matches!(&statements[1], Stmt::While { body, .. } if matches!(body.as_ref(), Stmt::Block { statements, .. } if matches!(statements.as_slice(), [Stmt::Break { .. }]))));
+    assert!(
+        matches!(&statements[1], Stmt::While { body, .. } if matches!(body.as_ref(), Stmt::Block { statements, .. } if matches!(statements.as_slice(), [Stmt::Break { .. }])))
+    );
     assert!(matches!(&statements[2], Stmt::For { initializer: Some(_), condition: Some(_), increment: Some(_), .. }));
-    assert!(matches!(&statements[3], Stmt::For { initializer: None, condition: None, increment: None, body, .. } if matches!(body.as_ref(), Stmt::Block { statements, .. } if matches!(statements.as_slice(), [Stmt::Break { .. }]))));
+    assert!(
+        matches!(&statements[3], Stmt::For { initializer: None, condition: None, increment: None, body, .. } if matches!(body.as_ref(), Stmt::Block { statements, .. } if matches!(statements.as_slice(), [Stmt::Break { .. }])))
+    );
 }
 
 #[test]
@@ -206,7 +244,9 @@ fn recovers_from_unexpected_tokens_and_keeps_following_statements() {
 
     assert_has_error(&errors, ErrorCode::E1004);
     assert_eq!(statements.len(), 1);
-    assert!(matches!(&statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. })));
+    assert!(
+        matches!(&statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. }))
+    );
 }
 
 #[test]
