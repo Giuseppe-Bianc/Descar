@@ -64,7 +64,17 @@ fn summarize_statement(statement: &Stmt, indent: usize, lines: &mut Vec<String>)
         Stmt::Expression { expr } => lines.push(format!("{prefix}Expression {}", summarize_expr(expr))),
         Stmt::VarDeclaration { bindings, type_annotation, is_mutable, .. } => {
             let kind = if *is_mutable { "Var" } else { "Const" };
-            let names = bindings.iter().map(|binding| binding.name.as_str()).collect::<Vec<_>>().join(", ");
+            let names = bindings
+                .iter()
+                .map(|binding| {
+                    let initializer = binding
+                        .initializer
+                        .as_ref()
+                        .map_or_else(|| "none".to_string(), summarize_expr);
+                    format!("{} = {initializer}", binding.name)
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
             lines.push(format!("{prefix}{kind} [{names}] : {}", summarize_type(type_annotation)));
         }
         Stmt::Function { name, parameters, return_type, body, .. } => {
