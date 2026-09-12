@@ -33,7 +33,7 @@ fn assert_has_error(errors: &[CompileError], expected: ErrorCode) {
 fn empty_input_produces_no_statements_or_errors() {
     let (statements, errors) = parse("");
 
-    assert!(statements.is_empty());
+    assert_eq!(statements, [] as [Stmt; 0]);
     assert_no_errors(&errors);
 }
 
