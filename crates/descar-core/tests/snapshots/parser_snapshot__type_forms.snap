@@ -2,7 +2,7 @@
 source: crates/descar-core/tests/parser_snapshot.rs
 expression: rendered
 ---
-Var [matrix] : Array(size=Literal(Numeric(Integer(2))), Array(size=Literal(Numeric(Integer(3))), I32))
-Var [values] : Vector(String)
-Var [record] : Custom(Record)
-Const [flag] : Bool
+Var [matrix = ArrayLiteral([ArrayLiteral([Literal(Numeric(Integer(1))), Literal(Numeric(Integer(2))), Literal(Numeric(Integer(3)))]), ArrayLiteral([Literal(Numeric(Integer(4))), Literal(Numeric(Integer(5))), Literal(Numeric(Integer(6)))])])] : Array(size=Literal(Numeric(Integer(2))), Array(size=Literal(Numeric(Integer(3))), I32))
+Var [values = ArrayLiteral([Literal(StringLit("a")), Literal(StringLit("b"))])] : Vector(String)
+Var [record = Variable(value)] : Custom(Record)
+Const [flag = Literal(Bool(true))] : Bool

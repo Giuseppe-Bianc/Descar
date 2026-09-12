@@ -67,10 +67,7 @@ fn summarize_statement(statement: &Stmt, indent: usize, lines: &mut Vec<String>)
             let names = bindings
                 .iter()
                 .map(|binding| {
-                    let initializer = binding
-                        .initializer
-                        .as_ref()
-                        .map_or_else(|| "none".to_string(), summarize_expr);
+                    let initializer = binding.initializer.as_ref().map_or_else(|| "none".to_string(), summarize_expr);
                     format!("{} = {initializer}", binding.name)
                 })
                 .collect::<Vec<_>>()
