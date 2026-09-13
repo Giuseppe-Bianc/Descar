@@ -1,3 +1,8 @@
+#![allow(clippy::cast_possible_truncation)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::module_name_repetitions)]
+
 pub mod config;
 pub mod context;
 pub mod diagnostics;
