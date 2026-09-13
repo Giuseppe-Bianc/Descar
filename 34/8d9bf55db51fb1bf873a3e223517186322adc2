@@ -1,0 +1,22 @@
+crates/descar-core/src/semantic/scope.rs
+  h_361662506da91f 29,90
+crates/descar-core/src/semantic/validator.rs
+  h_361662506da91f 136,141,144,146
+crates/descar-core/src/semantic/diagnostics.rs
+  h_361662506da91f 34,44,49,76,78,82
+crates/descar-core/src/semantic/context.rs
+  h_361662506da91f 12,44,61,130
+crates/descar-core/src/semantic/types.rs
+  h_361662506da91f 115,120
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "348d9bf55db51fb1bf873a3e223517186322adc2",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
