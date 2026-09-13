@@ -1,0 +1,8 @@
+---
+source: crates/descar-core/tests/parser_snapshot.rs
+expression: rendered
+---
+invalid_assignment:
+Some(E1003): Invalid left-hand side in assignment
+missing_closing_brace:
+Some(E1004): Expected '}' in end of block, found end of file.
