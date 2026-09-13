@@ -60,10 +60,7 @@ impl Default for SymbolTable {
 impl SymbolTable {
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            symbols: Vec::new(),
-            scopes: vec![Scope::new(ScopeId::new(0), None, None)],
-        }
+        Self { symbols: Vec::new(), scopes: vec![Scope::new(ScopeId::new(0), None, None)] }
     }
 
     #[must_use]
