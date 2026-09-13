@@ -40,7 +40,7 @@ impl Diagnostic {
     pub fn span(&self) -> Option<&SourceSpan> { self.span.as_ref() }
 
     #[must_use]
-    pub fn error(&self) -> Option<&CompileError> { self.error.as_ref() }
+    pub fn compile_error(&self) -> Option<&CompileError> { self.error.as_ref() }
 }
 
 #[derive(Debug, Default)]
