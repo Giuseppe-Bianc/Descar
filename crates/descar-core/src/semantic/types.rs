@@ -54,6 +54,7 @@ impl BuiltinType {
             Self::U8 => Type::U8,
             Self::U16 => Type::U16,
             Self::U32 => Type::U32,
+            Self::U64 => Type::U64,
             Self::F32 => Type::F32,
             Self::F64 => Type::F64,
             Self::Char => Type::Char,
