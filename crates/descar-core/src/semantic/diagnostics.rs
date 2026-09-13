@@ -9,7 +9,7 @@ pub enum DiagnosticSeverity {
     Recovery,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Diagnostic {
     severity: DiagnosticSeverity,
     error: Option<CompileError>,
@@ -31,24 +31,16 @@ impl Diagnostic {
     }
 
     #[must_use]
-    pub fn severity(&self) -> DiagnosticSeverity {
-        self.severity
-    }
+    pub fn severity(&self) -> DiagnosticSeverity { self.severity }
 
     #[must_use]
-    pub fn message(&self) -> &str {
-        &self.message
-    }
+    pub fn message(&self) -> &str { &self.message }
 
     #[must_use]
-    pub fn span(&self) -> Option<&SourceSpan> {
-        self.span.as_ref()
-    }
+    pub fn span(&self) -> Option<&SourceSpan> { self.span.as_ref() }
 
     #[must_use]
-    pub fn error(&self) -> Option<&CompileError> {
-        self.error.as_ref()
-    }
+    pub fn error(&self) -> Option<&CompileError> { self.error.as_ref() }
 }
 
 #[derive(Debug, Default)]
@@ -58,18 +50,12 @@ pub struct DiagnosticEngine {
 
 impl DiagnosticEngine {
     #[must_use]
-    pub const fn new() -> Self {
-        Self { diagnostics: Vec::new() }
-    }
+    pub const fn new() -> Self { Self { diagnostics: Vec::new() } }
 
-    pub fn emit(&mut self, diagnostic: Diagnostic) {
-        self.diagnostics.push(diagnostic);
-    }
+    pub fn emit(&mut self, diagnostic: Diagnostic) { self.diagnostics.push(diagnostic); }
 
     #[must_use]
-    pub fn diagnostics(&self) -> &[Diagnostic] {
-        &self.diagnostics
-    }
+    pub fn diagnostics(&self) -> &[Diagnostic] { &self.diagnostics }
 
     #[must_use]
     pub fn has_errors(&self) -> bool {
@@ -77,12 +63,8 @@ impl DiagnosticEngine {
     }
 
     #[must_use]
-    pub fn len(&self) -> usize {
-        self.diagnostics.len()
-    }
+    pub fn len(&self) -> usize { self.diagnostics.len() }
 
     #[must_use]
-    pub const fn is_empty(&self) -> bool {
-        self.diagnostics.is_empty()
-    }
+    pub const fn is_empty(&self) -> bool { self.diagnostics.is_empty() }
 }
