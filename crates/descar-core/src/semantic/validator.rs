@@ -8,6 +8,7 @@ pub enum AstValidationError {
     MultipleSourceFiles { first: String, second: String },
 }
 
+/// Validates structural invariants required before semantic analysis begins.
 pub fn validate_ast_shape(ast: &[Stmt]) -> Result<(), AstValidationError> {
     let mut files = BTreeSet::new();
     for stmt in ast {
