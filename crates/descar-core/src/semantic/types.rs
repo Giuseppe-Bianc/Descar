@@ -7,21 +7,7 @@ use super::ids::TypeId;
 /// Canonical builtin types currently represented by the Descar AST.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum BuiltinType {
-    I8,
-    I16,
-    I32,
-    I64,
-    U8,
-    U16,
-    U32,
-    U64,
-    F32,
-    F64,
-    Char,
-    String,
-    Bool,
-    Void,
-    NullPtr,
+    I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, Char, String, Bool, Void, NullPtr,
 }
 
 impl BuiltinType {
@@ -33,26 +19,15 @@ impl BuiltinType {
     #[must_use]
     pub const fn syntax(self) -> Type {
         match self {
-            Self::I8 => Type::I8,
-            Self::I16 => Type::I16,
-            Self::I32 => Type::I32,
-            Self::I64 => Type::I64,
-            Self::U8 => Type::U8,
-            Self::U16 => Type::U16,
-            Self::U32 => Type::U32,
-            Self::U64 => Type::U64,
-            Self::F32 => Type::F32,
-            Self::F64 => Type::F64,
-            Self::Char => Type::Char,
-            Self::String => Type::String,
-            Self::Bool => Type::Bool,
-            Self::Void => Type::Void,
-            Self::NullPtr => Type::NullPtr,
+            Self::I8 => Type::I8, Self::I16 => Type::I16, Self::I32 => Type::I32, Self::I64 => Type::I64,
+            Self::U8 => Type::U8, Self::U16 => Type::U16, Self::U32 => Type::U32, Self::U64 => Type::U64,
+            Self::F32 => Type::F32, Self::F64 => Type::F64, Self::Char => Type::Char, Self::String => Type::String,
+            Self::Bool => Type::Bool, Self::Void => Type::Void, Self::NullPtr => Type::NullPtr,
         }
     }
 }
 
-/// Interned semantic types. Builtins occupy the first deterministic slots.
+/// Interned semantic types. Builtins occupy deterministic slots 0..15.
 #[derive(Debug, Default)]
 pub struct TypeContext {
     types: Vec<Type>,
@@ -64,24 +39,19 @@ impl TypeContext {
     #[must_use]
     pub fn new() -> Self {
         let mut context = Self::default();
-        for builtin in BuiltinType::ALL {
-            context.intern_builtin(builtin);
-        }
+        for builtin in BuiltinType::ALL { context.intern_builtin(builtin); }
         context
     }
 
     fn intern_builtin(&mut self, builtin: BuiltinType) -> TypeId {
-        let ty = builtin.syntax();
-        let id = self.intern(ty);
+        let id = self.intern(builtin.syntax());
         self.builtin_ids.insert(builtin, id);
         id
     }
 
     #[must_use]
     pub fn intern(&mut self, ty: Type) -> TypeId {
-        if let Some(id) = self.interned.get(&ty).copied() {
-            return id;
-        }
+        if let Some(id) = self.interned.get(&ty).copied() { return id; }
         let id = TypeId::new(self.types.len() as u32);
         self.types.push(ty.clone());
         self.interned.insert(ty, id);
@@ -89,22 +59,14 @@ impl TypeContext {
     }
 
     #[must_use]
-    pub fn builtin(&self, builtin: BuiltinType) -> TypeId {
-        self.builtin_ids[&builtin]
-    }
+    pub fn builtin(&self, builtin: BuiltinType) -> TypeId { self.builtin_ids[&builtin] }
 
     #[must_use]
-    pub fn get(&self, id: TypeId) -> Option<&Type> {
-        self.types.get(id.index() as usize)
-    }
+    pub fn get(&self, id: TypeId) -> Option<&Type> { self.types.get(id.index() as usize) }
 
     #[must_use]
-    pub fn len(&self) -> usize {
-        self.types.len()
-    }
+    pub fn len(&self) -> usize { self.types.len() }
 
     #[must_use]
-    pub const fn is_empty(&self) -> bool {
-        false
-    }
+    pub fn is_empty(&self) -> bool { self.types.is_empty() }
 }
