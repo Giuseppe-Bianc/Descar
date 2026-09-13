@@ -7,6 +7,10 @@ use crate::location::source_span::SourceSpan;
 use std::fmt::{Display, Write};
 
 /// Enhanced error reporter with source context display.
+/// Sanitizes output strings by removing control characters (including ANSI escape sequences) to prevent terminal injection.
+fn sanitize_output(s: &str) -> String {
+    s.chars().filter(|c| !c.is_control() || matches!(c, '\n' | '\r' | '\t')).collect()
+}
 pub struct ErrorReporter {
     line_tracker: LineTracker,
 }
@@ -88,13 +92,13 @@ impl ErrorReporter {
             style("ERROR").red().bold(),
             code_prefix(code),
             style(category).red(),
-            style(message).yellow(),
+            style(sanitize_output(message)).yellow(),
         );
 
-        let _ = write!(output, "{} {}", style("Location:").blue(), style(&span.to_string()).cyan());
+        let _ = write!(output, "{} {}", style("Location:").blue(), style(sanitize_output(&span.to_string())).cyan());
 
         if !source_line.is_empty() {
-            let _ = write!(output, "\n{start_line:4} │ {source_line}");
+            let _ = write!(output, "\n{start_line:4} │ {}", sanitize_output(source_line));
 
             let start_offset = start_column.saturating_sub(1);
 
@@ -131,7 +135,7 @@ fn format_simple_error(error_type: &str, message: impl Display, code: Option<Err
         style("ERROR").red().bold(),
         code_prefix(code),
         style(error_type).red(),
-        style(message).yellow(),
+        style(sanitize_output(&message.to_string())).yellow(),
     )
 }
 

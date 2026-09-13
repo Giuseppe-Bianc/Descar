@@ -7,6 +7,9 @@ use crate::{
 use logos::Logos;
 use std::sync::Arc;
 
+/// Maximum number of tokens to allocate to prevent excessive memory usage.
+const MAX_TOKENS_CAPACITY: usize = 10_000_000;
+
 pub struct Lexer<'a> {
     inner: logos::Lexer<'a, TokenKind>,
     line_tracker: LineTracker,
@@ -171,7 +174,7 @@ fn validate_unicode_escape(chars: &mut std::str::Chars<'_>) -> Result<(), LexErr
 /// Tokenizes the complete input and collects errors.
 pub fn lexer_tokenize_with_errors(lexer: &mut Lexer<'_>) -> (Vec<Token>, Vec<CompileError>) {
     let estimated_tokens = lexer.source_len / 8;
-    let mut tokens = Vec::with_capacity(estimated_tokens.max(1));
+    let mut tokens = Vec::with_capacity(estimated_tokens.clamp(1, MAX_TOKENS_CAPACITY));
     let mut errors = Vec::new();
 
     while let Some(result) = lexer.next_token() {
