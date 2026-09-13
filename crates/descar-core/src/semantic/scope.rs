@@ -26,7 +26,7 @@ pub struct Scope {
 
 impl Scope {
     #[must_use]
-    pub fn new(id: ScopeId, parent: Option<ScopeId>, owner: Option<SymbolId>) -> Self {
+    pub const fn new(id: ScopeId, parent: Option<ScopeId>, owner: Option<SymbolId>) -> Self {
         Self { id, parent, owner, symbols: BTreeMap::new() }
     }
 
@@ -87,7 +87,7 @@ impl SymbolTable {
     }
 
     #[must_use]
-    pub fn symbol_count(&self) -> usize {
+    pub const fn symbol_count(&self) -> usize {
         self.symbols.len()
     }
 }

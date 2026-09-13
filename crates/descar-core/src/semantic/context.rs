@@ -9,7 +9,7 @@ use super::{
     ids::{GlobalScopeId, SymbolId},
     scope::{SymbolKind, SymbolTable},
     types::{BuiltinType, TypeContext},
-    validator::{validate_ast_shape, AstValidationError},
+    validator::{AstValidationError, validate_ast_shape},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -41,7 +41,7 @@ impl BuiltinRegistry {
     }
 
     #[must_use]
-    pub fn type_symbols(&self) -> &BTreeMap<BuiltinType, SymbolId> {
+    pub const fn type_symbols(&self) -> &BTreeMap<BuiltinType, SymbolId> {
         &self.type_symbols
     }
 }
@@ -58,6 +58,7 @@ pub struct SemanticContext {
 }
 
 impl SemanticContext {
+    #[allow(clippy::result_large_err)]
     pub fn initialize(ast: &[Stmt], config: SemanticConfig) -> Result<Self, Self> {
         let mut context = Self::new(config);
         if let Err(error) = validate_ast_shape(ast) {
@@ -126,7 +127,7 @@ impl SemanticContext {
     }
 }
 
-fn builtin_name(builtin: BuiltinType) -> &'static str {
+const fn builtin_name(builtin: BuiltinType) -> &'static str {
     match builtin {
         BuiltinType::I8 => "i8",
         BuiltinType::I16 => "i16",

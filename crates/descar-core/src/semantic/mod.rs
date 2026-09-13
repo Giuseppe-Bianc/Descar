@@ -17,4 +17,4 @@ pub use diagnostics::{Diagnostic, DiagnosticEngine, DiagnosticSeverity};
 pub use ids::{AstNodeId, GlobalScopeId, ScopeId, SymbolId, TypeId};
 pub use scope::{Scope, Symbol, SymbolKind, SymbolTable};
 pub use types::{BuiltinType, TypeContext};
-pub use validator::{validate_ast_shape, AstValidationError};
+pub use validator::{AstValidationError, validate_ast_shape};

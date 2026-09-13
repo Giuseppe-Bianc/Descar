@@ -25,10 +25,7 @@ pub struct SemanticConfig {
 impl SemanticConfig {
     #[must_use]
     pub fn new(language_version: LanguageVersion) -> Self {
-        Self {
-            language_version,
-            runtime_namespace: Arc::from("__descar_builtin"),
-        }
+        Self { language_version, runtime_namespace: Arc::from("__descar_builtin") }
     }
 
     #[must_use]

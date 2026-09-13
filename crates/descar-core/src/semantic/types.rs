@@ -26,8 +26,21 @@ pub enum BuiltinType {
 
 impl BuiltinType {
     pub const ALL: [Self; 15] = [
-        Self::I8, Self::I16, Self::I32, Self::I64, Self::U8, Self::U16, Self::U32, Self::U64,
-        Self::F32, Self::F64, Self::Char, Self::String, Self::Bool, Self::Void, Self::NullPtr,
+        Self::I8,
+        Self::I16,
+        Self::I32,
+        Self::I64,
+        Self::U8,
+        Self::U16,
+        Self::U32,
+        Self::U64,
+        Self::F32,
+        Self::F64,
+        Self::Char,
+        Self::String,
+        Self::Bool,
+        Self::Void,
+        Self::NullPtr,
     ];
 
     #[must_use]
@@ -99,12 +112,12 @@ impl TypeContext {
     }
 
     #[must_use]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.types.len()
     }
 
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.types.is_empty()
     }
 }

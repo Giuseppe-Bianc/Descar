@@ -113,20 +113,38 @@ fn validate_type(ty: &Type, files: &mut BTreeSet<String>) -> Result<(), AstValid
             validate_expr(size, files)
         }
         Type::Vector { element_type } => validate_type(element_type, files),
-        Type::I8 | Type::I16 | Type::I32 | Type::I64 | Type::U8 | Type::U16 | Type::U32 | Type::U64
-        | Type::F32 | Type::F64 | Type::Char | Type::String | Type::Bool | Type::Custom { .. } | Type::Void
+        Type::I8
+        | Type::I16
+        | Type::I32
+        | Type::I64
+        | Type::U8
+        | Type::U16
+        | Type::U32
+        | Type::U64
+        | Type::F32
+        | Type::F64
+        | Type::Char
+        | Type::String
+        | Type::Bool
+        | Type::Custom { .. }
+        | Type::Void
         | Type::NullPtr => Ok(()),
     }
 }
 
-fn validate_span(span: &crate::location::source_span::SourceSpan, files: &mut BTreeSet<String>) -> Result<(), AstValidationError> {
+fn validate_span(
+    span: &crate::location::source_span::SourceSpan, files: &mut BTreeSet<String>,
+) -> Result<(), AstValidationError> {
     if span.end().offset() < span.start().offset() {
         return Err(AstValidationError::InvalidSpan { file: span.file_path().to_owned() });
     }
-    if let Some(first) = files.iter().next() {
-        if first != span.file_path() {
-            return Err(AstValidationError::MultipleSourceFiles { first: first.clone(), second: span.file_path().to_owned() });
-        }
+    if let Some(first) = files.iter().next()
+        && first != span.file_path()
+    {
+        return Err(AstValidationError::MultipleSourceFiles {
+            first: first.clone(),
+            second: span.file_path().to_owned(),
+        });
     }
     files.insert(span.file_path().to_owned());
     Ok(())

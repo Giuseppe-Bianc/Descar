@@ -31,16 +31,24 @@ impl Diagnostic {
     }
 
     #[must_use]
-    pub fn severity(&self) -> DiagnosticSeverity { self.severity }
+    pub const fn severity(&self) -> DiagnosticSeverity {
+        self.severity
+    }
 
     #[must_use]
-    pub fn message(&self) -> &str { &self.message }
+    pub fn message(&self) -> &str {
+        &self.message
+    }
 
     #[must_use]
-    pub fn span(&self) -> Option<&SourceSpan> { self.span.as_ref() }
+    pub const fn span(&self) -> Option<&SourceSpan> {
+        self.span.as_ref()
+    }
 
     #[must_use]
-    pub fn compile_error(&self) -> Option<&CompileError> { self.error.as_ref() }
+    pub const fn compile_error(&self) -> Option<&CompileError> {
+        self.error.as_ref()
+    }
 }
 
 #[derive(Debug, Default)]
@@ -50,21 +58,33 @@ pub struct DiagnosticEngine {
 
 impl DiagnosticEngine {
     #[must_use]
-    pub const fn new() -> Self { Self { diagnostics: Vec::new() } }
+    pub const fn new() -> Self {
+        Self { diagnostics: Vec::new() }
+    }
 
-    pub fn emit(&mut self, diagnostic: Diagnostic) { self.diagnostics.push(diagnostic); }
-
-    #[must_use]
-    pub fn diagnostics(&self) -> &[Diagnostic] { &self.diagnostics }
-
-    #[must_use]
-    pub fn has_errors(&self) -> bool {
-        self.diagnostics.iter().any(|d| matches!(d.severity, DiagnosticSeverity::Error | DiagnosticSeverity::Fatal | DiagnosticSeverity::Internal))
+    pub fn emit(&mut self, diagnostic: Diagnostic) {
+        self.diagnostics.push(diagnostic);
     }
 
     #[must_use]
-    pub fn len(&self) -> usize { self.diagnostics.len() }
+    pub fn diagnostics(&self) -> &[Diagnostic] {
+        &self.diagnostics
+    }
 
     #[must_use]
-    pub const fn is_empty(&self) -> bool { self.diagnostics.is_empty() }
+    pub fn has_errors(&self) -> bool {
+        self.diagnostics.iter().any(|d| {
+            matches!(d.severity, DiagnosticSeverity::Error | DiagnosticSeverity::Fatal | DiagnosticSeverity::Internal)
+        })
+    }
+
+    #[must_use]
+    pub const fn len(&self) -> usize {
+        self.diagnostics.len()
+    }
+
+    #[must_use]
+    pub const fn is_empty(&self) -> bool {
+        self.diagnostics.is_empty()
+    }
 }
