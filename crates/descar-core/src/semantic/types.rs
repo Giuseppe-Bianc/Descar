@@ -66,17 +66,27 @@ impl BuiltinType {
 }
 
 /// Interned semantic types. Builtins occupy deterministic slots 0..15.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct TypeContext {
     types: Vec<Type>,
     builtin_ids: HashMap<BuiltinType, TypeId>,
     interned: HashMap<Type, TypeId>,
 }
 
+impl Default for TypeContext {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl TypeContext {
     #[must_use]
     pub fn new() -> Self {
-        let mut context = Self::default();
+        let mut context = Self {
+            types: Vec::new(),
+            builtin_ids: HashMap::new(),
+            interned: HashMap::new(),
+        };
         for builtin in BuiltinType::ALL {
             context.intern_builtin(builtin);
         }
