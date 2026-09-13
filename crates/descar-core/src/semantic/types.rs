@@ -43,6 +43,7 @@ impl BuiltinType {
         Self::NullPtr,
     ];
 
+    /// Returns the corresponding syntax-level type.
     #[must_use]
     pub const fn syntax(self) -> Type {
         match self {
@@ -53,7 +54,6 @@ impl BuiltinType {
             Self::U8 => Type::U8,
             Self::U16 => Type::U16,
             Self::U32 => Type::U32,
-            Self::U64 => Type::U64,
             Self::F32 => Type::F32,
             Self::F64 => Type::F64,
             Self::Char => Type::Char,
@@ -74,12 +74,14 @@ pub struct TypeContext {
 }
 
 impl Default for TypeContext {
+    /// Creates a type context with all canonical builtin types initialized.
     fn default() -> Self {
         Self::new()
     }
 }
 
 impl TypeContext {
+    /// Creates a type context and interns every builtin type in deterministic order.
     #[must_use]
     pub fn new() -> Self {
         let mut context = Self { types: Vec::new(), builtin_ids: HashMap::new(), interned: HashMap::new() };
@@ -95,6 +97,7 @@ impl TypeContext {
         id
     }
 
+    /// Interns a type and returns its stable semantic identifier.
     #[must_use]
     pub fn intern(&mut self, ty: Type) -> TypeId {
         if let Some(id) = self.interned.get(&ty).copied() {
@@ -107,21 +110,25 @@ impl TypeContext {
         id
     }
 
+    /// Returns the stable identifier assigned to a builtin type.
     #[must_use]
     pub fn builtin(&self, builtin: BuiltinType) -> TypeId {
         self.builtin_ids[&builtin]
     }
 
+    /// Returns the syntax-level type associated with a semantic identifier.
     #[must_use]
     pub fn get(&self, id: TypeId) -> Option<&Type> {
         self.types.get(id.index() as usize)
     }
 
+    /// Returns the number of interned types.
     #[must_use]
     pub const fn len(&self) -> usize {
         self.types.len()
     }
 
+    /// Returns whether the type context contains no interned types.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.types.is_empty()
