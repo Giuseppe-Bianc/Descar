@@ -45,18 +45,25 @@ impl Scope {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SymbolTable {
     symbols: Vec<Symbol>,
     scopes: Vec<Scope>,
 }
 
+impl Default for SymbolTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SymbolTable {
     #[must_use]
     pub fn new() -> Self {
-        let mut table = Self::default();
-        table.scopes.push(Scope::new(ScopeId::new(0), None, None));
-        table
+        Self {
+            symbols: Vec::new(),
+            scopes: vec![Scope::new(ScopeId::new(0), None, None)],
+        }
     }
 
     #[must_use]
