@@ -12,6 +12,7 @@ use super::{
     validator::{AstValidationError, validate_ast_shape},
 };
 
+/// Resulting state of semantic-context initialization.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InitializationStatus {
     Ready,
@@ -35,17 +36,20 @@ impl BuiltinRegistry {
         Self { type_symbols }
     }
 
+    /// Returns the symbol assigned to a builtin type.
     #[must_use]
     pub fn type_symbol(&self, builtin: BuiltinType) -> SymbolId {
         self.type_symbols[&builtin]
     }
 
+    /// Returns the complete builtin type-to-symbol registry.
     #[must_use]
     pub const fn type_symbols(&self) -> &BTreeMap<BuiltinType, SymbolId> {
         &self.type_symbols
     }
 }
 
+/// Owns the semantic state shared by the Phase 01 analysis pipeline.
 #[derive(Debug)]
 pub struct SemanticContext {
     config: SemanticConfig,
@@ -58,6 +62,7 @@ pub struct SemanticContext {
 }
 
 impl SemanticContext {
+    /// Validates an AST shape and freezes a successfully initialized context.
     #[allow(clippy::result_large_err)]
     pub fn initialize(ast: &[Stmt], config: SemanticConfig) -> Result<Self, Self> {
         let mut context = Self::new(config);
@@ -70,6 +75,7 @@ impl SemanticContext {
         Ok(context)
     }
 
+    /// Creates an unfrozen semantic context with builtin state initialized.
     #[must_use]
     pub fn new(config: SemanticConfig) -> Self {
         let types = TypeContext::new();
@@ -86,41 +92,49 @@ impl SemanticContext {
         }
     }
 
+    /// Returns the immutable semantic configuration.
     #[must_use]
     pub const fn config(&self) -> &SemanticConfig {
         &self.config
     }
 
+    /// Returns the canonical global scope identifier.
     #[must_use]
     pub const fn global_scope(&self) -> GlobalScopeId {
         self.symbols.global_scope()
     }
 
+    /// Returns the semantic type context.
     #[must_use]
     pub const fn types(&self) -> &TypeContext {
         &self.types
     }
 
+    /// Returns the builtin symbol registry.
     #[must_use]
     pub const fn builtins(&self) -> &BuiltinRegistry {
         &self.builtins
     }
 
+    /// Returns the semantic symbol table.
     #[must_use]
     pub const fn symbols(&self) -> &SymbolTable {
         &self.symbols
     }
 
+    /// Returns diagnostics collected during initialization.
     #[must_use]
     pub const fn diagnostics(&self) -> &DiagnosticEngine {
         &self.diagnostics
     }
 
+    /// Returns the current initialization status.
     #[must_use]
     pub const fn status(&self) -> InitializationStatus {
         self.status
     }
 
+    /// Returns whether successful initialization has frozen the context.
     #[must_use]
     pub const fn is_frozen(&self) -> bool {
         self.frozen
