@@ -1,50 +1,54 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+Version change: N/A → 1.0.0
+Added Principles: 1-5
+Added Sections: Section 2 (Constraints), Section 3 (Development Workflow)
+-->
+# Descar Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### Stack Tecnologico e Build
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+Il progetto è scritto in Rust, utilizza Cargo per gestione dipendenze, compilazione, test e attività di sviluppo. Il workspace comprende crate `descar-core`, `descar-cli`, `descar`. Non introdurre strumenti di altri ecosistemi.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### Architettura
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+Separazione chiara delle responsabilità tra crate: `descar-core` fornisce funzioni base del compilatore, `descar-cli` gestisce interfaccia a riga di comando, `descar` è entry point e composizione. Evitare dipendenze circolari o verso livelli superiori.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### Principi di Sviluppo Rust
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Seguire convenzioni idiomatiche Rust: ownership/borrowing corretto, gestione esplicita di Result/Option, error handling idiomatico, API semplici, tipi espressivi, eliminare duplicazioni, mantenere leggibilità, evitare `unsafe` salvo motivazione documentata.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### Formattazione, Linting e Testing
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+Formattare con rustfmt (`cargo fmt --all -- --check`). Lint con Clippy (`cargo clippy --workspace --all-targets --all-features -- -D warnings`). Test con `cargo test` e snapshot testing con `insta` quando opportuno. Coprire casi ordinari, corner, edge, error handling, CLI testing. Garantire test deterministici, isolati.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### Governance, CI e Dipendenze
+
+Versionare con Semantic Versioning. CI esegue fmt, clippy, test su più OS. Aggiungere dipendenze solo se necessarie, preferire standard library. Documentare modifiche con Conventional Commits. Rispettare regola di precedenza: requisiti espliciti > architettura > Rust/Cargo > dipendenze > best practice.
+
+## Constraints
+
+- No Maven, Gradle, Java, JUnit o altri strumenti non Rust.
+- Rust edition deve rispettare versione dichiarata nel workspace.
+- Dipendenze devono rispettare versioni definite in Cargo.toml.
+- Evitare dipendenze inutili; preferire standard library.
+- Utilizzare solo crate approvati dopo valutazione di sicurezza.
+
+## Development Workflow
+
+- Seguire Test-Driven Development: scrivere test che falliscono, implementare prefisso minimo, rifattorizzare.
+- Ogni modifica richiede test corrispondente (unit, integrazione, snapshot).
+- CI pipeline verifica formattazione, Clippy e tutti i test su Linux, macOS, Windows.
+- Pull request richiedono CI verde e revisione conforme ai principi.
+- Incrementare versione secondo Semantic Versioning per modifiche retro‑incompatible, aggiunta di funzionalità, o correzioni.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- Constitution supera tutte le altre linee guida del progetto.
+- Modifiche richiedono documentazione, approvazione e piano di migrazione.
+- Tutti i PR devono verificare conformità a ciascun principio prima del merge.
+- Utilizzare questo documento come fonte autoritaria per decisioni progettuali.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-09-14  | **Last Amended**: 2026-09-14
