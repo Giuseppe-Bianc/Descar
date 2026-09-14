@@ -1,57 +1,57 @@
 {
-    "permissions": {
-        "allow": [
-            "Bash(cargo build:*)",
-            "Bash(cargo check:*)",
-            "Bash(cargo test:*)",
-            "Bash(cargo fmt:*)",
-            "Bash(cargo clippy:*)",
-            "Bash(cargo run:*)",
-            "Bash(git status)",
-            "Bash(git diff:*)",
-            "Read(**)",
-            "Edit(crates/**)",
-            "Edit(Cargo.toml)",
-            "Edit(rustfmt.toml)"
-        ],
-        "deny": [
-            "Bash(rm -rf:*)",
-            "Bash(git push:*)",
-            "Bash(curl:*)",
-            "Bash(wget:*)",
-            "Bash(sudo:*)",
-            "Read(.env)",
-            "Read(**/*.pem)",
-            "Read(**/id_rsa*)",
-            "Edit(.github/workflows/**)"
-        ]
-    },
-    "hooks": {
-        "PreToolUse": [
-            {
-                "matcher": "Edit|Write|MultiEdit",
-                "hooks": [
-                    {
-                        "type": "command",
-                        "command": "file=$(jq -r '.tool_input.file_path // empty'); if [[ \"$file\" == *.rs ]]; then cargo fmt --all; fi"
-                    }
-                ]
-            }
-        ]
-    },
-    "PostToolUse": [
-        {
-            "matcher": "Edit|Write|MultiEdit",
-            "hooks": [
-                {
-                    "type": "command",
-                    "command": "file=$(jq -r '.tool_input.file_path // empty'); if [[ \"$file\" == *.rs ]]; then cargo clippy --workspace --all-targets --all-features -- -D warnings; fi"
-                },
-                {
-                    "type": "command",
-                    "command": "file=$(jq -r '.tool_input.file_path // empty'); if [[ \"$file\" == *.rs ]]; then cargo test --workspace --all-features; fi"
-                }
-            ]
-        }
+  "permissions": {
+    "allow": [
+      "Bash(cargo build:*)",
+      "Bash(cargo check:*)",
+      "Bash(cargo test:*)",
+      "Bash(cargo fmt:*)",
+      "Bash(cargo clippy:*)",
+      "Bash(cargo run:*)",
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Read(**)",
+      "Edit(crates/**)",
+      "Edit(Cargo.toml)",
+      "Edit(rustfmt.toml)"
+    ],
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(git push:*)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(sudo:*)",
+      "Read(.env)",
+      "Read(**/*.pem)",
+      "Read(**/id_rsa*)",
+      "Edit(.github/workflows/**)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=$(jq -r '.tool_input.file_path // empty'); if [[ \"$file\" == *.rs ]]; then cargo fmt --all; fi"
+          }
+        ]
+      }
+    ]
+  },
+  "PostToolUse": [
+    {
+      "matcher": "Edit|Write|MultiEdit",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "file=$(jq -r '.tool_input.file_path // empty'); if [[ \"$file\" == *.rs ]]; then cargo clippy --workspace --all-targets --all-features -- -D warnings; fi"
+        },
+        {
+          "type": "command",
+          "command": "file=$(jq -r '.tool_input.file_path // empty'); if [[ \"$file\" == *.rs ]]; then cargo test --workspace --all-features; fi"
+        }
+      ]
+    }
+  ]
 }
