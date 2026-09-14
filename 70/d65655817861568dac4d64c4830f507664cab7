@@ -1,0 +1,14 @@
+.specify/memory/constitution.md
+  h_361662506da91f 29,41-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "70d65655817861568dac4d64c4830f507664cab7",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
