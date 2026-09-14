@@ -54,3 +54,5 @@ logs/
 # Dist / release packaging
 dist/
 release/
+
+*.pyc
