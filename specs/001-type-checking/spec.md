@@ -1,12 +1,23 @@
 # Feature Specification: Semantic Type Checking
 
-**Feature Branch**: ``
+**Feature Branch**: `001-type-checking`
 
 **Created**: 2026-09-14
 
 **Status**: Draft
 
 **Input**: User description: "Add a semantic type-checking stage to the existing compiler pipeline that runs after parsing and before [codegen/interpretation]. The type checker validates variable declarations, assignments, expressions, literals, operators, function calls, return statements, and control-flow constructs against the language's type rules. It must integrate using the same architectural patterns, traversal style, and diagnostic-reporting conventions already established by the lexer and parser. The design must allow new types, operators, expressions, and statements to be added with localized changes only, without modifying unrelated parts of the type-checking infrastructure. Type errors must report precise source locations, the incompatible types involved, and the expected type or constraint, formatted consistently with existing lexer/parser diagnostics."
+
+## User Scenarios & Testing *(mandatory)*
+
+## Clarifications
+
+### Session 2026-09-14
+- Q: Which types must the semantic type checker support? -> A: Core primitives (i32, f64, bool, str) and user-defined structs/enums
+- Q: How should the type checker handle recursive type definitions to prevent infinite loops during validation? -> A: Use visited-set or memoization to detect and handle cycles
+- Q: Does the language support implicit type casting (coercion) between primitive types (e.g., i32 to f64)? -> A: No implicit casting; require explicit conversion
+- Q: Should the type checker perform any flow-sensitive analysis (e.g., checking for uninitialized variables)? -> A: Simple AST visitor; no flow-sensitive analysis
+- Q: How should the type checker handle ambiguous generic constraints if they are introduced in the future? -> A: Treat as type error; require explicit type annotations
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -49,8 +60,8 @@ Developer calls function with arguments of wrong types. Compiler reports mismatc
 
 ### Edge Cases
 
-- What happens when type inference fails due to ambiguous generic constraints?
-- How does system handle recursive type definitions that could cause infinite loops?
+- What happens when type inference fails due to ambiguous generic constraints? System MUST treat this as type error and require explicit type annotations.
+- How does system handle recursive type definitions that could cause infinite loops? System MUST use visited-set or memoization to detect and handle cycles.
 
 ## Requirements *(mandatory)*
 
@@ -65,6 +76,9 @@ Developer calls function with arguments of wrong types. Compiler reports mismatc
 - **FR-007**: System MUST allow extension of type system (new primitive types, user-defined structs, enums) with localized changes only.
 - **FR-008**: System MUST allow addition of new operators or expressions with minimal impact on existing type-checker components.
 - **FR-009**: System MUST not modify unrelated components of compiler pipeline (lexer, parser) beyond attaching type information to AST nodes.
+- **FR-010**: System MUST support core primitive types (i32, f64, bool, str) and user-defined structs and enums.
+- **FR-011**: System MUST not allow implicit type casting (coercion) between primitive types; explicit conversion MUST be required.
+- **FR-012**: System MUST operate as simple AST visitor; no flow-sensitive analysis (e.g., definite assignment) is required.
 
 ### Key Entities
 
