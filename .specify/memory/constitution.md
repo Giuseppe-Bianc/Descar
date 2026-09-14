@@ -26,7 +26,7 @@ Formattare con rustfmt (`cargo fmt --all -- --check`). Lint con Clippy (`cargo c
 
 ### Governance, CI e Dipendenze
 
-Versionare con Semantic Versioning. CI esegue fmt, clippy, test su più OS. Aggiungere dipendenze solo se necessarie, preferire standard library. Documentare modifiche con Conventional Commits. Rispettare regola di precedenza: requisiti espliciti > architettura > Rust/Cargo > dipendenze > best practice.
+Versionare con Semantic Versioning. CI esegue fmt, clippy, test su più OS. Aggiungere dipendenze solo se necessarie, preferire standard library. Documentare modifiche con Conventional Commits. Rispettare la regola di precedenza: requisiti funzionali > architettura > Rust/Cargo > dipendenze > best practice; i vincoli di sicurezza, compliance e approvazione delle dipendenze non sono derogabili.
 
 ## Constraints
 
@@ -38,8 +38,8 @@ Versionare con Semantic Versioning. CI esegue fmt, clippy, test su più OS. Aggi
 
 ## Development Workflow
 
-- Seguire Test-Driven Development: scrivere test che falliscono, implementare prefisso minimo, rifattorizzare.
-- Ogni modifica richiede test corrispondente (unit, integrazione, snapshot).
+- Seguire Test-Driven Development: scrivere test che falliscono, implementare la soluzione minima, rifattorizzare.
+- Ogni modifica al codice o al comportamento richiede un test corrispondente (unit, integrazione, snapshot). Le modifiche a documentazione, configurazione o governance richiedono la validazione appropriata.
 - CI pipeline verifica formattazione, Clippy e tutti i test su Linux, macOS, Windows.
 - Pull request richiedono CI verde e revisione conforme ai principi.
 - Incrementare versione secondo Semantic Versioning per modifiche retro‑incompatible, aggiunta di funzionalità, o correzioni.
