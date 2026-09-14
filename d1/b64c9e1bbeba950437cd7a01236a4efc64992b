@@ -1,0 +1,26 @@
+.specify/extensions/git/git-config.yml
+  h_361662506da91f 1-80
+.claude/settings.json
+  s_6b929a0bd1ae18::t_2c8c047f2bfca2 2-37,39-45,47-52,54-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d1b64c9e1bbeba950437cd7a01236a4efc64992b",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_6b929a0bd1ae18": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1923643-ba9a-44c9-a5e2-067fe759e0e4",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
