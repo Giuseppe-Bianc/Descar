@@ -1,0 +1,44 @@
+specs/001-type-checking/contracts/library-api.md
+  s_9a76565dacbf35::t_0b8b2ce85cfeb8 165-169,185-189,192-194
+  s_b9000ea3a7040d::t_e74f5bee6110b5 33,43-46,77,82,219,222-242
+  s_703b1369b02cb7::t_daf10c509da6cd 36
+  s_9a76565dacbf35::t_98d8b1ddcb3724 195
+  s_b9000ea3a7040d::t_a582852877d0ca 243
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b2f5f3715131fb75dc0ed355724b2cf61b34fa79",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_703b1369b02cb7": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "06a43780-f195-42cd-b1d6-0738999e23a0",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    },
+    "s_9a76565dacbf35": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "61fcb370-731c-4ee4-90f5-863402892b8c",
+        "model": "mai-code-1.1-flash"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    },
+    "s_b9000ea3a7040d": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "ae960bbd-8973-4c22-b1af-7d801d97839d",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
