@@ -29,6 +29,11 @@
 - Q: To what extent should the type checker support type inference? -> A: Local inference for variable declarations
 - Q: In what order should the type checker search the symbol table stack for an identifier? -> A: Inner-to-outer; search current scope, then parent, up to global
 - Q: Which `CompileError` variant should be used for duplicate declarations in the same scope? -> A: Reuse `CompileError::TypeError`
+- Q: Does language support forward references for functions and types? -> A: Allow forward references within same scope (multi-pass)
+- Q: How is "medium-sized project" defined for the performance target in SC-003? -> A: By line count (1k-10k LOC)
+- Q: Are user-defined structs and enums nominally typed or structurally typed? -> A: Nominally typed
+- Q: Does language support generic types (e.g., `List<T>`) or only concrete types? -> A: Concrete types only (generics not supported yet)
+- Q: Should the type checker handle constant expressions (e.g., `const X = 1 + 2;`) by evaluating them during type checking, or just check their types? -> A: Just check types (no evaluation)
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -58,6 +63,7 @@ Developer uses arithmetic operator on incompatible types (e.g., adding string to
 **Acceptance Scenarios**:
 
 1. **Given** source with operator misuse, **When** compiler runs, **Then** error cites operator and operand types.
+
 ---
 
 ### User Story 3 - Function call type checking (Priority: P3)
@@ -67,6 +73,7 @@ Developer calls function with arguments of wrong types. Compiler reports mismatc
 **Why this priority**: Ensures correct API usage within code.
 
 **Independent Test**: Define function `fn foo(i: i32) {}` and call `foo("s");`. Expect error indicating expected `i32` vs provided `string`.
+
 ---
 
 ### User Story 4 - Variable Shadowing (Priority: P2)
@@ -80,6 +87,7 @@ Developer declares variable in nested scope with same name as outer scope. Compi
 **Acceptance Scenarios**:
 
 1. **Given** nested scopes with same identifier, **When** identifier is used, **Then** compiler resolves to most local definition.
+
 ---
 
 ### User Story 5 - Duplicate Declaration (Priority: P2)
@@ -93,6 +101,7 @@ Developer declares variable twice in same scope. Compiler reports duplicate decl
 **Acceptance Scenarios**:
 
 1. **Given** same scope with duplicate identifier, **When** compiler runs, **Then** error reports duplicate declaration.
+
 ---
 
 ### Edge Cases
@@ -113,9 +122,9 @@ Developer declares variable twice in same scope. Compiler reports duplicate decl
 - **FR-007**: System MUST allow extension of type system (new primitive types, user-defined structs, enums) with localized changes only.
 - **FR-008**: System MUST allow addition of new operators or expressions with minimal impact on existing type-checker components.
 - **FR-009**: System MUST not modify unrelated components of compiler pipeline (lexer, parser) beyond attaching type information to AST nodes.
-- **FR-010**: System MUST support core primitive types (i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, char, string, bool) and user-defined structs and enums.
+- **FR-010**: System MUST support core primitive types (i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, char, string, bool) and user-defined nominally typed structs and enums.
 - **FR-011**: System MUST not allow implicit type casting (coercion) between primitive types; explicit conversion MUST be required.
-- **FR-012**: System MUST operate as simple AST visitor; no flow-sensitive analysis (e.g., definite assignment) is required.
+- **FR-012**: System MUST operate as a multi-pass AST visitor to support forward references for functions and types within the same scope; no flow-sensitive analysis (e.g., definite assignment) is required.
 - **FR-013**: All type‑checking errors must be represented by the `TypeError` variant of `CompileError` defined in `src/error/compile_error.rs`
 - **FR-014**: System MUST resolve identifiers using a stack of symbol tables in inner-to-outer order (current scope, then parent, up to global) to support nested scopes (blocks, functions).
 
@@ -132,7 +141,7 @@ Developer declares variable twice in same scope. Compiler reports duplicate decl
 
 - **SC-001**: 100% of type errors in test suite are reported with accurate source location and expected type.
 - **SC-002**: No false-positive type errors in a suite of valid programs (baseline >= 200 test cases).
-- **SC-003**: Type-checking adds at most 15% overhead to overall compilation time on average for medium-sized projects.
+- **SC-003**: Type-checking adds at most 15% overhead to overall compilation time on average for medium-sized projects (defined as 1k-10k LOC).
 - **SC-004**: Stakeholder satisfaction rating ≥ 4/5 in post‑implementation survey regarding clarity of type error messages.
 
 ## Assumptions
