@@ -1,0 +1,35 @@
+specs/001-type-checking/research.md
+  s_a703115a038232::t_a68355e0b657f7 176
+specs/001-type-checking/data-model.md
+  s_c4eee9e3bcc88a::t_4de85c1006456d 155-157,166,170-175,229,231
+  h_361662506da91f 137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d57e263e772a45d5c272db0215f120844a56c4e1",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_a703115a038232": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "c307feea-fb0f-4f6c-9dda-0ded1c731b63",
+        "model": "mai-code-1.1-flash"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    },
+    "s_c4eee9e3bcc88a": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "645a5b9d-868b-4415-a127-34c4e29bba7d",
+        "model": "mai-code-1.1-flash"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
