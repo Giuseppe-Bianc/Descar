@@ -156,7 +156,7 @@ Developer defines a struct or enum that refers to itself directly or indirectly.
 
 ### Edge Cases
 
-- What happens when type inference fails due to ambiguous generic constraints? System MUST treat this as type error and require explicit type annotations.
+- What happens when type inference fails due to ambiguous generic constraints? **Future behavior:** Once generics are supported, ambiguous constraints will be treated as type errors; currently generics unsupported, so this requirement deferred.
 - How does system handle recursive type definitions that could cause infinite loops? System MUST use visited-set or memoization to detect and handle cycles.
 
 ## Requirements *(mandatory)*
