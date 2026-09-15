@@ -19,6 +19,13 @@
 - Q: Should the type checker perform any flow-sensitive analysis (e.g., checking for uninitialized variables)? -> A: Simple AST visitor; no flow-sensitive analysis
 - Q: How should the type checker handle ambiguous generic constraints if they are introduced in the future? -> A: Treat as type error; require explicit type annotations
 
+### Session 2026-09-15
+- Q: Should the type checker reuse the existing `CompileError` enum for its error reporting, matching the pattern used in lexer and parser? -> A: Reuse `CompileError` enum
+- Q: Must the type checker use the `TypeError` variant from `CompileError`? -> A: Yes, use `CompileError::TypeError` variant.
+- Q: Should diagnostics include fix suggestions? -> A: Include fix suggestions for all type errors.
+- Q: How should the type checker resolve variable and type identifiers? -> A: Stack of symbol tables; supports nested blocks and functions
+- Q: To what extent should the type checker support type inference? -> A: Local inference for variable declarations
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Type error detection (Priority: P1)
@@ -67,24 +74,27 @@ Developer calls function with arguments of wrong types. Compiler reports mismatc
 
 ### Functional Requirements
 
-- **FR-001**: System MUST traverse AST after parsing and perform type inference and validation for variable declarations, assignments, literals, and expressions.
+- **FR-001**: System MUST traverse AST after parsing and perform local type inference (for variable declarations) and validation for variables, assignments, literals, and expressions.
 - **FR-002**: System MUST validate operator operand types according to language rules and emit diagnostic on mismatch.
 - **FR-003**: System MUST check function call argument types against parameter signatures and report mismatches.
 - **FR-004**: System MUST verify return statement types against function return type annotations.
 - **FR-005**: System MUST validate control-flow constructs (if, while, match) for condition expression types being boolean.
-- **FR-006**: System MUST produce diagnostics that include source location (file, line, column), found type, expected type or constraint, and follow existing diagnostic format.
+- **FR-006**: System MUST produce diagnostics that include source location (file, line, column), found type, expected type or constraint, optional fix suggestion, and follow existing diagnostic format.
 - **FR-007**: System MUST allow extension of type system (new primitive types, user-defined structs, enums) with localized changes only.
 - **FR-008**: System MUST allow addition of new operators or expressions with minimal impact on existing type-checker components.
 - **FR-009**: System MUST not modify unrelated components of compiler pipeline (lexer, parser) beyond attaching type information to AST nodes.
 - **FR-010**: System MUST support core primitive types (i32, f64, bool, str) and user-defined structs and enums.
 - **FR-011**: System MUST not allow implicit type casting (coercion) between primitive types; explicit conversion MUST be required.
 - **FR-012**: System MUST operate as simple AST visitor; no flow-sensitive analysis (e.g., definite assignment) is required.
+- **FR-013**: All type‑checking errors must be represented by the `TypeError` variant of `CompileError` defined in `src/error/compile_error.rs`
+- **FR-014**: System MUST resolve identifiers using a stack of symbol tables to support nested scopes (blocks, functions).
 
 ### Key Entities
 
 - **AST Node**: Represents syntactic elements; extended with `type_info` field after type checking.
 - **TypeInfo**: Holds resolved type, constraints, and source location for diagnostics.
 - **Diagnostic**: Existing structure used by lexer/parser; type-checker must emit compatible diagnostics.
+- **Symbol Table**: Maps identifiers to their types and metadata within a specific scope.
 
 ## Success Criteria *(mandatory)*
 
