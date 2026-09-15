@@ -134,7 +134,7 @@ classDiagram
 ### 2.1 `Scope` and `ScopeTree`
 
 - Scope hierarchy is stored as an indexed arena: `Vec<Scope>` with `ScopeId(usize)`.
-- Parent references are `Option<ScopeId>`. No reference counting or interior mutability (`Rc<RefCell<_>`)).
+- Parent references are `Option<ScopeId>`. No reference counting or interior mutability (`Rc<RefCell<_>>`).
 - **Inner-to-outer resolution** (FR-014):
   1. Check `current_scope.bindings`.
   2. If absent, follow `scope.parent` upwards until `root_scope` (Module scope).
@@ -152,9 +152,9 @@ classDiagram
 classDiagram
     class TypeTable {
         +Vec~TypeState~ types
-        +HashMap~TypeDefinition, TypeId~ interned
-        +HashMap~String, TypeId~ nominal
-        +reserve_nominal(String, NominalKind) TypeId
+        +HashMap~TypeKey, TypeId~ interned
+        +HashMap~TypeDeclId, TypeId~ nominal
+        +reserve_nominal(TypeDeclId, NominalKind) TypeId
         +complete(TypeId, TypeDefinition)
         +get_or_intern(TypeDefinition) TypeId
         +get(TypeId) TypeDefinition
@@ -163,8 +163,14 @@ classDiagram
 
     class TypeState {
         <<enumeration>>
-        Reserved(String, NominalKind)
+        Reserved(TypeDeclId, NominalKind)
         Complete(TypeDefinition)
+    }
+
+    class TypeKey {
+        <<enumeration>>
+        Nominal(TypeDeclId)
+        Structural(TypeDefinition)
     }
 
     class NominalKind {
@@ -220,9 +226,9 @@ classDiagram
 
 ### 3.2 Nominal Type Reservation
 
-Nominal declarations receive their stable `TypeId` before any field or variant type is resolved. `TypeTable::reserve_nominal` creates a `Reserved(name, kind)` slot and records the name-to-`TypeId` binding in `nominal`. `complete` replaces that slot with the fully resolved `TypeDefinition`; it must preserve the original `TypeId` and reject completion of an already completed or unrelated reservation.
+Nominal declarations receive their stable `TypeId` before any field or variant type is resolved. `TypeTable::reserve_nominal` creates a `Reserved(TypeDeclId, kind)` slot and records the declaration-identity-to-`TypeId` binding in `nominal`. `complete` replaces that slot with the fully resolved `TypeDefinition`; it must preserve the original `TypeId` and reject completion of an already completed or unrelated reservation.
 
-`get_or_intern` interns complete structural definitions only. Reserved nominal types are identified by their declaration binding and must not be re-interned by their eventual field layout.
+`TypeTable::interned` uses a `TypeKey` discriminator: `Nominal(TypeDeclId)` for struct/enum declarations and `Structural(TypeDefinition)` for non-nominal type values. `get_or_intern` therefore interns structural definitions by their value while nominal declarations are keyed by their unique declaration identity rather than by their names or field layouts. This prevents two shadowed declarations with the same name and shape from collapsing to the same `TypeId`; distinct `SymbolId` or `TypeDeclId` values produce distinct nominal entries even when the declared fields are otherwise identical.
 
 ### 3.3 `sig` Type Resolution Flow
 
