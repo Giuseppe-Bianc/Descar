@@ -173,7 +173,7 @@ During Phase 3 (`sig`), the type checker scans struct and enum definitions to en
 
 ### Rationale
 
-- Prevents infinite recursion during type layout calculation and ensures types can be allocated in memory. Meets spec requirement FR-007 / Clarification 2026-09-14.
+- Prevents infinite recursion during type layout calculation and ensures types can be allocated in memory. Meets spec requirement US-8 (recursive-type edge case) / Clarification 2026-09-14.
 
 ---
 
