@@ -163,14 +163,28 @@ Developer defines a struct or enum that refers to itself directly or indirectly.
 
 ### Functional Requirements
 
-- **FR-001**: System MUST traverse AST after parsing and perform local type inference (for variable declarations) and validation for variables, assignments, literals, and expressions.
-- **FR-002**: System MUST validate operator operand types according to language rules and emit diagnostic on mismatch.
+- **FR-001**: System MUST traverse AST after parsing, perform local type inference for variable declarations, and validate variables, assignments, literals, and expressions. Unsuffixed numeric literals receive contextual typing: they adopt the expected type from variable declarations, assignment targets, or operand positions when compatible; literal values must be within target type's range; explicitly suffixed literals retain their declared type without implicit conversion. Expected types propagate through compound expressions (e.g., arithmetic, logical) without triggering implicit casts, respecting FR‑011.
+- **FR-002**: System MUST validate operator operand types according to language rules, including contextual typing for unsuffixed numeric literals and range validation, and emit diagnostic on mismatch.
 - **FR-003**: System MUST check function call argument types against parameter signatures and report mismatches.
 - **FR-004**: System MUST verify return statement types against function return type annotations.
 - **FR-005**: System MUST validate control-flow constructs (if, while, match) for condition expression types being boolean.
-- **FR-006**: System MUST produce diagnostics that include source location (file, line, column), found type, expected type or constraint, a fix suggestion for every type error, and follow existing diagnostic format.expected type or constraint, optional fix suggestion, and follow existing diagnostic format.
-- **FR-007**: System MUST allow extension of type system (new primitive types, user-defined structs, enums) with localized changes only.
-- **FR-008**: System MUST allow addition of new operators, expressions, or statements with minimal impact on existing type-checker components.
+- **FR-006**: System MUST produce diagnostics that include source location (file, line, column), found type, expected type or constraint, a fix suggestion for every type error, following existing diagnostic format, with CompileError::TypeError help field set to Some(...).
+- **FR-007**: System MUST allow extension of type system (new primitive types, user-defined structs, enums) with localized changes only, defined as modifications limited to ≤3 files and ≤150 lines total, and no changes to core type-checker logic beyond registration hooks.
+
+**Acceptance Scenarios for FR-007**:
+
+1. **New primitive type** `myint`: addition restricted to type definition file and registration in type registry; no other files altered.
+2. **User-defined struct** `Point`: changes confined to struct definition module and type registry; other components unchanged.
+3. **User-defined enum** `Color`: modifications limited to enum definition file and registry; no impact on existing type-checker code.
+
+- **FR-008**: System MUST allow addition of new operators, expressions, or statements with minimal impact on existing type-checker components, defined as at most 5 files changed and ≤200 lines total across modifications, and no changes to core type-checker logic beyond designated extension points.
+
+**Acceptance Scenarios for FR-008**:
+
+1. **New operator** `**` (exponentiation): only operator definition file, precedence table, and operator type rule modified; other components unchanged.
+2. **New expression** `len(expr)`: changes limited to expression handler and type inference for `len`; no other modules altered.
+3. **New statement** `assert!`: changes confined to statement parser and type-check rule; no other components affected.
+
 - **FR-009**: System MUST not modify unrelated components of compiler pipeline (lexer, parser) beyond attaching type information to AST nodes.
 - **FR-010**: System MUST support core primitive types (i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, char, string, bool) and user-defined nominally typed structs and enums.
 - **FR-011**: System MUST not allow implicit type casting (coercion) between primitive types; explicit conversion MUST be required.
