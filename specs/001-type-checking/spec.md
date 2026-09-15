@@ -13,7 +13,8 @@
 ## Clarifications
 
 ### Session 2026-09-14
-- Q: Which types must the semantic type checker support? -> A: Core primitives (i32, f64, bool, str) and user-defined structs/enums
+
+- Q: Which types must the semantic type checker support? -> A: Core primitives (I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, Char, String, Bool) and user-defined structs/enums
 - Q: How should the type checker handle recursive type definitions to prevent infinite loops during validation? -> A: Use visited-set or memoization to detect and handle cycles
 - Q: Does the language support implicit type casting (coercion) between primitive types (e.g., i32 to f64)? -> A: No implicit casting; require explicit conversion
 - Q: Should the type checker perform any flow-sensitive analysis (e.g., checking for uninitialized variables)? -> A: Simple AST visitor; no flow-sensitive analysis
@@ -25,6 +26,8 @@
 - Q: Should diagnostics include fix suggestions? -> A: Include fix suggestions for all type errors.
 - Q: How should the type checker resolve variable and type identifiers? -> A: Stack of symbol tables; supports nested blocks and functions
 - Q: To what extent should the type checker support type inference? -> A: Local inference for variable declarations
+- Q: In what order should the type checker search the symbol table stack for an identifier? -> A: Inner-to-outer; search current scope, then parent, up to global
+- Q: Which `CompileError` variant should be used for duplicate declarations in the same scope? -> A: Reuse `CompileError::TypeError`
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -65,6 +68,32 @@ Developer calls function with arguments of wrong types. Compiler reports mismatc
 **Independent Test**: Define function `fn foo(i: i32) {}` and call `foo("s");`. Expect error indicating expected `i32` vs provided `&str`.
 ---
 
+### User Story 4 - Variable Shadowing (Priority: P2)
+
+Developer declares variable in nested scope with same name as outer scope. Compiler resolves use of variable to the innermost declaration.
+
+**Why this priority**: Essential for block-scoped language semantics.
+
+**Independent Test**: Define `let x: i32 = 1; { let x: str = "a"; }`. In inner block, expect `x` to be treated as `str`.
+
+**Acceptance Scenarios**:
+
+1. **Given** nested scopes with same identifier, **When** identifier is used, **Then** compiler resolves to most local definition.
+---
+
+### User Story 5 - Duplicate Declaration (Priority: P2)
+
+Developer declares variable twice in same scope. Compiler reports duplicate declaration error.
+
+**Why this priority**: Prevent ambiguous variable resolution.
+
+**Independent Test**: Define `let x: i32 = 1; let x: i32 = 2;` in same block. Expect error reporting duplicate identifier `x`.
+
+**Acceptance Scenarios**:
+
+1. **Given** same scope with duplicate identifier, **When** compiler runs, **Then** error reports duplicate declaration.
+---
+
 ### Edge Cases
 
 - What happens when type inference fails due to ambiguous generic constraints? System MUST treat this as type error and require explicit type annotations.
@@ -83,11 +112,11 @@ Developer calls function with arguments of wrong types. Compiler reports mismatc
 - **FR-007**: System MUST allow extension of type system (new primitive types, user-defined structs, enums) with localized changes only.
 - **FR-008**: System MUST allow addition of new operators or expressions with minimal impact on existing type-checker components.
 - **FR-009**: System MUST not modify unrelated components of compiler pipeline (lexer, parser) beyond attaching type information to AST nodes.
-- **FR-010**: System MUST support core primitive types (i32, f64, bool, str) and user-defined structs and enums.
+- **FR-010**: System MUST support core primitive types (I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, Char, String, Bool) and user-defined structs and enums.
 - **FR-011**: System MUST not allow implicit type casting (coercion) between primitive types; explicit conversion MUST be required.
 - **FR-012**: System MUST operate as simple AST visitor; no flow-sensitive analysis (e.g., definite assignment) is required.
 - **FR-013**: All type‑checking errors must be represented by the `TypeError` variant of `CompileError` defined in `src/error/compile_error.rs`
-- **FR-014**: System MUST resolve identifiers using a stack of symbol tables to support nested scopes (blocks, functions).
+- **FR-014**: System MUST resolve identifiers using a stack of symbol tables in inner-to-outer order (current scope, then parent, up to global) to support nested scopes (blocks, functions).
 
 ### Key Entities
 
