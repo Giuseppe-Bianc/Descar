@@ -34,6 +34,8 @@
 - Q: Are user-defined structs and enums nominally typed or structurally typed? -> A: Nominally typed
 - Q: Does language support generic types (e.g., `List<T>`) or only concrete types? -> A: Concrete types only (generics not supported yet)
 - Q: Should the type checker handle constant expressions (e.g., `const X = 1 + 2;`) by evaluating them during type checking, or just check their types? -> A: Just check types (no evaluation)
+- Q: What happens when identifier lookup reaches global scope without a declaration? -> A: Emit `CompileError::TypeError` with location, diagnostic details, and fix suggestion.
+- Q: Are recursive structs and enums permitted in the language? -> A: Not permitted (Emit `CompileError::TypeError`)
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -74,6 +76,12 @@ Developer calls function with arguments of wrong types. Compiler reports mismatc
 
 **Independent Test**: Define function `fn foo(i: i32) {}` and call `foo("s");`. Expect error indicating expected `i32` vs provided `string`.
 
+**Acceptance Scenarios**:
+
+1. **Given** function call with correct argument types, **When** compiler runs, **Then** no type error.
+2. **Given** function call with one argument wrong type, **When** compiler runs, **Then** error shows expected type and provided type.
+3. **Given** function call with multiple arguments mismatched, **When** compiler runs, **Then** error reports each mismatched argument's expected vs provided types.
+
 ---
 
 ### User Story 4 - Variable Shadowing (Priority: P2)
@@ -104,6 +112,48 @@ Developer declares variable twice in same scope. Compiler reports duplicate decl
 
 ---
 
+### User Story 6 - Undeclared Variable (Priority: P1)
+
+Developer uses variable that is not declared in any accessible scope. Compiler reports error.
+
+**Why this priority**: Essential for correctness; prevents use of undefined identifiers.
+
+**Independent Test**: Compile file with `let y = x + 1;` where `x` is undeclared. Expect `CompileError::TypeError` with location, "undeclared variable 'x'", and fix suggestion.
+
+**Acceptance Scenarios**:
+
+1. **Given** use of undeclared identifier, **When** compiler runs, **Then** error includes `CompileError::TypeError`, precise location, diagnostic details, and fix suggestion.
+
+---
+
+### User Story 7 - Unknown Type (Priority: P1)
+
+Developer uses a type name that is not defined in the current or global scope. Compiler reports error.
+
+**Why this priority**: Essential for type safety; prevents use of undefined types.
+
+**Independent Test**: Define `let x: UnknownType = 1;`. Expect `CompileError::TypeError` with location, "unknown type 'UnknownType'", and fix suggestion.
+
+**Acceptance Scenarios**:
+
+1. **Given** use of unknown type, **When** compiler runs, **Then** error includes `CompileError::TypeError`, precise location, diagnostic details, and fix suggestion.
+
+---
+
+### User Story 8 - Recursive Type Detection (Priority: P2)
+
+Developer defines a struct or enum that refers to itself directly or indirectly. Compiler reports error.
+
+**Why this priority**: Prevent infinite loops during type validation and ensure type size is finite.
+
+**Independent Test**: Define `struct Node { next: Node }`. Expect `CompileError::TypeError` with location, "recursive type definition detected", and fix suggestion.
+
+**Acceptance Scenarios**:
+
+1. **Given** recursive type definition, **When** compiler runs, **Then** error includes `CompileError::TypeError`, precise location, diagnostic details, and fix suggestion.
+
+---
+
 ### Edge Cases
 
 - What happens when type inference fails due to ambiguous generic constraints? System MUST treat this as type error and require explicit type annotations.
@@ -118,15 +168,15 @@ Developer declares variable twice in same scope. Compiler reports duplicate decl
 - **FR-003**: System MUST check function call argument types against parameter signatures and report mismatches.
 - **FR-004**: System MUST verify return statement types against function return type annotations.
 - **FR-005**: System MUST validate control-flow constructs (if, while, match) for condition expression types being boolean.
-- **FR-006**: System MUST produce diagnostics that include source location (file, line, column), found type, expected type or constraint, optional fix suggestion, and follow existing diagnostic format.
+- **FR-006**: System MUST produce diagnostics that include source location (file, line, column), found type, expected type or constraint, a fix suggestion for every type error, and follow existing diagnostic format.expected type or constraint, optional fix suggestion, and follow existing diagnostic format.
 - **FR-007**: System MUST allow extension of type system (new primitive types, user-defined structs, enums) with localized changes only.
-- **FR-008**: System MUST allow addition of new operators or expressions with minimal impact on existing type-checker components.
+- **FR-008**: System MUST allow addition of new operators, expressions, or statements with minimal impact on existing type-checker components.
 - **FR-009**: System MUST not modify unrelated components of compiler pipeline (lexer, parser) beyond attaching type information to AST nodes.
 - **FR-010**: System MUST support core primitive types (i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, char, string, bool) and user-defined nominally typed structs and enums.
 - **FR-011**: System MUST not allow implicit type casting (coercion) between primitive types; explicit conversion MUST be required.
 - **FR-012**: System MUST operate as a multi-pass AST visitor to support forward references for functions and types within the same scope; no flow-sensitive analysis (e.g., definite assignment) is required.
 - **FR-013**: All type‑checking errors must be represented by the `TypeError` variant of `CompileError` defined in `src/error/compile_error.rs`
-- **FR-014**: System MUST resolve identifiers using a stack of symbol tables in inner-to-outer order (current scope, then parent, up to global) to support nested scopes (blocks, functions).
+- **FR-014**: System MUST resolve identifiers using a stack of symbol tables in inner-to-outer order (current scope, then parent, up to global) to support nested scopes (blocks, functions). If no declaration is found after searching the global scope, the system MUST emit a `CompileError::TypeError` with the relevant source location, diagnostic details, and a fix suggestion.
 
 ### Key Entities
 
