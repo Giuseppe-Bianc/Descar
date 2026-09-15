@@ -29,10 +29,10 @@ Runs lexical analysis, syntax parsing, and semantic type checking on the specifi
     - Output printed to `stderr` formatted via `ErrorReporter`:
 
     ```text
-    ERROR: Type error: [E2001] expected type 'i32', found 'bool' at example.dr:3:15
-      |
-    3 | let x: i32 = true;
-      |              ^^^^
+    ERROR [E2001] TYPE: expected type 'i32', found 'bool'
+    Location: example.dr:3:15-19
+       3 │ let x: i32 =  true;
+         │              ^^^^
     help: change the expression or type annotation to match
     ```
 
