@@ -1,0 +1,14 @@
+specs/001-type-checking/spec.md
+  h_361662506da91f 32,102,122-145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "602cdbf5b396dc62a60c91ec3a9a5eb8c755ae7d",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
