@@ -81,6 +81,8 @@ Developer calls function with arguments of wrong types. Compiler reports mismatc
 1. **Given** function call with correct argument types, **When** compiler runs, **Then** no type error.
 2. **Given** function call with one argument wrong type, **When** compiler runs, **Then** error shows expected type and provided type.
 3. **Given** function call with multiple arguments mismatched, **When** compiler runs, **Then** error reports each mismatched argument's expected vs provided types.
+4. **Given** function call with too few arguments, **When** compiler runs, **Then** error (`CompileError::TypeError`) with `ErrorCode::E2028`, call-site span, expected argument count, provided count, and fix suggestion.
+5. **Given** function call with too many arguments, **When** compiler runs, **Then** error (`CompileError::TypeError`) with `ErrorCode::E2028`, call-site span, expected argument count, provided count, and fix suggestion.
 
 ---
 
@@ -164,18 +166,18 @@ Developer defines a struct or enum that refers to itself directly or indirectly.
 ### Functional Requirements
 
 - **FR-001**: System MUST traverse AST after parsing, perform local type inference for variable declarations, and validate variables, assignments, literals, and expressions. Unsuffixed numeric literals receive contextual typing: they adopt the expected type from variable declarations, assignment targets, or operand positions when compatible; literal values must be within target type's range; explicitly suffixed literals retain their declared type without implicit conversion. Expected types propagate through compound expressions (e.g., arithmetic, logical) without triggering implicit casts, respecting FR‑011.
-- **FR-002**: System MUST validate operator operand types according to language rules, including contextual typing for unsuffixed numeric literals and range validation, and emit diagnostic on mismatch.
-- **FR-003**: System MUST check function call argument types against parameter signatures and report mismatches.
+- **FR-002**: System MUST validate operator operand types according to language rules, defining behavior for mixed numeric operands (e.g., 1 + 2.0). Mixed i64/f64 operands REJECTED with `CompileError::TypeError` unless a heterogeneous operator defined; then document operator signature and result type. Include contextual typing for unsuffixed numeric literals and range validation, and emit diagnostic on mismatch.
+- **FR-003**: System MUST check function call argument types against parameter signatures, including argument count validation. Mismatched count triggers `CompileError::TypeError` with `ErrorCode::E2028`, call-site span, expected and provided argument counts, and a non-empty fix suggestion.
 - **FR-004**: System MUST verify return statement types against function return type annotations.
 - **FR-005**: System MUST validate control-flow constructs (if, while, match) for condition expression types being boolean.
-- **FR-006**: System MUST produce diagnostics that include source location (file, line, column), found type, expected type or constraint, a fix suggestion for every type error, following existing diagnostic format, with CompileError::TypeError help field set to Some(...).
-- **FR-007**: System MUST allow extension of type system (new primitive types, user-defined structs, enums) with localized changes only, defined as modifications limited to ≤3 files and ≤150 lines total, and no changes to core type-checker logic beyond registration hooks.
+- **FR-006**: System MUST produce diagnostics by directly constructing a `CompileError::TypeError` instance, setting its `code` to the appropriate `ErrorCode`, `message` to a descriptive string, `span` to the source location (file, line, column) of the offending code, and `help` to a non‑empty fix suggestion. The `ErrorReporter` must map these fields unchanged into the emitted diagnostic. Each type‑checking error must include found type, expected type or constraint, and a fix suggestion.
+- **FR-007**: System MUST allow extension of type system (new primitive types, user-defined structs, enums) only via coordinated changes to parser, token definitions, token display, AST printer, and type-definition modules, or through a defined extension hook that isolates these integration points. No other core components may be altered.
 
 **Acceptance Scenarios for FR-007**:
 
-1. **New primitive type** `myint`: addition restricted to type definition file and registration in type registry; no other files altered.
-2. **User-defined struct** `Point`: changes confined to struct definition module and type registry; other components unchanged.
-3. **User-defined enum** `Color`: modifications limited to enum definition file and registry; no impact on existing type-checker code.
+1. **New primitive type** `myint`: addition requires coordinated updates to parser, token definitions, token display, AST printer, and type-definition modules (or implementation of a defined extension hook).
+2. **User-defined struct** `Point`: addition requires updates to parser, type-definition module, and AST printer (or via a defined extension hook).
+3. **User-defined enum** `Color`: addition requires updates to token definitions, parser, AST printer, and type-definition module (or via a defined extension hook).
 
 - **FR-008**: System MUST allow addition of new operators, expressions, or statements with minimal impact on existing type-checker components, defined as at most 5 files changed and ≤200 lines total across modifications, and no changes to core type-checker logic beyond designated extension points.
 
@@ -186,7 +188,14 @@ Developer defines a struct or enum that refers to itself directly or indirectly.
 3. **New statement** `assert!`: changes confined to statement parser and type-check rule; no other components affected.
 
 - **FR-009**: System MUST not modify unrelated components of compiler pipeline (lexer, parser) beyond attaching type information to AST nodes.
-- **FR-010**: System MUST support core primitive types (i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, char, string, bool) and user-defined nominally typed structs and enums.
+- **FR-010**: System MUST support core primitive types (i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, char, string, bool), plus Void and NullPtr literals, and composite types Array and Vector. Typing rules: Array requires element type and constant size expression; Vector requires element type; Void usable only as function return type; NullPtr literal represents null pointer value.
+
+  **Acceptance Scenarios for FR-010**:
+  1. **Array**: declaration `var a: i32[10] = {1,2,3}` accepted if size constant and element type valid. Mismatched size or non‑constant size triggers `CompileError::TypeError` with diagnostic and fix suggestion.
+  2. **Vector**: declaration `var v: vector<string> = {"a","b"}` accepted; any size spec on vector results in type error.
+  3. **Void**: function `fun foo() : void { }` accepted; variable declaration `var x: void = ...` rejected with `CompileError::TypeError` and appropriate diagnostic.
+  4. **NullPtr**: literal `nullptr` accepted; assigning to non‑pointer context triggers `CompileError::TypeError` with diagnostic.
+
 - **FR-011**: System MUST not allow implicit type casting (coercion) between primitive types; explicit conversion MUST be required.
 - **FR-012**: System MUST operate as a multi-pass AST visitor to support forward references for functions and types within the same scope; no flow-sensitive analysis (e.g., definite assignment) is required.
 - **FR-013**: All type‑checking errors must be represented by the `TypeError` variant of `CompileError` defined in `src/error/compile_error.rs`
