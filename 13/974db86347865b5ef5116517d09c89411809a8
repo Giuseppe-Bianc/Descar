@@ -1,0 +1,19 @@
+specs/001-type-checking/spec.md
+  s_c01e9e5e9fb3c1::t_0fb0a110f5d240 84-85,169-170,173-174,178-180
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "13974db86347865b5ef5116517d09c89411809a8",
+  "prompts": {},
+  "sessions": {
+    "s_c01e9e5e9fb3c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "401e2950-20ce-4637-830c-83357012d5c0",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
