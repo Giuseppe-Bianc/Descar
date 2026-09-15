@@ -134,7 +134,7 @@ classDiagram
 ### 2.1 `Scope` and `ScopeTree`
 
 - Scope hierarchy is stored as an indexed arena: `Vec<Scope>` with `ScopeId(usize)`.
-- Parent references are `Option<ScopeId>`. No reference counting or interior mutability (`Rc<RefCell<_>>`).
+- Parent references are `Option<ScopeId>`. No reference counting or interior mutability (`Rc<RefCell<_>`)).
 - **Inner-to-outer resolution** (FR-014):
   1. Check `current_scope.bindings`.
   2. If absent, follow `scope.parent` upwards until `root_scope` (Module scope).
@@ -151,11 +151,26 @@ classDiagram
 ```mermaid
 classDiagram
     class TypeTable {
-        +Vec~TypeDefinition~ types
+        +Vec~TypeState~ types
         +HashMap~TypeDefinition, TypeId~ interned
+        +HashMap~String, TypeId~ nominal
+        +reserve_nominal(String, NominalKind) TypeId
+        +complete(TypeId, TypeDefinition)
         +get_or_intern(TypeDefinition) TypeId
         +get(TypeId) TypeDefinition
         +is_assignable(target: TypeId, source: TypeId) bool
+    }
+
+    class TypeState {
+        <<enumeration>>
+        Reserved(String, NominalKind)
+        Complete(TypeDefinition)
+    }
+
+    class NominalKind {
+        <<enumeration>>
+        Struct
+        Enum
     }
 
     class TypeId {
@@ -186,7 +201,9 @@ classDiagram
         +SourceSpan span
     }
 
-    TypeTable o-- TypeDefinition
+    TypeTable o-- TypeState
+    TypeState --> TypeDefinition
+    TypeState --> NominalKind
     TypeDefinition --> TypeId
     TypeDefinition o-- FieldDef
     TypeDefinition o-- VariantDef
@@ -201,7 +218,26 @@ classDiagram
 - Floating Point: `F32`, `F64`
 - Others: `Char`, `String`, `Bool`, `Void`, `NullPtr`
 
-### 3.2 Type Validation Rules
+### 3.2 Nominal Type Reservation
+
+Nominal declarations receive their stable `TypeId` before any field or variant type is resolved. `TypeTable::reserve_nominal` creates a `Reserved(name, kind)` slot and records the name-to-`TypeId` binding in `nominal`. `complete` replaces that slot with the fully resolved `TypeDefinition`; it must preserve the original `TypeId` and reject completion of an already completed or unrelated reservation.
+
+`get_or_intern` interns complete structural definitions only. Reserved nominal types are identified by their declaration binding and must not be re-interned by their eventual field layout.
+
+### 3.3 `sig` Type Resolution Flow
+
+Phase 3 (`sig`) resolves nominal type declarations in two stages:
+
+1. **Pre-register** each struct or enum declaration by reserving its `TypeId` before resolving any field or variant payload types. The declaration name is immediately bound to that reserved `TypeId` for type-name lookup.
+2. Add the reserved `TypeId` to the DFS `in_progress` set, resolve all fields or variant payloads using the normal type-resolution path, then call `complete` with the resulting `TypeDefinition` and remove the `TypeId` from `in_progress`.
+
+A type-name lookup that refers to a declaration already in `nominal` returns the reserved `TypeId`, even while its `TypeState` is `Reserved`. This makes a direct self-reference such as `struct Node { next: Node }` resolve to the same `TypeId` instead of being reported as an unknown type or requiring a completed definition first.
+
+When resolving a referenced nominal type, `sig` consults `in_progress` before descending into that type's definition. If the referenced `TypeId` is already present, the current DFS path contains a cycle and `sig` emits the blocking recursive-type diagnostic. Because every declaration is reserved before its members are resolved, the same check detects transitive cycles such as `A -> B -> A` as well as direct cycles such as `Node -> Node`.
+
+Indirection-capable field types such as pointers or dynamic vectors are handled by the type graph according to the existing infinite-size rule. Only edges that contribute to the enclosing type's inline layout participate in the blocking cycle check.
+
+### 3.4 Type Validation Rules
 
 1. **Nominal Typing** (Clarification 2026-09-15): Structs and enums are compared nominally by their `TypeId` / unique declaration identity, never structurally.
 2. **Cycle & Infinite Size Detection** (User Story 8, FR-007):
@@ -256,7 +292,7 @@ stateDiagram-v2
     note right of ResolvedAST: Variable/Type usages linked to SymbolIds,\nUndeclared names flagged
 
     ResolvedAST --> SignedAST: sig::process_signatures(AST, &mut ctx)
-    note right of SignedAST: Signatures computed in TypeTable,\nInfinite-size cycles detected
+    note right of SignedAST: Nominal TypeIds reserved before member resolution,\nSignatures completed in TypeTable,\nInfinite-size cycles detected
 
     SignedAST --> TypedAST: check::check_bodies(AST, &mut ctx)
     note right of TypedAST: Bodies checked against Expectation,\nExpressions annotated with TypeId
