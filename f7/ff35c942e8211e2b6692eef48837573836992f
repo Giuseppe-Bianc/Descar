@@ -1,0 +1,22 @@
+specs/001-type-checking/data-model.md
+  h_361662506da91f 1-269
+specs/001-type-checking/research.md
+  h_361662506da91f 1-182
+specs/001-type-checking/contracts/diagnostic-contract.md
+  h_361662506da91f 1-59
+specs/001-type-checking/plan.md
+  h_361662506da91f 1-132
+specs/001-type-checking/quickstart.md
+  h_361662506da91f 1-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "f7ff35c942e8211e2b6692eef48837573836992f",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
