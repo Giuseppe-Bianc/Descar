@@ -14,13 +14,14 @@
 
 ### Session 2026-09-14
 
-- Q: Which types must the semantic type checker support? -> A: Core primitives (I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, Char, String, Bool) and user-defined structs/enums
+- Q: Which types must the semantic type checker support? -> A: Core primitives (i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, char, string, bool) and user-defined structs/enums
 - Q: How should the type checker handle recursive type definitions to prevent infinite loops during validation? -> A: Use visited-set or memoization to detect and handle cycles
 - Q: Does the language support implicit type casting (coercion) between primitive types (e.g., i32 to f64)? -> A: No implicit casting; require explicit conversion
 - Q: Should the type checker perform any flow-sensitive analysis (e.g., checking for uninitialized variables)? -> A: Simple AST visitor; no flow-sensitive analysis
 - Q: How should the type checker handle ambiguous generic constraints if they are introduced in the future? -> A: Treat as type error; require explicit type annotations
 
 ### Session 2026-09-15
+
 - Q: Should the type checker reuse the existing `CompileError` enum for its error reporting, matching the pattern used in lexer and parser? -> A: Reuse `CompileError` enum
 - Q: Must the type checker use the `TypeError` variant from `CompileError`? -> A: Yes, use `CompileError::TypeError` variant.
 - Q: Should diagnostics include fix suggestions? -> A: Include fix suggestions for all type errors.
@@ -65,7 +66,7 @@ Developer calls function with arguments of wrong types. Compiler reports mismatc
 
 **Why this priority**: Ensures correct API usage within code.
 
-**Independent Test**: Define function `fn foo(i: i32) {}` and call `foo("s");`. Expect error indicating expected `i32` vs provided `&str`.
+**Independent Test**: Define function `fn foo(i: i32) {}` and call `foo("s");`. Expect error indicating expected `i32` vs provided `string`.
 ---
 
 ### User Story 4 - Variable Shadowing (Priority: P2)
@@ -74,7 +75,7 @@ Developer declares variable in nested scope with same name as outer scope. Compi
 
 **Why this priority**: Essential for block-scoped language semantics.
 
-**Independent Test**: Define `let x: i32 = 1; { let x: str = "a"; }`. In inner block, expect `x` to be treated as `str`.
+**Independent Test**: Define `let x: i32 = 1; { let x: string = "a"; let y = x; } let z = x;`. Expect `y` to be type `string` (inner `x`) and `z` to be type `i32` (outer `x`).
 
 **Acceptance Scenarios**:
 
@@ -112,7 +113,7 @@ Developer declares variable twice in same scope. Compiler reports duplicate decl
 - **FR-007**: System MUST allow extension of type system (new primitive types, user-defined structs, enums) with localized changes only.
 - **FR-008**: System MUST allow addition of new operators or expressions with minimal impact on existing type-checker components.
 - **FR-009**: System MUST not modify unrelated components of compiler pipeline (lexer, parser) beyond attaching type information to AST nodes.
-- **FR-010**: System MUST support core primitive types (I8, I16, I32, I64, U8, U16, U32, U64, F32, F64, Char, String, Bool) and user-defined structs and enums.
+- **FR-010**: System MUST support core primitive types (i8, i16, i32, i64, u8, u16, u32, u64, f32, f64, char, string, bool) and user-defined structs and enums.
 - **FR-011**: System MUST not allow implicit type casting (coercion) between primitive types; explicit conversion MUST be required.
 - **FR-012**: System MUST operate as simple AST visitor; no flow-sensitive analysis (e.g., definite assignment) is required.
 - **FR-013**: All type‑checking errors must be represented by the `TypeError` variant of `CompileError` defined in `src/error/compile_error.rs`
