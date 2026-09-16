@@ -155,10 +155,18 @@ classDiagram
         +HashMap~TypeKey, TypeId~ interned
         +HashMap~TypeDeclId, TypeId~ nominal
         +reserve_nominal(TypeDeclId, NominalKind) TypeId
-        +complete(TypeId, TypeDefinition)
+        +complete(TypeId, TypeDefinition) Result~(), TypeTableError~
         +get_or_intern(TypeDefinition) TypeId
+        +intern_nominal(TypeDeclId, TypeDefinition) TypeId
         +get(TypeId) TypeDefinition
         +is_assignable(target: TypeId, source: TypeId) bool
+    }
+
+    class TypeTableError {
+        <<enumeration>>
+        AlreadyCompleted(TypeId)
+        MissingReservation(TypeId)
+        ReservationMismatch(TypeId, TypeDeclId)
     }
 
     class TypeState {
@@ -208,6 +216,7 @@ classDiagram
     }
 
     TypeTable o-- TypeState
+    TypeTable --> TypeTableError
     TypeState --> TypeDefinition
     TypeState --> NominalKind
     TypeDefinition --> TypeId
@@ -226,9 +235,28 @@ classDiagram
 
 ### 3.2 Nominal Type Reservation
 
-Nominal declarations receive their stable `TypeId` before any field or variant type is resolved. `TypeTable::reserve_nominal` creates a `Reserved(TypeDeclId, kind)` slot and records the declaration-identity-to-`TypeId` binding in `nominal`. `complete` replaces that slot with the fully resolved `TypeDefinition`; it must preserve the original `TypeId` and reject completion of an already completed or unrelated reservation.
+Nominal declarations receive their stable `TypeId` before any field or variant type is resolved. `TypeTable::reserve_nominal` creates a `Reserved(TypeDeclId, kind)` slot and records the declaration-identity-to-`TypeId` binding in `nominal`. `complete` replaces that slot with the fully resolved `TypeDefinition`; it must preserve the original `TypeId` and reject completion of an already completed or unrelated reservation via a typed `TypeTableError` rather than a panic.
 
-`TypeTable::interned` uses a `TypeKey` discriminator: `Nominal(TypeDeclId)` for struct/enum declarations and `Structural(TypeDefinition)` for non-nominal type values. `get_or_intern` therefore interns structural definitions by their value while nominal declarations are keyed by their unique declaration identity rather than by their names or field layouts. This prevents two shadowed declarations with the same name and shape from collapsing to the same `TypeId`; distinct `SymbolId` or `TypeDeclId` values produce distinct nominal entries even when the declared fields are otherwise identical.
+The API contract is intentionally fail-fast and explicit:
+
+```rust
+match table.complete(type_id, type_def) {
+    Ok(()) => {}
+    Err(TypeTableError::AlreadyCompleted(id)) => {
+        // duplicate completion attempt for the same reserved nominal type
+    }
+    Err(TypeTableError::MissingReservation(id)) => {
+        // no reservation exists for the TypeId
+    }
+    Err(TypeTableError::ReservationMismatch { type_id, decl_id }) => {
+        // the TypeId was reserved for a different declaration identity
+    }
+}
+```
+
+This is a library-level validation failure, not an unchecked panic. The semantic phase may surface the same condition as a `CheckerCtx` diagnostic when the invalid completion is triggered during type analysis, but the underlying table API must still reject the call with `Result<(), TypeTableError>` and never panic on an already completed or unrelated reservation.
+
+`TypeTable::interned` uses a `TypeKey` discriminator: `Nominal(TypeDeclId)` for nominal struct/enum declarations and `Structural(TypeDefinition)` for non-nominal type values. The public interning API splits by kind: `get_or_intern` remains structural-only, while nominal declarations use `intern_nominal(TypeDeclId, TypeDefinition)` or the equivalent two-stage `reserve_nominal` + `complete` flow. This ensures a declaration is keyed by its unique declaration identity rather than by its name or field layout, preventing two shadowed declarations with the same shape from collapsing to the same `TypeId`; distinct `SymbolId` or `TypeDeclId` values produce distinct nominal entries even when the declared fields are otherwise identical.
 
 ### 3.3 `sig` Type Resolution Flow
 
