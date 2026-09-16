@@ -52,7 +52,7 @@ description: "Task list for Semantic Type Checking feature implementation"
 
 ### Diagnostic Reporting Infrastructure
 
-- [ ] T016 [P] Define `Phase` enum (`Binder`, `Resolve`, `Sig`, `Check`, `Globals`) and `Diagnostic` struct carrying `phase`, `code: ErrorCode`, `message: String`, `span: SourceSpan`, and `help: Option<String>` in `crates/descar-core/src/semantic/diag.rs`
+- [ ] T016 [P] Define `Phase` enum (`Binder`, `Resolve`, `Sig`, `Check`, `Globals`) and `Diagnostic` struct carrying `phase`, `code: ErrorCode`, `message: String`, `span: SourceSpan`, and `help: Option<String>` in `crates/descar-core/src/semantic/ctx.rs`
 - [ ] T017 Implement conversion method `Diagnostic::to_compile_error` mapping to `CompileError::TypeError` quoting verbatim constraints "span must denote a valid location in source code" and "help must provide actionable fix guidance (FR-006)" in `crates/descar-core/src/semantic/diag.rs`
 - [ ] T018 Implement diagnostic accumulation methods `add_diagnostic`, `has_blocking_errors`, and `take_diagnostics` on `CheckerCtx` in `crates/descar-core/src/semantic/ctx.rs`
 - [ ] T019 Add unit tests for `Diagnostic` creation, phase tagging, and `to_compile_error` field preservation in `crates/descar-core/src/semantic/diag.rs`
@@ -87,7 +87,7 @@ description: "Task list for Semantic Type Checking feature implementation"
 - [ ] T029 [US1] Implement suffixed numeric literal validation quoting verbatim rule "Retain their explicit type regardless of expectation. If checked against incompatible Expectation::Check(t), emit mismatch diagnostic" in `crates/descar-core/src/semantic/check.rs`
 - [ ] T030 [US1] Implement AST primitive type-to-`TypeId` mapping helper `ast_type_to_type_id` in `crates/descar-core/src/semantic/sig.rs`
 - [ ] T031 [US1] Implement variable declaration checking (`Stmt::VarDeclaration`) verifying each binding initializer against declared type and storing resolved type in `crates/descar-core/src/semantic/check.rs`
-- [ ] T032 [US1] Implement rejection of `void` type in variable declarations with `ErrorCode::E2030` quoting verbatim constraint "Void is strictly valid as a function return type. Variable declarations with type Void (var x: void) are rejected with CompileError::TypeError" in `crates/descar-core/src/semantic/check.rs`
+- [ ] T032 [US1] Implement rejection of `void` type in variable declarations with `ErrorCode::E2030` quoting verbatim constraint "Void is strictly valid as a function return type. Variable declarations with type Void (var x: void) are rejected with CompileError::TypeError" in `crates/descar-core/src/semantic/ctx.rs`
 - [ ] T033 [US1] Implement assignment expression checking (`Expr::Assign`) validating that assigned value type matches target variable type and rejecting non-assignable targets in `crates/descar-core/src/semantic/check.rs`
 - [ ] T034 [US1] Implement statement list traversal entry function `check::check_bodies(ast: &[Stmt], ctx: &mut CheckerCtx)` in `crates/descar-core/src/semantic/check.rs`
 
@@ -133,7 +133,8 @@ description: "Task list for Semantic Type Checking feature implementation"
 - [ ] T043 [P] [US7] Define `ResolveError::UnknownType { name: String, span: SourceSpan }` and its `Display` implementation in `crates/descar-core/src/semantic/resolve.rs`
 - [ ] T044 [US7] Implement type annotation validation looking up `Type::Custom { name }` in `TypeTable` nominal registry in `crates/descar-core/src/semantic/resolve.rs`
 - [ ] T045 [US7] Emit `ErrorCode::E2004` diagnostic with type name, source span, and fix suggestion when custom type is not found in `crates/descar-core/src/semantic/resolve.rs`
-- [ ] T046 [US7] Implement recursive validation for composite type annotations (`Type::Array`, `Type::Vector`) in `crates/descar-core/src/semantic/resolve.rs`
+- [ ] T046 [US7] Implement recursive validation for composite type annotations (`Type::Array`, `Type::Vector`) and validate array-size expressions so non-constant or negative values produce the `InvalidArraySize` diagnostic (`E2031`) in `crates/descar-core/src/semantic/resolve.rs`
+- [ ] T046a [P] [US7] Add focused tests for array-size validation covering non-constant and negative values and asserting the `InvalidArraySize` diagnostic code `E2031` in `crates/descar-core/src/semantic/resolve.rs`
 
 **Checkpoint**: User Story 7 is functional and independently testable.
 
@@ -267,9 +268,9 @@ description: "Task list for Semantic Type Checking feature implementation"
 
 ### Tests for CLI Integration & Globals (TDD) ⚠️
 
-- [ ] T089 [P] Write integration CLI test in `crates/descar-cli/tests/cli.rs` verifying `descar check` exits 0 on valid program `crates/descar/tests/fixtures/valid_simple.dr`
-- [ ] T090 [P] Write integration CLI test in `crates/descar-cli/tests/cli.rs` verifying `descar check` exits 1 and formats diagnostics via `ErrorReporter` on type errors
-- [ ] T091 [P] Write integration CLI test in `crates/descar-cli/tests/cli.rs` verifying `descar compile` terminates with exit code 1 on semantic errors without printing AST or invoking codegen
+- [ ] T089 [P] Write integration CLI test in `crates/descar/tests/cli.rs` launching the actual `descar` binary and verifying `descar check` exits 0 on valid program `crates/descar/tests/fixtures/valid_simple.dr` (unless an explicitly configured cross-package process-launch mechanism is added)
+- [ ] T090 [P] Write integration CLI test in `crates/descar/tests/cli.rs` launching the actual `descar` binary and verifying `descar check` exits 1 and formats diagnostics via `ErrorReporter` on type errors (unless an explicitly configured cross-package process-launch mechanism is added)
+- [ ] T091 [P] Write integration CLI test in `crates/descar/tests/cli.rs` launching the actual `descar` binary and verifying `descar compile` terminates with exit code 1 on semantic errors without printing AST or invoking codegen (unless an explicitly configured cross-package process-launch mechanism is added)
 
 ### Implementation for CLI Integration & Globals
 
