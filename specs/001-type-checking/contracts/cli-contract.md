@@ -31,7 +31,7 @@ Runs lexical analysis, syntax parsing, and semantic type checking on the specifi
     ```text
     ERROR [E2001] TYPE: expected type 'i32', found 'bool'
     Location: example.dr:3:15-19
-       3 │ let x: i32 =  true;
+       3 │ var x: i32 =  true;
          │              ^^^^
     help: change the expression or type annotation to match
     ```

@@ -45,7 +45,7 @@ Developer compiles source file containing mismatched types. Compiler reports err
 
 **Why this priority**: Core functionality; users need immediate feedback on type errors.
 
-**Independent Test**: Run `cargo run -- check example.dr` with a file containing `let x: i32 = true;`. Expect error message with location and type mismatch.
+**Independent Test**: Run `cargo run -- check example.dr` with a file containing `var x: i32 = true;`. Expect error message with location and type mismatch.
 
 **Acceptance Scenarios**:
 
@@ -60,7 +60,7 @@ Developer uses arithmetic operator on incompatible types (e.g., adding string to
 
 **Why this priority**: Prevent runtime failures; enforce language semantics.
 
-**Independent Test**: Compile file with `let x = "a" + 1;`. Expect type error specifying operator and operand types.
+**Independent Test**: Compile file with `var x = "a" + 1;`. Expect type error specifying operator and operand types.
 
 **Acceptance Scenarios**:
 
@@ -74,7 +74,7 @@ Developer calls function with arguments of wrong types. Compiler reports mismatc
 
 **Why this priority**: Ensures correct API usage within code.
 
-**Independent Test**: Define function `fn foo(i: i32) {}` and call `foo("s");`. Expect error indicating expected `i32` vs provided `string`.
+**Independent Test**: Define function `fun foo(i: i32) {}` and call `foo("s");`. Expect error indicating expected `i32` vs provided `string`.
 
 **Acceptance Scenarios**:
 
@@ -92,7 +92,7 @@ Developer declares variable in nested scope with same name as outer scope. Compi
 
 **Why this priority**: Essential for block-scoped language semantics.
 
-**Independent Test**: Define `let x: i32 = 1; { let x: string = "a"; let y = x; } let z = x;`. Expect `y` to be type `string` (inner `x`) and `z` to be type `i32` (outer `x`).
+**Independent Test**: Define `var x: i32 = 1; { var x: string = "a"; var y = x; } var z = x;`. Expect `y` to be type `string` (inner `x`) and `z` to be type `i32` (outer `x`).
 
 **Acceptance Scenarios**:
 
@@ -106,7 +106,7 @@ Developer declares variable twice in same scope. Compiler reports duplicate decl
 
 **Why this priority**: Prevent ambiguous variable resolution.
 
-**Independent Test**: Define `let x: i32 = 1; let x: i32 = 2;` in same block. Expect error reporting duplicate identifier `x`.
+**Independent Test**: Define `var x: i32 = 1; var x: i32 = 2;` in same block. Expect error reporting duplicate identifier `x`.
 
 **Acceptance Scenarios**:
 
@@ -120,7 +120,7 @@ Developer uses variable that is not declared in any accessible scope. Compiler r
 
 **Why this priority**: Essential for correctness; prevents use of undefined identifiers.
 
-**Independent Test**: Compile file with `let y = x + 1;` where `x` is undeclared. Expect `CompileError::TypeError` with location, "undeclared variable 'x'", and fix suggestion.
+**Independent Test**: Compile file with `var y = x + 1;` where `x` is undeclared. Expect `CompileError::TypeError` with location, "undeclared variable 'x'", and fix suggestion.
 
 **Acceptance Scenarios**:
 
@@ -134,7 +134,7 @@ Developer uses a type name that is not defined in the current or global scope. C
 
 **Why this priority**: Essential for type safety; prevents use of undefined types.
 
-**Independent Test**: Define `let x: UnknownType = 1;`. Expect `CompileError::TypeError` with location, "unknown type 'UnknownType'", and fix suggestion.
+**Independent Test**: Define `var x: UnknownType = 1;`. Expect `CompileError::TypeError` with location, "unknown type 'UnknownType'", and fix suggestion.
 
 **Acceptance Scenarios**:
 

@@ -70,7 +70,7 @@ description: "Task list for Semantic Type Checking feature implementation"
 
 **Goal**: Validate variable declarations, initializers, assignments, literals, and local contextual typing. Report `ErrorCode::E2001` on type mismatch and enforce zero implicit coercion.
 
-**Independent Test**: Compile and type-check variable declarations and assignments (e.g. `let x: i32 = true;` fails with `E2001`; `let x: i32 = 1;` succeeds).
+**Independent Test**: Compile and type-check variable declarations and assignments (e.g. `var x: i32 = true;` fails with `E2001`; `var x: i32 = 1;` succeeds).
 
 ### Tests for User Story 1 (TDD) ⚠️
 
@@ -87,7 +87,7 @@ description: "Task list for Semantic Type Checking feature implementation"
 - [ ] T029 [US1] Implement suffixed numeric literal validation quoting verbatim rule "Retain their explicit type regardless of expectation. If checked against incompatible Expectation::Check(t), emit mismatch diagnostic" in `crates/descar-core/src/semantic/check.rs`
 - [ ] T030 [US1] Implement AST primitive type-to-`TypeId` mapping helper `ast_type_to_type_id` in `crates/descar-core/src/semantic/sig.rs`
 - [ ] T031 [US1] Implement variable declaration checking (`Stmt::VarDeclaration`) verifying each binding initializer against declared type and storing resolved type in `crates/descar-core/src/semantic/check.rs`
-- [ ] T032 [US1] Implement rejection of `void` type in variable declarations with `ErrorCode::E2030` quoting verbatim constraint "Void is strictly valid as a function return type. Variable declarations with type Void (let x: void) are rejected with CompileError::TypeError" in `crates/descar-core/src/semantic/check.rs`
+- [ ] T032 [US1] Implement rejection of `void` type in variable declarations with `ErrorCode::E2030` quoting verbatim constraint "Void is strictly valid as a function return type. Variable declarations with type Void (var x: void) are rejected with CompileError::TypeError" in `crates/descar-core/src/semantic/check.rs`
 - [ ] T033 [US1] Implement assignment expression checking (`Expr::Assign`) validating that assigned value type matches target variable type and rejecting non-assignable targets in `crates/descar-core/src/semantic/check.rs`
 - [ ] T034 [US1] Implement statement list traversal entry function `check::check_bodies(ast: &[Stmt], ctx: &mut CheckerCtx)` in `crates/descar-core/src/semantic/check.rs`
 
@@ -99,7 +99,7 @@ description: "Task list for Semantic Type Checking feature implementation"
 
 **Goal**: Detect variable and identifier references that are not declared in any accessible scope and emit `ErrorCode::E2002` with precise span and actionable fix suggestion.
 
-**Independent Test**: Type-check an expression with an undefined identifier (e.g. `let y = x + 1;`) and verify `CompileError::TypeError` with `ErrorCode::E2002` is emitted.
+**Independent Test**: Type-check an expression with an undefined identifier (e.g. `var y = x + 1;`) and verify `CompileError::TypeError` with `ErrorCode::E2002` is emitted.
 
 ### Tests for User Story 6 (TDD) ⚠️
 
@@ -121,7 +121,7 @@ description: "Task list for Semantic Type Checking feature implementation"
 
 **Goal**: Detect usages of undefined type identifiers in type annotations and emit `ErrorCode::E2004` with precise source span and actionable fix suggestion.
 
-**Independent Test**: Type-check a declaration with an undefined type (e.g. `let x: UnknownType = 1;`) and verify `CompileError::TypeError` with `ErrorCode::E2004` is emitted.
+**Independent Test**: Type-check a declaration with an undefined type (e.g. `var x: UnknownType = 1;`) and verify `CompileError::TypeError` with `ErrorCode::E2004` is emitted.
 
 ### Tests for User Story 7 (TDD) ⚠️
 
@@ -143,7 +143,7 @@ description: "Task list for Semantic Type Checking feature implementation"
 
 **Goal**: Support variable shadowing in nested scopes so that identifier usages resolve to the innermost declaration without conflicting with outer scope definitions.
 
-**Independent Test**: Define `let x: i32 = 1; { let x: string = "a"; let y = x; } let z = x;` and verify `y` is typed as `string` and `z` is typed as `i32`.
+**Independent Test**: Define `var x: i32 = 1; { var x: string = "a"; var y = x; } var z = x;` and verify `y` is typed as `string` and `z` is typed as `i32`.
 
 ### Tests for User Story 4 (TDD) ⚠️
 
@@ -164,7 +164,7 @@ description: "Task list for Semantic Type Checking feature implementation"
 
 **Goal**: Detect when an identifier is declared more than once in the same scope and emit `ErrorCode::E2003` with locations of both original and duplicate declarations.
 
-**Independent Test**: Define `let x: i32 = 1; let x: i32 = 2;` in the same block and verify `CompileError::TypeError` with `ErrorCode::E2003` is emitted.
+**Independent Test**: Define `var x: i32 = 1; var x: i32 = 2;` in the same block and verify `CompileError::TypeError` with `ErrorCode::E2003` is emitted.
 
 ### Tests for User Story 5 (TDD) ⚠️
 
@@ -238,7 +238,7 @@ description: "Task list for Semantic Type Checking feature implementation"
 
 **Goal**: Validate function declarations, parameter types, call argument count (`ErrorCode::E2028`), argument types (`ErrorCode::E2001`), and return statement types (`ErrorCode::E2029`).
 
-**Independent Test**: Define `fn foo(i: i32): i32 { return i; }` and verify calling `foo("s")` (type mismatch), `foo()` (count mismatch `E2028`), or `return false;` (return mismatch `E2029`) produces expected diagnostics.
+**Independent Test**: Define `fun foo(i: i32): i32 { return i; }` and verify calling `foo("s")` (type mismatch), `foo()` (count mismatch `E2028`), or `return false;` (return mismatch `E2029`) produces expected diagnostics.
 
 ### Tests for User Story 3 (TDD) ⚠️
 

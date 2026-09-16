@@ -251,7 +251,7 @@ Indirection-capable field types such as pointers or dynamic vectors are handled 
    - Detected during Phase 3 (`sig`) by tracking a DFS `in_progress` set of types. Cycles trigger a blocking `Sig` diagnostic.
 3. **Void Placement** (FR-010):
    - `Void` is strictly valid as a function return type.
-   - Variable declarations with type `Void` (`let x: void`) are rejected with `CompileError::TypeError`.
+   - Variable declarations with type `Void` (`var x: void`) are rejected with `CompileError::TypeError`.
 4. **No Implicit Coercion** (FR-011):
    - Explicit casts required for mixed integer/float operations (`i32` + `f64` rejected).
    - Array literals must match declared array length and homogeneous element type.
