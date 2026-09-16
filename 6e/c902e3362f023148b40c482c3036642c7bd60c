@@ -1,0 +1,14 @@
+specs/001-type-checking/tasks.md
+  h_361662506da91f 1-415
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "6ec902e3362f023148b40c482c3036642c7bd60c",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
