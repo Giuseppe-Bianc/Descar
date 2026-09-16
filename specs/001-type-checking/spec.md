@@ -142,17 +142,17 @@ Developer uses a type name that is not defined in the current or global scope. C
 
 ---
 
-### User Story 8 - Recursive Type Detection (Priority: P2)
+### User Story 8 - Recursive Type Cycle Detection (Priority: P2)
 
-Developer defines a struct or enum that refers to itself directly or indirectly. Compiler reports error.
+Developer defines a user-defined nominal type (registered via `TypeTable::reserve_nominal`) that refers to itself directly or indirectly through its field type annotations without pointer or vector indirection. The semantic phase reports an infinite-size recursive type error.
 
-**Why this priority**: Prevent infinite loops during type validation and ensure type size is finite.
+**Why this priority**: Prevent infinite loops during type layout validation and ensure every type has a finite, computable memory size.
 
-**Independent Test**: Define `struct Node { next: Node }`. Expect `CompileError::TypeError` with location, "recursive type definition detected", and fix suggestion.
+**Independent Test**: Construct a synthetic AST unit test in `descar-core::semantic::sig` that registers a nominal type `Node` via `TypeTable::reserve_nominal`, then attempts to resolve a field of type `Node` (same `TypeId`) during `sig::process_signatures`. Expect `SigError::InfiniteSizeRecursiveType` with the type name, the detected cycle path, and a non-empty fix suggestion. No `.dr` source fixture is required because Descar has no `struct` keyword; cycle detection is validated exclusively through unit tests with hand-constructed `TypeTable` state.
 
 **Acceptance Scenarios**:
 
-1. **Given** recursive type definition, **When** compiler runs, **Then** error includes `CompileError::TypeError`, precise location, diagnostic details, and fix suggestion.
+1. **Given** a nominal type with a self-referencing field resolved during `sig::process_signatures`, **When** the semantic pipeline runs, **Then** error includes `CompileError::TypeError` with `ErrorCode::E2005`, precise declaration location, cycle path in diagnostic details, and a fix suggestion.
 
 ---
 
