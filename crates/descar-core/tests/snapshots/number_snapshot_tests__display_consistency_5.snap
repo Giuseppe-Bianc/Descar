@@ -1,0 +1,5 @@
+---
+source: crates/descar-core/tests/number_snapshot_tests.rs
+expression: "format!(\"{}\", number)"
+---
+10u32
