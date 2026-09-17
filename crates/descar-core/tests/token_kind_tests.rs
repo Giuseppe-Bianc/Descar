@@ -1039,6 +1039,14 @@ fn test_eof_and_ignored() {
 }
 
 #[test]
+fn test_unterminated_multiline_comment_reports_lex_error() {
+    let mut lex = TokenKind::lexer("/* unterminated comment");
+
+    assert_eq!(lex.next(), Some(Err(LexError::UnterminatedComment)));
+    assert_eq!(lex.next(), None);
+}
+
+#[test]
 fn test_identifier_ascii_normal() {
     let ident: Arc<str> = "foo".into();
     assert_eq!(IdentifierAscii(ident.clone()).to_string(), format!("identifier '{ident}'"));
