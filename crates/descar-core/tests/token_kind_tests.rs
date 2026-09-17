@@ -7,10 +7,27 @@ use descar_core::tokens::token_kind::TokenKind::*;
 use logos::Logos;
 use std::sync::Arc;
 
+use descar_core::tokens::number::Number;
+
 // Helper function to assert token matching
 fn assert_token(input: &str, expected: TokenKind) {
     let mut lex = TokenKind::lexer(input);
     assert_eq!(lex.next().unwrap(), Ok(expected));
+}
+
+#[test]
+fn test_display_for_covered_token_kinds() {
+    assert_eq!(TokenKind::AndEqual.to_string(), "'&='");
+    assert_eq!(TokenKind::OrEqual.to_string(), "'|='");
+    assert_eq!(TokenKind::ShiftLeftEqual.to_string(), "'<<='");
+    assert_eq!(TokenKind::ShiftRightEqual.to_string(), "'>>='");
+    assert_eq!(TokenKind::StarEqual.to_string(), "'*='");
+    assert_eq!(TokenKind::SlashEqual.to_string(), "'/='");
+    assert_eq!(TokenKind::BitwiseNot.to_string(), "'~'");
+    assert_eq!(TokenKind::Hexadecimal(Number::Integer(255)).to_string(), "hexadecimal '255'");
+    assert_eq!(TokenKind::StringLiteral(Arc::from("hello")).to_string(), "string literal \"hello\"");
+    assert_eq!(TokenKind::CharLiteral(Arc::from("z")).to_string(), "character literal 'z'");
+    assert_eq!(TokenKind::MultilineComment.to_string(), "multiline comment");
 }
 
 #[test]
