@@ -1,0 +1,5 @@
+---
+source: crates/descar-core/tests/number_snapshot_tests.rs
+expression: "Number::UnsignedInteger(0).to_string()"
+---
+0
