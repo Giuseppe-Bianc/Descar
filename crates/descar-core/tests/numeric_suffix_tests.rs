@@ -1,7 +1,7 @@
 use descar_core::{
     error::compile_error::CompileError,
     lex::lexer::{Lexer, lexer_tokenize_with_errors},
-    tokens::{number::Number, token_kind::TokenKind},
+    tokens::{number::Number, parsers::suffix::split_numeric_and_suffix, token_kind::TokenKind},
 };
 
 fn lex(input: &str) -> (Vec<TokenKind>, Vec<CompileError>) {
@@ -67,6 +67,21 @@ fn valid_scientific_literals_still_split_suffix_correctly() {
             TokenKind::Eof,
         ]
     );
+}
+
+#[test]
+fn malformed_explicit_i64_and_u64_suffixes_remain_single_invalid_candidates() {
+    for input in ["100i64", "100I64", "100u64", "100U64"] {
+        let (numeric_part, suffix) = split_numeric_and_suffix(input);
+
+        assert_eq!((numeric_part, suffix), (input, None), "input: {input}");
+
+        let (tokens, errors) = lex(input);
+        assert_eq!(tokens, vec![TokenKind::Eof], "input: {input}");
+        assert_eq!(errors.len(), 1, "input: {input}");
+        assert!(errors[0].to_string().contains("[E0009]"), "input: {input}, error: {}", errors[0]);
+        assert!(errors[0].to_string().contains(input), "input: {input}, error: {}", errors[0]);
+    }
 }
 
 #[test]
