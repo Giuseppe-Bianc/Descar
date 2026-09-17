@@ -24,9 +24,15 @@ fn test_display_for_covered_token_kinds() {
     assert_eq!(TokenKind::StarEqual.to_string(), "'*='");
     assert_eq!(TokenKind::SlashEqual.to_string(), "'/='");
     assert_eq!(TokenKind::BitwiseNot.to_string(), "'~'");
+    assert_eq!(TokenKind::Binary(Number::Integer(5)).to_string(), "binary '5'");
+    assert_eq!(TokenKind::Octal(Number::Integer(7)).to_string(), "octal '7'");
     assert_eq!(TokenKind::Hexadecimal(Number::Integer(255)).to_string(), "hexadecimal '255'");
+    assert_eq!(TokenKind::InvalidBaseNumber.to_string(), "invalid base number");
     assert_eq!(TokenKind::StringLiteral(Arc::from("hello")).to_string(), "string literal \"hello\"");
+    assert_eq!(TokenKind::UnterminatedString.to_string(), "unterminated string literal");
     assert_eq!(TokenKind::CharLiteral(Arc::from("z")).to_string(), "character literal 'z'");
+    assert_eq!(TokenKind::UnterminatedChar.to_string(), "unterminated character literal");
+    assert_eq!(TokenKind::UnterminatedComment.to_string(), "unterminated multiline comment");
     assert_eq!(TokenKind::MultilineComment.to_string(), "multiline comment");
 }
 
