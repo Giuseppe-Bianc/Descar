@@ -1,0 +1,45 @@
+---
+source: crates/descar-core/tests/token_kind_snapshot_tests.rs
+expression: tokens
+---
+[
+    Ok(
+        TypeI8,
+    ),
+    Ok(
+        TypeI16,
+    ),
+    Ok(
+        TypeI32,
+    ),
+    Ok(
+        TypeI64,
+    ),
+    Ok(
+        TypeU8,
+    ),
+    Ok(
+        TypeU16,
+    ),
+    Ok(
+        TypeU32,
+    ),
+    Ok(
+        TypeU64,
+    ),
+    Ok(
+        TypeF32,
+    ),
+    Ok(
+        TypeF64,
+    ),
+    Ok(
+        TypeChar,
+    ),
+    Ok(
+        TypeString,
+    ),
+    Ok(
+        TypeBool,
+    ),
+]

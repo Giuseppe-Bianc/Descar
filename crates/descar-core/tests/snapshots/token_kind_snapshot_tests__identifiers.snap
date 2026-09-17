@@ -1,0 +1,52 @@
+---
+source: crates/descar-core/tests/token_kind_snapshot_tests.rs
+expression: tokens
+---
+[
+    Ok(
+        IdentifierAscii(
+            "ascii_ident",
+        ),
+    ),
+    Ok(
+        IdentifierAscii(
+            "_under_score",
+        ),
+    ),
+    Ok(
+        IdentifierUnicode(
+            "unicode_ñññ",
+        ),
+    ),
+    Ok(
+        IdentifierAscii(
+            "var123",
+        ),
+    ),
+    Err(
+        InvalidToken,
+    ),
+    Ok(
+        IdentifierAscii(
+            "u",
+        ),
+    ),
+    Ok(
+        OpenBrace,
+    ),
+    Ok(
+        Numeric(
+            Integer(
+                9876,
+            ),
+        ),
+    ),
+    Ok(
+        CloseBrace,
+    ),
+    Ok(
+        IdentifierAscii(
+            "_unicode",
+        ),
+    ),
+]

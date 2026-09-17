@@ -53,12 +53,7 @@ impl NumericSuffix {
     fn split_supported(slice: &str) -> Option<(&str, &str)> {
         Self::SPELLINGS
             .iter()
-            .filter_map(|(spelling, _)| {
-                slice
-                    .strip_suffix(spelling)
-                    .filter(|numeric_part| !numeric_part.is_empty())
-                    .map(|numeric_part| (numeric_part, *spelling))
-            })
+            .filter_map(|(spelling, _)| slice.strip_suffix(spelling).map(|numeric_part| (numeric_part, *spelling)))
             .max_by_key(|(_, suffix)| suffix.len())
     }
 }
@@ -69,7 +64,7 @@ impl NumericSuffix {
 /// characters are treated as suffix text and validated separately. This is
 /// important for malformed forms such as `100i64` and `100u64`, which must be
 /// diagnosed as one invalid numeric candidate rather than split into tokens.
-const fn numeric_core_end(slice: &str) -> usize {
+pub(crate) const fn numeric_core_end(slice: &str) -> usize {
     let bytes = slice.as_bytes();
     let len = bytes.len();
     let mut index = 0;
@@ -117,9 +112,7 @@ pub fn split_numeric_and_suffix(slice: &str) -> (&str, Option<&str>) {
         return (numeric_part, Some(suffix));
     }
 
-    let numeric_end = numeric_core_end(slice);
-
-    if numeric_end < slice.len() { (&slice[..numeric_end], Some(&slice[numeric_end..])) } else { (slice, None) }
+    (slice, None)
 }
 
 /// Routes the numeric literal to the appropriate value parser.

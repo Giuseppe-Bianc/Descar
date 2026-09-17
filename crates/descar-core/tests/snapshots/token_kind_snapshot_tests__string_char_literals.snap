@@ -1,0 +1,31 @@
+---
+source: crates/descar-core/tests/token_kind_snapshot_tests.rs
+expression: tokens
+---
+[
+    Ok(
+        StringLiteral(
+            "hello\\nworld",
+        ),
+    ),
+    Ok(
+        CharLiteral(
+            "a",
+        ),
+    ),
+    Ok(
+        CharLiteral(
+            "\\t",
+        ),
+    ),
+    Ok(
+        StringLiteral(
+            "\\\"escaped\\\"",
+        ),
+    ),
+    Ok(
+        CharLiteral(
+            "\\'",
+        ),
+    ),
+]

@@ -1,0 +1,8 @@
+---
+source: crates/descar-core/tests/token_kind_snapshot_tests.rs
+expression: result
+---
+(
+    "",
+    None,
+)

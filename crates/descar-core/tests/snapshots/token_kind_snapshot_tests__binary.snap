@@ -1,0 +1,5 @@
+---
+source: crates/descar-core/tests/token_kind_snapshot_tests.rs
+expression: "TokenKind::Binary(num).to_string()"
+---
+"binary '123'"

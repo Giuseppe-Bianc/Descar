@@ -1,0 +1,27 @@
+---
+source: crates/descar-core/tests/token_kind_snapshot_tests.rs
+expression: tokens
+---
+[
+    Ok(
+        OpenParen,
+    ),
+    Ok(
+        CloseParen,
+    ),
+    Ok(
+        OpenBracket,
+    ),
+    Ok(
+        CloseBracket,
+    ),
+    Ok(
+        OpenBrace,
+    ),
+    Ok(
+        CloseBrace,
+    ),
+    Ok(
+        Semicolon,
+    ),
+]

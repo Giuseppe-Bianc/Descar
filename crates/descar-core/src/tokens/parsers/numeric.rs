@@ -3,7 +3,7 @@ use crate::{
     tokens::{
         number::Number,
         parsers::{
-            suffix::{handle_suffix, split_numeric_and_suffix},
+            suffix::{handle_suffix, numeric_core_end, split_numeric_and_suffix},
             value,
         },
         token_kind::TokenKind,
@@ -27,6 +27,10 @@ pub fn parse_number(lex: &mut logos::Lexer<TokenKind>) -> Result<Number, LexErro
     let slice = lex.slice();
 
     let (numeric_part, suffix) = split_numeric_and_suffix(slice);
+
+    if suffix.is_none() && numeric_core_end(slice) < slice.len() {
+        return Err(LexError::InvalidNumberSuffix);
+    }
 
     handle_suffix(numeric_part, suffix)
 }

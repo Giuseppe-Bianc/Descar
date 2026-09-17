@@ -1,0 +1,52 @@
+---
+source: crates/descar-core/tests/token_kind_snapshot_tests.rs
+expression: tokens
+---
+[
+    Ok(
+        KeywordFun,
+    ),
+    Ok(
+        KeywordIf,
+    ),
+    Ok(
+        KeywordElse,
+    ),
+    Ok(
+        KeywordReturn,
+    ),
+    Ok(
+        KeywordWhile,
+    ),
+    Ok(
+        KeywordFor,
+    ),
+    Ok(
+        KeywordMain,
+    ),
+    Ok(
+        KeywordVar,
+    ),
+    Ok(
+        KeywordConst,
+    ),
+    Ok(
+        KeywordNullptr,
+    ),
+    Ok(
+        KeywordBreak,
+    ),
+    Ok(
+        KeywordContinue,
+    ),
+    Ok(
+        KeywordBool(
+            true,
+        ),
+    ),
+    Ok(
+        KeywordBool(
+            false,
+        ),
+    ),
+]

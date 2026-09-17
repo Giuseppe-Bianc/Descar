@@ -1,0 +1,46 @@
+---
+source: crates/descar-core/tests/token_kind_snapshot_tests.rs
+expression: input_result
+---
+[
+    (
+        OpenParen,
+        "'('",
+    ),
+    (
+        CloseParen,
+        "')'",
+    ),
+    (
+        OpenBrace,
+        "'{'",
+    ),
+    (
+        CloseBrace,
+        "'}'",
+    ),
+    (
+        OpenBracket,
+        "'['",
+    ),
+    (
+        CloseBracket,
+        "']'",
+    ),
+    (
+        Semicolon,
+        "';'",
+    ),
+    (
+        Colon,
+        "':'",
+    ),
+    (
+        Comma,
+        "','",
+    ),
+    (
+        Dot,
+        "'.'",
+    ),
+]

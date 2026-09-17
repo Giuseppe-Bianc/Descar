@@ -1,0 +1,50 @@
+---
+source: crates/descar-core/tests/token_kind_snapshot_tests.rs
+expression: input_result
+---
+[
+    (
+        KeywordFun,
+        "'fun'",
+    ),
+    (
+        KeywordIf,
+        "'if'",
+    ),
+    (
+        KeywordElse,
+        "'else'",
+    ),
+    (
+        KeywordVar,
+        "'var'",
+    ),
+    (
+        KeywordConst,
+        "'const'",
+    ),
+    (
+        KeywordReturn,
+        "'return'",
+    ),
+    (
+        KeywordWhile,
+        "'while'",
+    ),
+    (
+        KeywordFor,
+        "'for'",
+    ),
+    (
+        KeywordBreak,
+        "'break'",
+    ),
+    (
+        KeywordContinue,
+        "'continue'",
+    ),
+    (
+        KeywordMain,
+        "'main'",
+    ),
+]
