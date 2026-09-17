@@ -1,0 +1,32 @@
+crates/descar-core/tests/token_kind_tests.rs
+  h_361662506da91f 1-1182
+crates/descar-core/src/tokens/parsers/suffix.rs
+  h_361662506da91f 56
+  s_6328cd507603d3::t_d094ffbf482ca4 67,115
+crates/descar-core/tests/token_kind_snapshot_tests.rs
+  h_361662506da91f 1-277
+crates/descar-core/src/tokens/parsers/numeric.rs
+  s_6328cd507603d3::t_d094ffbf482ca4 6,31-33
+  s_6328cd507603d3::t_3412783c1f070c 34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "df8772994bc2cf614993941744736ffeffacbe23",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_6328cd507603d3": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "54392113-9440-4701-8ef2-eb6d0e36cb95",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
