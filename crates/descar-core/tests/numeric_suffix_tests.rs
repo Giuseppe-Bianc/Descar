@@ -93,3 +93,15 @@ fn malformed_alphabetic_suffix_is_not_split_into_identifier_tokens() {
     assert!(errors[0].to_string().contains("[E0009]"));
     assert!(errors[0].to_string().contains("123abc"));
 }
+
+#[test]
+fn malformed_exponents_are_not_split_into_identifier_tokens() {
+    for input in ["100e", "100E"] {
+        let (tokens, errors) = lex(input);
+
+        assert_eq!(tokens, vec![TokenKind::Eof], "input: {input}");
+        assert_eq!(errors.len(), 1, "input: {input}");
+        assert!(errors[0].to_string().contains("[E0009]"), "input: {input}, error: {}", errors[0]);
+        assert!(errors[0].to_string().contains(input), "input: {input}, error: {}", errors[0]);
+    }
+}
