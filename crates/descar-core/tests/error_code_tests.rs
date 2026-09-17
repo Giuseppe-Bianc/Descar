@@ -584,6 +584,29 @@ fn test_key_explanations_content() {
     assert!(explanation.contains("fun"), "E2027 explanation should mention fun");
 }
 
+/// Test detailed explanations for lexical literal and token errors.
+#[test]
+fn test_lexical_explanations_content() {
+    assert!(ErrorCode::E0004.explanation().contains("#xDEAD"));
+    assert!(ErrorCode::E0005.explanation().contains("double quote"));
+    assert!(ErrorCode::E0006.explanation().contains("single quote"));
+    assert!(ErrorCode::E0007.explanation().contains("escape sequences"));
+    assert!(ErrorCode::E0008.explanation().contains("/*"));
+    assert!(ErrorCode::E0009.explanation().contains("i8"));
+    assert!(ErrorCode::E0010.explanation().contains("target type"));
+}
+
+/// Test detailed explanations for parser errors.
+#[test]
+fn test_parser_explanations_content() {
+    assert!(ErrorCode::E1001.explanation().contains("recursion limit"));
+
+    let explanation = ErrorCode::E1002.explanation();
+    assert!(explanation.contains("Expected a valid type"));
+    assert!(explanation.contains("Valid types: i8"));
+    assert!(explanation.contains("custom type identifiers"));
+}
+
 /// Test that all error codes have non-empty explanations.
 #[test]
 fn test_all_explanations_non_empty() {
