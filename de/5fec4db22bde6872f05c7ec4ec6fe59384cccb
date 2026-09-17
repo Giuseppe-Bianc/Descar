@@ -1,0 +1,25 @@
+crates/descar-core/tests/error_code_tests.rs
+  s_0f76608df01ef2::t_5199066ce02aa0 587-602,608-609
+  s_0f76608df01ef2::t_288fff4202b070 603-607
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "de5fec4db22bde6872f05c7ec4ec6fe59384cccb",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0f76608df01ef2": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "987ad6e7-0766-422a-b4d1-066e0767a80c",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
