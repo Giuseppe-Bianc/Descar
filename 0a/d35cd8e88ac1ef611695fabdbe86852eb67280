@@ -1,0 +1,26 @@
+crates/descar-core/tests/token_kind_tests.rs
+  s_e5bef1e784b25d::t_bfa6f1bd63c059 1042-1045,1047-1048
+  s_e5bef1e784b25d::t_76ec89335ce991 1046
+  s_e5bef1e784b25d::t_e7a8e3cb8e2846 1041
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0ad35cd8e88ac1ef611695fabdbe86852eb67280",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_e5bef1e784b25d": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "ec030052-276b-4de1-826c-a4234cc6ea73",
+        "model": "mai-code-1.1-flash"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
