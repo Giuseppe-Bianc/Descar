@@ -1,0 +1,25 @@
+crates/descar-core/tests/numeric_suffix_tests.rs
+  s_95a1270f3b3c85::t_b2e1c351b4bbae 4,72-84
+  s_95a1270f3b3c85::t_0ef6b8dba1e8c2 85-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "0a72a5a7c6a33de297ccf2f5eec5213ed077b521",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_95a1270f3b3c85": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "2fc4d786-0624-4ecd-8493-7f2d03bcb9f8",
+        "model": "mai-code-1.1-flash"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
