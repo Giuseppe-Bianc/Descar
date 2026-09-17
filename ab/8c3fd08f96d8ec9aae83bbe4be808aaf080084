@@ -1,0 +1,25 @@
+crates/descar-core/tests/numeric_suffix_tests.rs
+  s_dc72c509669397::t_b062326bf2f8fb 96-98,100-107
+  s_dc72c509669397::t_a8bdd00dcf6f37 99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ab8c3fd08f96d8ec9aae83bbe4be808aaf080084",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_dc72c509669397": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "8041c7ce-c657-460f-b8c6-4cb77996dddb",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
