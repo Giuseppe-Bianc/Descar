@@ -52,7 +52,7 @@ description: "Task list for Semantic Type Checking feature implementation"
 
 ### Diagnostic Reporting Infrastructure
 
-- [ ] T016 [P] Define `Phase` enum (`Binder`, `Resolve`, `Sig`, `Check`, `Globals`) and `Diagnostic` struct carrying `phase`, `code: ErrorCode`, `message: String`, `span: SourceSpan`, and `help: Option<String>` in `crates/descar-core/src/semantic/ctx.rs`
+- [ ] T016 [P] Define `Phase` enum (`Binder`, `Resolve`, `Sig`, `Check`, `Globals`) and `Diagnostic` struct carrying `phase`, `code: ErrorCode`, `message: String`, `span: SourceSpan`, and validated non-empty actionable `help` in `crates/descar-core/src/semantic/ctx.rs`; create diagnostics through a constructor or dedicated non-empty help type so `None` and empty help values cannot be represented
 - [ ] T017 Implement conversion method `Diagnostic::to_compile_error` mapping to `CompileError::TypeError` quoting verbatim constraints "span must denote a valid location in source code" and "help must provide actionable fix guidance (FR-006)" in `crates/descar-core/src/semantic/diag.rs`
 - [ ] T018 Implement diagnostic accumulation methods `add_diagnostic`, `has_blocking_errors`, and `take_diagnostics` on `CheckerCtx` in `crates/descar-core/src/semantic/ctx.rs`
 - [ ] T019 Add unit tests for `Diagnostic` creation, phase tagging, and `to_compile_error` field preservation in `crates/descar-core/src/semantic/diag.rs`
@@ -163,7 +163,7 @@ description: "Task list for Semantic Type Checking feature implementation"
 
 ## Phase 7: User Story 5 - Duplicate Declaration Detection in Scope (Priority: P2)
 
-**Goal**: Detect when an identifier is declared more than once in the same scope and emit `ErrorCode::E2003` with locations of both original and duplicate declarations.
+**Goal**: Detect when an identifier is declared more than once in the same scope and emit `ErrorCode::E2003` with the duplicate declaration location. The binder error retains both declaration spans for future related-span diagnostics.
 
 **Independent Test**: Define `var x: i32 = 1; var x: i32 = 2;` in the same block and verify `CompileError::TypeError` with `ErrorCode::E2003` is emitted.
 
@@ -176,7 +176,7 @@ description: "Task list for Semantic Type Checking feature implementation"
 
 - [ ] T054 [P] [US5] Define `BinderError::DuplicateDeclaration { name: String, first_span: SourceSpan, duplicate_span: SourceSpan }` and its `Display` implementation in `crates/descar-core/src/semantic/binder.rs`
 - [ ] T055 [US5] Implement variable binding registration in `binder::bind` checking `lookup_local` in current scope before insertion in `crates/descar-core/src/semantic/binder.rs`
-- [ ] T056 [US5] Emit `ErrorCode::E2003` diagnostic with identifier name, original declaration span, duplicate declaration span, and fix suggestion in `crates/descar-core/src/semantic/binder.rs`
+- [ ] T056 [US5] Emit `ErrorCode::E2003` diagnostic with the identifier name, `duplicate_span` as the single diagnostic span supported by `CompileError::TypeError` and `ErrorReporter`, and a fix suggestion; retain `first_span` in `BinderError` without rendering it as a related span in `crates/descar-core/src/semantic/binder.rs`
 - [ ] T057 [US5] Implement statement traversal entry function `binder::bind(ast: &[Stmt], ctx: &mut CheckerCtx)` in `crates/descar-core/src/semantic/binder.rs`
 
 **Checkpoint**: User Story 5 is functional and independently testable.
