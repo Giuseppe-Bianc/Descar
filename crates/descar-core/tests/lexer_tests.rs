@@ -1,8 +1,11 @@
+use descar_core::lex::error::LexError;
 use descar_core::{
     error::compile_error::CompileError,
     lex::lexer::*,
+    tokens::parsers::base::parse_base_number,
     tokens::{number::Number::*, token_kind::TokenKind, token_kind::TokenKind::*},
 };
+use logos::Logos;
 
 // Helper function to lex input and return TokenKinds
 fn lex_kinds(input: &str) -> Vec<Result<TokenKind, CompileError>> {
@@ -169,6 +172,33 @@ fn empty_base_numbers() {
         assert_eq!(errors.len(), 1);
         assert_eq!(tokens[0].kind, Eof);
         assert_eq!(errors[0].to_string(), expected_msg);
+    }
+}
+
+#[test]
+fn base_parser_rejects_slices_shorter_than_prefix() {
+    for (radix, expected_error) in [
+        (2, LexError::MalformedBinary),
+        (8, LexError::MalformedOctal),
+        (16, LexError::MalformedHexadecimal),
+        (10, LexError::InvalidToken),
+    ] {
+        let mut lexer = TokenKind::lexer("");
+        assert_eq!(parse_base_number(radix, &mut lexer), Err(expected_error));
+    }
+}
+
+#[test]
+fn base_parser_rejects_missing_digits_after_prefix() {
+    for (input, radix, expected_error) in [
+        ("#b", 2, LexError::MalformedBinary),
+        ("#o", 8, LexError::MalformedOctal),
+        ("#x", 16, LexError::MalformedHexadecimal),
+    ] {
+        let mut lexer = TokenKind::lexer(input);
+        lexer.next();
+
+        assert_eq!(parse_base_number(radix, &mut lexer), Err(expected_error));
     }
 }
 
