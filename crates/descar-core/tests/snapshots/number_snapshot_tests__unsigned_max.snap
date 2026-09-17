@@ -1,0 +1,5 @@
+---
+source: crates/descar-core/tests/number_snapshot_tests.rs
+expression: "Number::UnsignedInteger(u64::MAX).to_string()"
+---
+18446744073709551615
