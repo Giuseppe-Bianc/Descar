@@ -1,0 +1,27 @@
+crates/descar-core/tests/lexer_tests.rs
+  s_12f1e82ee7e7a0::t_06e7147dcd187a 5,8,178-187,191
+  s_12f1e82ee7e7a0::t_8e9786430c92cd 1
+  s_12f1e82ee7e7a0::t_307d5991683e14 188-189,192-204
+  s_12f1e82ee7e7a0::t_0d6ebc1119e97d 190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "cc666036df5c8d5c282bfa140b8af709e4bc2b38",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_12f1e82ee7e7a0": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "2362ae8c-9884-4a38-8e99-3df5c78e4612",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
