@@ -203,6 +203,28 @@ fn base_parser_rejects_missing_digits_after_prefix() {
 }
 
 #[test]
+fn base_parser_rejects_unsupported_radix_after_digits() {
+    let mut lexer = TokenKind::lexer("123");
+    lexer.next();
+
+    assert_eq!(parse_base_number(10, &mut lexer), Err(LexError::InvalidToken));
+}
+
+#[test]
+fn base_parser_rejects_invalid_digits() {
+    for (input, radix, expected_error) in [
+        ("#b2", 2, LexError::MalformedBinary),
+        ("#o8", 8, LexError::MalformedOctal),
+        ("#xG", 16, LexError::MalformedHexadecimal),
+    ] {
+        let mut lexer = TokenKind::lexer(input);
+        lexer.next();
+
+        assert_eq!(parse_base_number(radix, &mut lexer), Err(expected_error));
+    }
+}
+
+#[test]
 fn identifiers() {
     use TokenKind::*;
     let input = "foo _bar42 変数 ñøπ";
