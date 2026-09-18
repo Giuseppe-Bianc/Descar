@@ -1191,10 +1191,7 @@ mod tests {
         for op in operators {
             let statements = [
                 Stmt::VarDeclaration {
-                    bindings: vec![VarBinding {
-                        name: "value".into(),
-                        initializer: Some(number(span.clone())),
-                    }],
+                    bindings: vec![VarBinding { name: "value".into(), initializer: Some(number(span.clone())) }],
                     type_annotation: Type::I64,
                     is_mutable: true,
                     span: span.clone(),
@@ -1233,10 +1230,7 @@ mod tests {
         for op in operators {
             let statements = [
                 Stmt::VarDeclaration {
-                    bindings: vec![VarBinding {
-                        name: "value".into(),
-                        initializer: Some(number(span.clone())),
-                    }],
+                    bindings: vec![VarBinding { name: "value".into(), initializer: Some(number(span.clone())) }],
                     type_annotation: Type::I64,
                     is_mutable: false,
                     span: span.clone(),
@@ -1263,17 +1257,15 @@ mod tests {
     #[test]
     fn compound_arithmetic_and_bitwise_operations_promote_numeric_operands() {
         let span = SourceSpan::default();
-        let declarations = [
-            Stmt::VarDeclaration {
-                bindings: vec![VarBinding {
-                    name: "value".into(),
-                    initializer: Some(Expr::new_number_literal(Number::I8(1), span.clone())),
-                }],
-                type_annotation: Type::I8,
-                is_mutable: true,
-                span: span.clone(),
-            },
-        ];
+        let declarations = [Stmt::VarDeclaration {
+            bindings: vec![VarBinding {
+                name: "value".into(),
+                initializer: Some(Expr::new_number_literal(Number::I8(1), span.clone())),
+            }],
+            type_annotation: Type::I8,
+            is_mutable: true,
+            span: span.clone(),
+        }];
 
         let mut checker = TypeChecker::new();
         checker.visit_statements(&declarations);
@@ -1281,7 +1273,7 @@ mod tests {
         let arithmetic = checker.visit_binary_expr(
             &variable("value", span.clone()),
             BinaryOp::AddEqual,
-            &Expr::new_number_literal(Number::I64(1), span.clone()),
+            &Expr::new_number_literal(Number::Integer(1), span.clone()),
             &span,
         );
         assert_eq!(arithmetic, Some(Type::I64));
@@ -1289,7 +1281,7 @@ mod tests {
         let bitwise = checker.visit_binary_expr(
             &variable("value", span.clone()),
             BinaryOp::BitwiseAndEqual,
-            &Expr::new_number_literal(Number::I64(1), span.clone()),
+            &Expr::new_number_literal(Number::Integer(1), span.clone()),
             &span,
         );
         assert_eq!(bitwise, Some(Type::I64));
