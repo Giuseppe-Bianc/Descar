@@ -232,17 +232,22 @@ impl SymbolTable {
         let current_scope = self.current_scope_mut().expect("At least one scope");
 
         if current_scope.symbols.contains_key(name) {
+            // The diagnostic belongs to the duplicate declaration, not the
+            // original declaration. The incoming symbol carries the span of
+            // the declaration currently being checked.
+            let duplicate_span = match &symbol {
+                Symbol::Variable(v) => v.defined_at.clone(),
+                Symbol::Function(f) => f.defined_at.clone(),
+                _ => SourceSpan::default(),
+            };
+
             return Err(CompileError::TypeError {
                 code: Some(ErrorCode::E2032),
                 message: Arc::from(format!(
                     "Identifier '{}' already declared in this {:?} scope",
                     name, current_scope.kind
                 )),
-                span: match current_scope.symbols.get(name) {
-                    Some(Symbol::Variable(v)) => v.defined_at.clone(),
-                    Some(Symbol::Function(f)) => f.defined_at.clone(),
-                    _ => SourceSpan::default(),
-                },
+                span: duplicate_span,
                 help: None,
             });
         }
