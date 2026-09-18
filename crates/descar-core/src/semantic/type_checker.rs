@@ -1,4 +1,4 @@
-//! Type checking and semantic analysis for the jsavrs language.
+//! Type checking and semantic analysis for the Descar language.
 //!
 //! This module performs semantic analysis on the AST, validating type correctness,
 //! variable scoping, and control flow constraints. It implements type inference,
@@ -18,10 +18,12 @@
 //!
 //! # Examples
 //!
-//! ```ignore
-//! use jsavrs::semantic::type_checker::TypeChecker;
+//! ```rust,no_run
+//! use descar_core::semantic::type_checker::TypeChecker;
+//! use descar_core::syntax::ast::Stmt;
 //!
 //! let mut checker = TypeChecker::new();
+//! let statements: Vec<Stmt> = vec![];
 //! let errors = checker.check(&statements);
 //!
 //! if errors.is_empty() {
@@ -30,7 +32,6 @@
 //!     // Report type errors
 //! }
 //! ```
-// src/semantic/type_checker.rs
 use crate::error::compile_error::CompileError;
 use crate::error::error_code::ErrorCode;
 use crate::location::source_span::SourceSpan;
@@ -44,7 +45,7 @@ use crate::tokens::number::Number;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
-/// Type checker for semantic analysis of jsavrs programs.
+/// Type checker for semantic analysis of Descar programs.
 ///
 /// The type checker validates that all operations are type-safe, variables are
 /// properly declared and used, and control flow constructs are valid. It maintains
