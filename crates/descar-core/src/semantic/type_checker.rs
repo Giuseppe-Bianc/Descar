@@ -851,15 +851,16 @@ impl TypeChecker {
             );
             return None;
         }
-        if let Type::Array { element_type, .. } = array_type {
-            Some(*element_type)
-        } else {
-            self.type_error_with_code(
-                Some(ErrorCode::E2031),
-                format!("Cannot index into non-array type {array_type}"),
-                array.span(),
-            );
-            None
+        match array_type {
+            Type::Array { element_type, .. } | Type::Vector { element_type } => Some(*element_type),
+            other_type => {
+                self.type_error_with_code(
+                    Some(ErrorCode::E2031),
+                    format!("Cannot index into non-array type {other_type}"),
+                    array.span(),
+                );
+                None
+            }
         }
     }
 
