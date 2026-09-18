@@ -25,6 +25,20 @@ fn print_file_size_report(path: &Path) {
         Err(e) => handle_io_error("File Metadata", e),
     }
 }
+
+fn read_input(path: &Path) -> String {
+    fs::read_to_string(path).unwrap_or_else(|e| {
+        handle_io_error("I/O", e);
+        process::exit(1);
+    })
+}
+fn path_to_str(path: &Path) -> &str {
+    path.to_str().unwrap_or_else(|| {
+        handle_io_error("I/O", std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid file path"));
+        process::exit(1);
+    })
+}
+
 fn main() {
     let args = Args::parse();
     match args.command {
@@ -32,17 +46,9 @@ fn main() {
         Some(Command::Compile(args)) => {
             let file_path: &Path = args.input.as_path();
 
-            let input = {
-                fs::read_to_string(file_path).unwrap_or_else(|e| {
-                    handle_io_error("I/O", e);
-                    process::exit(1); // esce con codice 1
-                })
-            };
+            let input = read_input(file_path);
 
-            let file_path_str: &str = file_path.to_str().unwrap_or_else(|| {
-                handle_io_error("I/O", std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid file path"));
-                process::exit(1);
-            });
+            let file_path_str: &str = path_to_str(file_path);
 
             if !args.logging.quiet {
                 match args.logging.verbose {
@@ -87,17 +93,9 @@ fn main() {
         Some(Command::Check(args)) => {
             let file_path: &Path = args.input.as_path();
 
-            let input = {
-                fs::read_to_string(file_path).unwrap_or_else(|e| {
-                    handle_io_error("I/O", e);
-                    process::exit(1); // esce con codice 1
-                })
-            };
+            let input = read_input(file_path);
 
-            let file_path_str: &str = file_path.to_str().unwrap_or_else(|| {
-                handle_io_error("I/O", std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid file path"));
-                process::exit(1);
-            });
+            let file_path_str: &str = path_to_str(file_path);
 
             if !args.logging.quiet {
                 match args.logging.verbose {
