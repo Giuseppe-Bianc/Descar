@@ -700,7 +700,7 @@ impl<'a> JsavParser<'a> {
             let expected = &kind.clone();
             let found_str = current_token.as_ref().map_or_else(|| "end of input".to_string(), |t| t.kind.to_string());
 
-            let span = current_token.as_ref().map(|t| t.span.clone()).unwrap_or_default();
+            let span = current_token.as_ref().map_or_default(|t| t.span.clone());
 
             let error_message = Arc::from(format!("Expected {expected} in {context}, found {found_str}."));
             let help_message = format!("Try adding a {expected}");
