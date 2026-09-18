@@ -160,18 +160,30 @@ impl TypeChecker {
     }
 
     // Helper method per dichiarare simboli
+    /// Records a symbol declaration error in the type checker's error collection.
+    ///
+    /// Delegates declaration to the symbol table and stores any resulting
+    /// compilation error for reporting after the semantic analysis pass.
     fn declare_symbol(&mut self, name: &str, symbol: Symbol, declared_at: &SourceSpan) {
         if let Err(e) = self.symbol_table.declare(name, symbol, declared_at.clone()) {
             self.errors.push(e);
         }
     }
 
+    /// Visits each statement in source order.
+    ///
+    /// Each statement is dispatched to the corresponding semantic analysis
+    /// routine.
     fn visit_statements(&mut self, statements: &[Stmt]) {
         for stmt in statements {
             self.visit_stmt(stmt);
         }
     }
 
+    /// Dispatches a statement to its specialized semantic analysis routine.
+    ///
+    /// The visitor handles expressions, declarations, functions, control-flow
+    /// constructs, blocks, returns, and loop-control statements.
     fn visit_stmt(&mut self, stmt: &Stmt) {
         match stmt {
             Stmt::Expression { expr } => {
@@ -202,6 +214,11 @@ impl TypeChecker {
         }
     }
 
+    /// Validates variable initializers and registers declared variables.
+    ///
+    /// An initializer must be assignable to the declared type. Each binding is
+    /// then inserted into the current scope with its type, mutability, and source
+    /// location.
     fn visit_var_declaration(
         &mut self, bindings: &[VarBinding], type_annotation: &Type, is_mutable: bool, span: &SourceSpan,
     ) {
@@ -232,6 +249,11 @@ impl TypeChecker {
         }
     }
 
+    /// Registers and analyzes a function declaration.
+    ///
+    /// Creates the function symbol, establishes a function scope, registers its
+    /// parameters, checks the function body, and verifies that non-void functions
+    /// contain a valid return path.
     fn visit_function(
         &mut self, name: &str, parameters: &[Parameter], return_type: &Type, body: &Stmt, span: &SourceSpan,
     ) {
@@ -275,10 +297,17 @@ impl TypeChecker {
         self.symbol_table.pop_scope();
     }
 
+    /// Type-checks the program entry point as a void function.
+    ///
+    /// The main function is analyzed using the regular function checking logic
+    /// with no parameters and a Void return type.
     fn visit_main_function(&mut self, body: &Stmt, span: &SourceSpan) {
         self.visit_function("main", &[], &Type::Void, body, span);
     }
 
+    /// Validates that a control-flow condition has boolean type.
+    ///
+    /// Reports E2004 when the condition expression produces a non-boolean type.
     fn check_condition(&mut self, condition: &Expr, construct: &str) {
         if let Some(cond_type) = self.visit_expr(condition) {
             if cond_type != Type::Bool {
@@ -291,6 +320,10 @@ impl TypeChecker {
         }
     }
 
+    /// Type-checks an if statement and both of its possible branches.
+    ///
+    /// The condition must be boolean. Present else or else-if branches are
+    /// visited using the same statement analysis rules.
     fn visit_if(&mut self, condition: &Expr, then_branch: &Stmt, else_branch: &ElseBranch, _span: &SourceSpan) {
         self.check_condition(condition, "'if' statement");
         self.visit_stmt(then_branch);
@@ -303,6 +336,10 @@ impl TypeChecker {
         }
     }
 
+    /// Type-checks a while loop and manages loop scope and context.
+    ///
+    /// The loop condition must be boolean. A block scope is created for the loop
+    /// body and the loop state is restored after the body is analyzed.
     fn visit_while(&mut self, condition: &Expr, body: &Stmt, _span: &SourceSpan) {
         self.check_condition(condition, "'while' loop");
 
@@ -315,6 +352,10 @@ impl TypeChecker {
     }
 
     #[allow(clippy::ref_option)]
+    /// Type-checks a for loop and manages its lexical and loop context.
+    ///
+    /// The initializer, optional condition, increment expression, and body are
+    /// analyzed in a dedicated block scope. The loop state is restored afterward.
     fn visit_for(
         &mut self, initializer: &Option<Box<Stmt>>, condition: &Option<Expr>, increment: &Option<Expr>, body: &Stmt,
         span: &SourceSpan,
@@ -339,12 +380,20 @@ impl TypeChecker {
         self.symbol_table.pop_scope();
     }
 
+    /// Creates a block scope and type-checks all statements inside it.
+    ///
+    /// The scope is removed after all contained statements have been analyzed.
     fn visit_block(&mut self, statements: &[Stmt], span: &SourceSpan) {
         self.symbol_table.push_scope(ScopeKind::Block, Some(span.clone()));
         self.visit_statements(statements);
         self.symbol_table.pop_scope();
     }
 
+    /// Validates a return statement against the current function return type.
+    ///
+    /// Reports errors when a return appears outside a function, returns a value
+    /// from a void function, omits a required value, or returns an incompatible
+    /// value.
     fn visit_return(&mut self, value: Option<&Expr>, span: &SourceSpan) {
         if self.return_type_stack.is_empty() {
             self.type_error_with_code(Some(ErrorCode::E2005), "Return statement must be inside function body", span);
@@ -381,18 +430,28 @@ impl TypeChecker {
         }
     }
 
+    /// Validates a break statement.
+    ///
+    /// A break is valid only while the type checker is analyzing a loop.
     fn visit_break(&mut self, span: &SourceSpan) {
         if !self.in_loop {
             self.type_error_with_code(Some(ErrorCode::E2009), "Break statement outside loop", span);
         }
     }
 
+    /// Validates a continue statement.
+    ///
+    /// A continue is valid only while the type checker is analyzing a loop.
     fn visit_continue(&mut self, span: &SourceSpan) {
         if !self.in_loop {
             self.type_error_with_code(Some(ErrorCode::E2010), "Continue statement outside loop", span);
         }
     }
 
+    /// Dispatches an expression to the appropriate type-checking routine.
+    ///
+    /// Returns the inferred or declared type of the expression when analysis
+    /// succeeds.
     fn visit_expr(&mut self, expr: &Expr) -> Option<Type> {
         match expr {
             Expr::Binary { left, op, right, span } => self.visit_binary_expr(left, *op, right, span),
@@ -408,6 +467,11 @@ impl TypeChecker {
     }
 
     #[allow(clippy::too_many_lines)]
+    /// Type-checks a binary expression and determines its resulting type.
+    ///
+    /// Operand types are validated for the selected operator. Numeric and
+    /// bitwise operands are promoted when supported, compound assignments also
+    /// require a mutable target.
     fn visit_binary_expr(&mut self, left: &Expr, op: BinaryOp, right: &Expr, span: &SourceSpan) -> Option<Type> {
         let left_type = self.visit_expr(left);
 
@@ -585,6 +649,10 @@ impl TypeChecker {
         })
     }
 
+    /// Type-checks a unary expression and returns its resulting type.
+    ///
+    /// Validates numeric, boolean, integer, and mutability requirements for
+    /// negation, logical and bitwise not, increment, and decrement operations.
     fn visit_unary_expr(&mut self, op: UnaryOp, expr: &Expr, _span: &SourceSpan) -> Option<Type> {
         let expr_type = self.visit_expr(expr)?;
 
@@ -657,6 +725,11 @@ impl TypeChecker {
     }
 
     #[allow(clippy::unnecessary_wraps)]
+    /// Infers the type represented by a literal value.
+    ///
+    /// Numeric literals are classified according to their parsed number type,
+    /// while string, character, boolean, and null-pointer literals map directly
+    /// to their corresponding Descar types.
     const fn visit_literal(&self, value: &LiteralValue, _span: &SourceSpan) -> Option<Type> {
         Some(match value {
             LiteralValue::Numeric(n) => self.type_of_number(n),
@@ -685,6 +758,11 @@ impl TypeChecker {
     }
 
     #[allow(clippy::cast_possible_wrap)]
+    /// Infers the type of an array literal and validates its elements.
+    ///
+    /// Array literals must contain at least one element and all elements must have
+    /// the same type. The resulting array type records the inferred element type
+    /// and the literal length.
     fn visit_array_literal(&mut self, elements: &[Expr], span: &SourceSpan) -> Option<Type> {
         if elements.is_empty() {
             self.type_error_with_code(
@@ -774,6 +852,10 @@ impl TypeChecker {
         }
     }
 
+    /// Resolves a variable reference and returns its declared type.
+    ///
+    /// Reports whether the name is undefined or refers to a function instead of a
+    /// variable.
     fn visit_variable(&mut self, name: &str, span: &SourceSpan) -> Option<Type> {
         if let Some(var) = self.symbol_table.lookup_variable(name) {
             Some(var.ty)
@@ -791,6 +873,10 @@ impl TypeChecker {
         }
     }
 
+    /// Extracts the underlying variable name from a variable-like expression.
+    ///
+    /// Recursively unwraps grouping and array-access expressions so mutation
+    /// checks can identify the base variable. Returns None for other expressions.
     fn base_variable_name(expr: &Expr) -> Option<&str> {
         match expr {
             Expr::Variable { name, .. } => Some(name),
@@ -799,6 +885,10 @@ impl TypeChecker {
         }
     }
 
+    /// Type-checks an assignment target and its assigned value.
+    ///
+    /// Verifies that the target exists, is mutable, and accepts the value type.
+    /// Array-element assignments are validated through array access checking.
     fn visit_assign(&mut self, target: &Expr, value: &Expr, _span: &SourceSpan) -> Option<Type> {
         let target_type = match target {
             Expr::Variable { name, span } => {
@@ -855,6 +945,11 @@ impl TypeChecker {
     }
 
     #[allow(clippy::manual_let_else)]
+    /// Type-checks a function call and validates its arguments.
+    ///
+    /// The callee must resolve to a function. The argument count and each
+    /// argument's assignability to the corresponding parameter type are checked,
+    /// and the function return type is returned on success.
     fn visit_call(&mut self, callee: &Expr, arguments: &[Expr], span: &SourceSpan) -> Option<Type> {
         let callee_name = if let Expr::Variable { name, .. } = callee {
             name
@@ -907,6 +1002,10 @@ impl TypeChecker {
         Some(func.return_type.clone())
     }
 
+    /// Type-checks an array or vector access expression.
+    ///
+    /// The index must have an integer type and the target must be an array or
+    /// vector. Returns the element type when both checks succeed.
     fn visit_array_access(&mut self, array: &Expr, index: &Expr, _span: &SourceSpan) -> Option<Type> {
         let array_type = self.visit_expr(array);
         let index_type = self.visit_expr(index);
@@ -962,13 +1061,21 @@ impl TypeChecker {
     }
 
     #[inline]
+    /// Returns the numeric promotion rank of a type.
+    ///
+    /// Higher ranks represent types earlier in the numeric promotion hierarchy.
+    /// Non-numeric types return None.
     fn promotion_rank(ty: &Type) -> Option<usize> {
         HIERARCHY.iter().position(|candidate| candidate == ty).map(|index| HIERARCHY.len() - index)
     }
 
     // Extract the original promotion logic into a separate function
     #[allow(clippy::unused_self)]
-    fn compute_promotion(&self, t1: &Type, t2: &Type) -> Type {
+    /// Computes the promoted numeric type for a pair of types.
+    ///
+    /// Returns the first matching type from the numeric hierarchy. When neither
+    /// input belongs to the hierarchy, the first input type is used as a fallback.
+    fn compute_promotion(&self, t1: &Type, t2: &Type) Type {
         // Trova il tipo con rango più alto nella gerarchia
         for ty in &HIERARCHY {
             if t1 == ty || t2 == ty {
