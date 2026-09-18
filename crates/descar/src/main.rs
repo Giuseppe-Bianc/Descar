@@ -1,12 +1,12 @@
 use console::style;
 use descar_core::lex::lexer::{Lexer, lexer_tokenize_with_errors};
+use descar_core::semantic::type_checker::TypeChecker;
 use std::path::Path;
 use std::{fs, process};
 
 use clap::{CommandFactory, Parser};
 use descar_cli::cli::{Args, Command};
 use descar_core::error::error_reporter::ErrorReporter;
-use descar_core::printers::ast_printer::pretty_print_stmt;
 use descar_core::syntax::parser::JsavParser;
 
 use descar_core::file::{FileSizeInfo, FileSizeReport, SizeSystems};
@@ -77,8 +77,11 @@ fn main() {
                 process::exit(1);
             }
 
-            for statement in &statements {
-                print!("{}", pretty_print_stmt(statement));
+            let mut type_checker = TypeChecker::new();
+            let type_checker_errors = type_checker.check(&statements);
+            if !type_checker_errors.is_empty() {
+                eprintln!("{}", error_reporter.report_errors(type_checker_errors));
+                process::exit(1);
             }
         }
         Some(Command::Check(args)) => {

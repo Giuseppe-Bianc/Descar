@@ -30,13 +30,14 @@
 //!     // Report type errors
 //! }
 //! ```
-
 // src/semantic/type_checker.rs
 use crate::error::compile_error::CompileError;
 use crate::error::error_code::ErrorCode;
 use crate::location::source_span::SourceSpan;
 use crate::semantic::symbol_table::{FunctionSymbol, ScopeKind, Symbol, SymbolTable, VariableSymbol};
 use crate::syntax::ast::binary_op::BinaryOp;
+use crate::syntax::ast::else_branch::ElseBranch;
+use crate::syntax::ast::stmt::VarBinding;
 use crate::syntax::ast::unary_op::UnaryOp;
 use crate::syntax::ast::{Expr, LiteralValue, Parameter, Stmt, Type};
 use crate::tokens::number::Number;
@@ -68,7 +69,10 @@ use std::sync::{Arc, Mutex, OnceLock};
 /// # Examples
 ///
 /// ```rust,no_run
+/// use descar_core::semantic::type_checker::TypeChecker;
+/// use descar_core::syntax::ast::Stmt;
 /// let mut checker = TypeChecker::new();
+/// let statements :Vec<Stmt> = vec![];
 /// let errors = checker.check(&statements);
 /// ```
 pub struct TypeChecker {
@@ -88,6 +92,12 @@ static TYPE_PROMOTION_CACHE: OnceLock<Mutex<HashMap<(Type, Type), Type>>> = Once
 // Precomputed type promotion lookup table for better performance
 static TYPE_PROMOTION_TABLE: OnceLock<[u8; 100]> = OnceLock::new();
 
+impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self:?}")
+    }
+}
+
 #[allow(clippy::collapsible_if)]
 impl TypeChecker {
     /// Creates a new type checker with empty state.
@@ -102,6 +112,8 @@ impl TypeChecker {
     /// # Examples
     ///
     /// ```rust,no_run
+    /// use descar_core::semantic::type_checker::TypeChecker;
+    /// use descar_core::syntax::ast::Stmt;
     /// let mut checker = TypeChecker::new();
     /// ```
     #[must_use]
@@ -138,7 +150,10 @@ impl TypeChecker {
     /// # Examples
     ///
     /// ```rust,no_run
+    /// use descar_core::semantic::type_checker::TypeChecker;
+    /// use descar_core::syntax::ast::Stmt;
     /// let mut checker = TypeChecker::new();
+    /// let statements :Vec<Stmt> = vec![];
     /// let errors = checker.check(&statements);
     ///
     /// if !errors.is_empty() {
@@ -170,16 +185,18 @@ impl TypeChecker {
             Stmt::Expression { expr } => {
                 self.visit_expr(expr);
             }
-            Stmt::VarDeclaration { variables, type_annotation, is_mutable, initializers, span } => {
-                self.visit_var_declaration(variables, type_annotation, *is_mutable, initializers, span);
+            Stmt::VarDeclaration { bindings, type_annotation, is_mutable, span } => {
+                self.visit_var_declaration(bindings, type_annotation, *is_mutable, span);
             }
             Stmt::Function { name, parameters, return_type, body, span } => {
                 self.visit_function(name, parameters, return_type, body, span);
             }
             Stmt::If { condition, then_branch, else_branch, span } => {
-                self.visit_if(condition, then_branch, else_branch.as_deref(), span);
+                self.visit_if(condition, then_branch, else_branch, span);
             }
-            Stmt::While { condition, body, span } => self.visit_while(condition, body, span),
+            Stmt::While { condition, body, span } => {
+                self.visit_while(condition, body, span);
+            }
             Stmt::For { initializer, condition, increment, body, span } => {
                 self.visit_for(initializer, condition, increment, body, span);
             }
@@ -187,44 +204,32 @@ impl TypeChecker {
             Stmt::Return { value, span } => self.visit_return(value.as_ref(), span),
             Stmt::Break { span } => self.visit_break(span),
             Stmt::Continue { span } => self.visit_continue(span),
-            Stmt::MainFunction { body, span } => self.visit_main_function(body, span),
+            Stmt::MainFunction { body, span } => {
+                self.visit_main_function(body, span);
+            }
         }
     }
 
     fn visit_var_declaration(
-        &mut self, variables: &[Arc<str>], type_annotation: &Type, is_mutable: bool, initializers: &[Expr],
-        span: &SourceSpan,
+        &mut self, bindings: &[VarBinding], type_annotation: &Type, is_mutable: bool, span: &SourceSpan,
     ) {
-        if variables.len() != initializers.len() {
-            self.type_error_with_code(
-                Some(ErrorCode::E2001),
-                format!(
-                    "Variable declaration requires {} initializers but {} were provided",
-                    variables.len(),
-                    initializers.len()
-                ),
-                span,
-            );
-            return;
-        }
-
-        for (var_name, init_expr) in variables.iter().zip(initializers) {
-            let init_type = self.visit_expr(init_expr);
-            // Solo se l'espressione ha prodotto un tipo valido
-            if let Some(init_type) = init_type {
-                if !self.is_assignable(&init_type, type_annotation) {
-                    self.type_error_with_code(
-                        Some(ErrorCode::E2002),
-                        format!("Cannot assign {init_type} to {type_annotation} for variable '{var_name}'"),
-                        init_expr.span(),
-                    );
+        for binding in bindings {
+            if let Some(init_expr) = binding.initializer.as_ref() {
+                if let Some(init_type) = self.visit_expr(init_expr) {
+                    if !self.is_assignable(&init_type, type_annotation) {
+                        self.type_error_with_code(
+                            Some(ErrorCode::E2002),
+                            format!("Cannot assign {init_type} to {type_annotation} for variable '{}'", binding.name),
+                            init_expr.span(),
+                        );
+                    }
                 }
             }
 
             self.declare_symbol(
-                var_name,
+                &binding.name,
                 Symbol::Variable(VariableSymbol {
-                    name: var_name.clone(),
+                    name: binding.name.clone().into(),
                     ty: type_annotation.clone(),
                     mutable: is_mutable,
                     defined_at: span.clone(),
@@ -235,7 +240,7 @@ impl TypeChecker {
     }
 
     fn visit_function(
-        &mut self, name: &str, parameters: &[Parameter], return_type: &Type, body: &[Stmt], span: &SourceSpan,
+        &mut self, name: &str, parameters: &[Parameter], return_type: &Type, body: &Stmt, span: &SourceSpan,
     ) {
         let func_symbol = FunctionSymbol {
             name: name.into(),
@@ -250,7 +255,7 @@ impl TypeChecker {
             self.declare_symbol(
                 &param.name,
                 Symbol::Variable(VariableSymbol {
-                    name: param.name.clone(),
+                    name: param.name.clone().into(),
                     ty: param.type_annotation.clone(),
                     mutable: true,
                     defined_at: param.span.clone(),
@@ -258,7 +263,11 @@ impl TypeChecker {
                 }),
             );
         }
-        self.visit_statements(body);
+        match body {
+            Stmt::Block { statements, .. } => self.visit_statements(statements),
+            _ => self.visit_stmt(body),
+        }
+
         if *return_type != Type::Void && !self.function_has_return(body) {
             self.type_error_with_code(
                 Some(ErrorCode::E2003),
@@ -272,7 +281,7 @@ impl TypeChecker {
         self.symbol_table.pop_scope();
     }
 
-    fn visit_main_function(&mut self, body: &[Stmt], span: &SourceSpan) {
+    fn visit_main_function(&mut self, body: &Stmt, span: &SourceSpan) {
         self.visit_function("main", &[], &Type::Void, body, span);
     }
 
@@ -288,34 +297,36 @@ impl TypeChecker {
         }
     }
 
-    fn visit_if(&mut self, condition: &Expr, then_branch: &[Stmt], else_branch: Option<&[Stmt]>, _span: &SourceSpan) {
+    fn visit_if(&mut self, condition: &Expr, then_branch: &Stmt, else_branch: &ElseBranch, _span: &SourceSpan) {
         self.check_condition(condition, "'if' statement");
-        self.symbol_table.push_scope(ScopeKind::Block, Some(condition.span().clone()));
-        self.visit_statements(then_branch);
-        self.symbol_table.pop_scope();
-        if let Some(else_branch) = else_branch {
-            self.symbol_table.push_scope(ScopeKind::Block, Some(condition.span().clone()));
-            self.visit_statements(else_branch);
-            self.symbol_table.pop_scope();
+        self.visit_stmt(then_branch);
+
+        match else_branch {
+            ElseBranch::None => {}
+            ElseBranch::Block(stmt) | ElseBranch::ElseIf(stmt) => {
+                self.visit_stmt(stmt);
+            }
         }
     }
 
-    fn visit_while(&mut self, condition: &Expr, body: &[Stmt], _span: &SourceSpan) {
+    fn visit_while(&mut self, condition: &Expr, body: &Stmt, _span: &SourceSpan) {
         self.check_condition(condition, "'while' loop");
+
         let was_in_loop = self.in_loop;
         self.in_loop = true;
         self.symbol_table.push_scope(ScopeKind::Block, Some(condition.span().clone()));
-        self.visit_statements(body);
+        self.visit_stmt(body);
         self.symbol_table.pop_scope();
         self.in_loop = was_in_loop;
     }
 
     #[allow(clippy::ref_option)]
     fn visit_for(
-        &mut self, initializer: &Option<Box<Stmt>>, condition: &Option<Expr>, increment: &Option<Expr>, body: &[Stmt],
+        &mut self, initializer: &Option<Box<Stmt>>, condition: &Option<Expr>, increment: &Option<Expr>, body: &Stmt,
         span: &SourceSpan,
     ) {
         self.symbol_table.push_scope(ScopeKind::Block, Some(span.clone()));
+
         if let Some(init) = initializer {
             self.visit_stmt(init);
         }
@@ -325,10 +336,12 @@ impl TypeChecker {
         if let Some(inc) = increment {
             self.visit_expr(inc);
         }
+
         let was_in_loop = self.in_loop;
         self.in_loop = true;
-        self.visit_statements(body);
+        self.visit_stmt(body);
         self.in_loop = was_in_loop;
+
         self.symbol_table.pop_scope();
     }
 
@@ -388,8 +401,8 @@ impl TypeChecker {
 
     fn visit_expr(&mut self, expr: &Expr) -> Option<Type> {
         match expr {
-            Expr::Binary { left, op, right, span } => self.visit_binary_expr(left, op, right, span),
-            Expr::Unary { op, expr, span } => self.visit_unary_expr(op, expr, span),
+            Expr::Binary { left, op, right, span } => self.visit_binary_expr(left, *op, right, span),
+            Expr::Unary { op, expr, span, .. } => self.visit_unary_expr(*op, expr, span),
             Expr::Grouping { expr, span: _ } => self.visit_expr(expr),
             Expr::Literal { value, span } => self.visit_literal(value, span),
             Expr::ArrayLiteral { elements, span } => self.visit_array_literal(elements, span),
@@ -401,7 +414,7 @@ impl TypeChecker {
     }
 
     #[allow(clippy::too_many_lines)]
-    fn visit_binary_expr(&mut self, left: &Expr, op: &BinaryOp, right: &Expr, span: &SourceSpan) -> Option<Type> {
+    fn visit_binary_expr(&mut self, left: &Expr, op: BinaryOp, right: &Expr, span: &SourceSpan) -> Option<Type> {
         let mut left_type = self.visit_expr(left)?;
         let mut right_type = self.visit_expr(right)?;
         // Distinzione tra operatori bitwise e altri operatori numerici
@@ -509,33 +522,64 @@ impl TypeChecker {
             | BinaryOp::BitwiseXor
             | BinaryOp::ShiftLeft
             | BinaryOp::ShiftRight => left_type,
+            _ => todo!(),
         })
     }
 
-    fn visit_unary_expr(&mut self, op: &UnaryOp, expr: &Expr, _span: &SourceSpan) -> Option<Type> {
+    fn visit_unary_expr(&mut self, op: UnaryOp, expr: &Expr, _span: &SourceSpan) -> Option<Type> {
         let expr_type = self.visit_expr(expr)?;
+
         match op {
             UnaryOp::Negate => {
-                if !Self::is_numeric(&expr_type) {
+                if Self::is_numeric(&expr_type) {
+                    Some(expr_type)
+                } else {
                     self.type_error_with_code(
                         Some(ErrorCode::E2018),
                         format!("Negation requires numeric type operand, found {expr_type}"),
                         expr.span(),
                     );
-                    return None;
+                    None
                 }
-                Some(expr_type)
             }
+
             UnaryOp::Not => {
-                if expr_type != Type::Bool {
+                if expr_type == Type::Bool {
+                    Some(Type::Bool)
+                } else {
                     self.type_error_with_code(
                         Some(ErrorCode::E2019),
                         format!("Logical not requires boolean type operand, found {expr_type}"),
                         expr.span(),
                     );
-                    return None;
+                    None
                 }
-                Some(Type::Bool)
+            }
+
+            UnaryOp::BitwiseNot => {
+                if Self::is_integer_type(&expr_type) {
+                    Some(expr_type)
+                } else {
+                    self.type_error_with_code(
+                        Some(ErrorCode::E2018),
+                        format!("Bitwise not requires integer operand type, found {expr_type}"),
+                        expr.span(),
+                    );
+                    None
+                }
+            }
+
+            UnaryOp::Increment | UnaryOp::Decrement => {
+                if Self::is_numeric(&expr_type) {
+                    Some(expr_type)
+                } else {
+                    self.type_error_with_code(
+                        Some(ErrorCode::E2018),
+                        format!("Increment/decrement requires numeric operand, found {expr_type}"),
+                        expr.span(),
+                    );
+                    None
+                }
             }
         }
     }
@@ -543,11 +587,11 @@ impl TypeChecker {
     #[allow(clippy::unnecessary_wraps)]
     const fn visit_literal(&self, value: &LiteralValue, _span: &SourceSpan) -> Option<Type> {
         Some(match value {
-            LiteralValue::Number(n) => self.type_of_number(n),
+            LiteralValue::Numeric(n) => self.type_of_number(n),
             LiteralValue::StringLit(_) => Type::String,
             LiteralValue::CharLit(_) => Type::Char,
             LiteralValue::Bool(_) => Type::Bool,
-            LiteralValue::Nullptr => Type::NullPtr,
+            LiteralValue::NullPtr => Type::NullPtr,
         })
     }
 
@@ -597,8 +641,8 @@ impl TypeChecker {
         element_type.map(|ty| {
             // Create proper size expression with actual length
             let size_expr =
-                Expr::Literal { value: LiteralValue::Number(Number::Integer(len as i64)), span: span.clone() };
-            Type::Array(Box::new(ty), Box::new(size_expr))
+                Expr::Literal { value: LiteralValue::Numeric(Number::Integer(len as i64)), span: span.clone() };
+            Type::Array { element_type: Box::new(ty), size: Box::new(size_expr) }
         })
     }
 
@@ -606,7 +650,7 @@ impl TypeChecker {
     #[must_use]
     pub fn is_same_type(&self, t1: &Type, t2: &Type) -> bool {
         match (t1, t2) {
-            (Type::Array(elem1, size1), Type::Array(elem2, size2)) => {
+            (Type::Array { element_type: elem1, size: size1 }, Type::Array { element_type: elem2, size: size2 }) => {
                 // First check if element types are the same
                 if !self.is_same_type(elem1, elem2) {
                     return false;
@@ -634,15 +678,15 @@ impl TypeChecker {
     pub fn get_size(&self, expr: &Expr) -> Option<u64> {
         if let Expr::Literal { value, .. } = expr {
             match value {
-                LiteralValue::Number(Number::I8(n)) => self.signed_to_size(*n),
-                LiteralValue::Number(Number::I16(n)) => self.signed_to_size(*n),
-                LiteralValue::Number(Number::I32(n)) => self.signed_to_size(*n),
-                LiteralValue::Number(Number::Integer(n)) => self.signed_to_size(*n),
+                LiteralValue::Numeric(Number::I8(n)) => self.signed_to_size(*n),
+                LiteralValue::Numeric(Number::I16(n)) => self.signed_to_size(*n),
+                LiteralValue::Numeric(Number::I32(n)) => self.signed_to_size(*n),
+                LiteralValue::Numeric(Number::Integer(n)) => self.signed_to_size(*n),
                 // Unsigned types (already efficient)
-                LiteralValue::Number(Number::U8(n)) => Some(u64::from(*n)),
-                LiteralValue::Number(Number::U16(n)) => Some(u64::from(*n)),
-                LiteralValue::Number(Number::U32(n)) => Some(u64::from(*n)),
-                LiteralValue::Number(Number::UnsignedInteger(n)) => Some(*n),
+                LiteralValue::Numeric(Number::U8(n)) => Some(u64::from(*n)),
+                LiteralValue::Numeric(Number::U16(n)) => Some(u64::from(*n)),
+                LiteralValue::Numeric(Number::U32(n)) => Some(u64::from(*n)),
+                LiteralValue::Numeric(Number::UnsignedInteger(n)) => Some(*n),
                 _ => None,
             }
         } else {
@@ -771,7 +815,7 @@ impl TypeChecker {
             );
             return None;
         }
-        if let Type::Array(element_type, _) = array_type {
+        if let Type::Array { element_type, .. } = array_type {
             Some(*element_type)
         } else {
             self.type_error_with_code(
@@ -803,7 +847,7 @@ impl TypeChecker {
                     for (j, &rank2) in ranks.iter().enumerate() {
                         let id2 = type_ids[j];
                         let result_id = if rank1 > rank2 { id1 } else { id2 };
-                        table[id1 as usize * 10 + id2 as usize] = result_id;
+                        table[id1 as usize * id2 as usize] = result_id;
                     }
                 }
 
@@ -811,7 +855,7 @@ impl TypeChecker {
             });
 
             // Lookup the promotion result using array indexing (O(1) operation)
-            let index = (id1 as usize) * 10 + (id2 as usize);
+            let index = (id1 as usize) * (id2 as usize);
             if index < 100 {
                 return Self::id_to_type(table[index]);
             }
@@ -894,26 +938,41 @@ impl TypeChecker {
         | (Type::U64, Type::F64)
         | (Type::F32, Type::F64)
         // Nullptr assignable to pointer types
-        | (Type::NullPtr, Type::Array(_, _) | Type::Vector(_) | Type::Custom(_))
+        | (
+            Type::NullPtr,
+            Type::Array { .. } | Type::Vector { .. } | Type::Custom { .. },
+        )
         // Char assignable to String
         | (Type::Char, Type::String) => true,
         // Array: requires compatible types and equal sizes
-        (Type::Array(source_elem, source_size), Type::Array(target_elem, target_size)) => {
-            // Convert &Box<Type> to &Type via dereferencing
+        (
+            Type::Array {
+                element_type: source_elem,
+                size: source_size,
+            },
+            Type::Array {
+                element_type: target_elem,
+                size: target_size,
+            },
+        ) => {
             if !self.is_assignable(source_elem, target_elem) {
                 return false;
             }
-            // Use the updated helper function
+
             match (self.get_size(source_size), self.get_size(target_size)) {
                 (Some(source_val), Some(target_val)) => source_val == target_val,
                 _ => false,
             }
         }
-        // Vector: requires compatible element types
-        (Type::Vector(source_elem), Type::Vector(target_elem)) => {
-            // Convert &Box<Type> to &Type
-            self.is_assignable(source_elem, target_elem)
-        }
+
+        (
+            Type::Vector {
+                element_type: source_elem,
+            },
+            Type::Vector {
+                element_type: target_elem,
+            },
+        ) => self.is_assignable(source_elem, target_elem),
 
         // Identical types
         _ => source == target,
@@ -937,32 +996,25 @@ impl TypeChecker {
 
     #[inline]
     #[allow(clippy::only_used_in_recursion, clippy::self_only_used_in_recursion)]
-    fn function_has_return(&self, body: &[Stmt]) -> bool {
-        for stmt in body {
-            match stmt {
-                Stmt::Return { .. } => return true,
-                Stmt::If { then_branch, else_branch, .. } => {
-                    let then_has_return = self.function_has_return(then_branch);
-                    let else_has_return = else_branch.as_ref().is_some_and(|b| self.function_has_return(b));
-                    if then_has_return && else_has_return {
-                        return true;
-                    }
-                }
-                Stmt::Block { statements, .. } => {
-                    if self.function_has_return(statements) {
-                        return true;
-                    }
-                }
-                Stmt::While { body: loop_body, .. } | Stmt::For { body: loop_body, .. } => {
-                    if self.function_has_return(loop_body) {
-                        // Considera solo loop con corpo che ritorna
-                        return true;
-                    }
-                }
-                _ => {}
+    fn function_has_return(&self, body: &Stmt) -> bool {
+        match body {
+            Stmt::Return { .. } => true,
+
+            Stmt::Block { statements, .. } => statements.iter().any(|stmt| self.function_has_return(stmt)),
+
+            Stmt::If { then_branch, else_branch, .. } => {
+                let then_has_return = self.function_has_return(then_branch);
+
+                let else_has_return = match else_branch {
+                    ElseBranch::None => false,
+                    ElseBranch::Block(stmt) | ElseBranch::ElseIf(stmt) => self.function_has_return(stmt),
+                };
+
+                then_has_return && else_has_return
             }
+
+            _ => false,
         }
-        false
     }
 }
 
