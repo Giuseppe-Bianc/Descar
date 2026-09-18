@@ -234,14 +234,14 @@ impl SymbolTable {
     /// Returns a `TypeError` if the identifier is already declared in the current scope,
     /// including the location of the previous declaration for error reporting.
     #[allow(clippy::expect_used, clippy::result_large_err)]
-    pub fn declare(&mut self, name: &str, symbol: Symbol) -> Result<(), CompileError> {
-        let current_scope = self.current_scope_mut().expect("At least one scope");
+    pub fn declare(&mut self, name: &str, symbol: Symbol, declared_at: SourceSpan) -> Result<(), CompileError> {
+        let current_scope = self.current_scope().expect("At least one scope");
 
-        if current_scope.symbols.contains_key(name) {
-            let duplicate_span = match &symbol {
-                Symbol::Variable(v) => v.defined_at.clone(),
-                Symbol::Function(f) => f.defined_at.clone(),
-                Symbol::TypeAlias(_) => SourceSpan::default(),
+        if let Some(existing) = current_scope.symbols.get(name) {
+            let help = match existing {
+                Symbol::Variable(v) => Some(format!("Previous declaration at {}", v.defined_at)),
+                Symbol::Function(f) => Some(format!("Previous declaration at {}", f.defined_at)),
+                Symbol::TypeAlias(_) => None,
             };
 
             return Err(CompileError::TypeError {
@@ -250,11 +250,15 @@ impl SymbolTable {
                     "Identifier '{}' already declared in this {:?} scope",
                     name, current_scope.kind
                 )),
-                span: duplicate_span,
-                help: None,
+                span: declared_at,
+                help,
             });
         }
-        current_scope.symbols.insert(name.into(), symbol);
+
+        self.current_scope_mut()
+            .expect("At least one scope")
+            .symbols
+            .insert(name.into(), symbol);
         Ok(())
     }
 
