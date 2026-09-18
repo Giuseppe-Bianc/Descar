@@ -1068,6 +1068,8 @@ impl TypeChecker {
 
             Stmt::Block { statements, .. } => statements.iter().any(|stmt| self.function_has_return(stmt)),
 
+            Stmt::While { body, .. } | Stmt::For { body, .. } => self.function_has_return(body),
+
             Stmt::If { then_branch, else_branch, .. } => {
                 let then_has_return = self.function_has_return(then_branch);
 
@@ -1124,6 +1126,52 @@ mod tests {
 
     fn unary(op: UnaryOp, side: UnaryOpSide, expr: Expr, span: SourceSpan) -> Stmt {
         Stmt::Expression { expr: Box::new(Expr::Unary { op, side, expr: Box::new(expr), span }) }
+    }
+
+    #[test]
+    fn function_return_inside_while_body_counts_as_return() {
+        let span = SourceSpan::default();
+        let statements = [Stmt::Function {
+            name: "while_return".into(),
+            parameters: vec![],
+            return_type: Type::I64,
+            body: Box::new(Stmt::While {
+                condition: Box::new(Expr::new_bool_literal(true, span.clone())),
+                body: Box::new(Stmt::Return {
+                    value: Some(number(span.clone())),
+                    span: span.clone(),
+                }),
+                span: span.clone(),
+            }),
+            span: span.clone(),
+        }];
+
+        let errors = TypeChecker::new().check(&statements);
+        assert!(!errors.iter().any(|error| error.error_code() == Some(&ErrorCode::E2003)), "unexpected missing-return error: {errors:#?}");
+    }
+
+    #[test]
+    fn function_return_inside_for_body_counts_as_return() {
+        let span = SourceSpan::default();
+        let statements = [Stmt::Function {
+            name: "for_return".into(),
+            parameters: vec![],
+            return_type: Type::I64,
+            body: Box::new(Stmt::For {
+                initializer: None,
+                condition: Some(Expr::new_bool_literal(true, span.clone())),
+                increment: None,
+                body: Box::new(Stmt::Return {
+                    value: Some(number(span.clone())),
+                    span: span.clone(),
+                }),
+                span: span.clone(),
+            }),
+            span: span.clone(),
+        }];
+
+        let errors = TypeChecker::new().check(&statements);
+        assert!(!errors.iter().any(|error| error.error_code() == Some(&ErrorCode::E2003)), "unexpected missing-return error: {errors:#?}");
     }
 
     #[test]
