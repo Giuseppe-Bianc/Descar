@@ -1,0 +1,14 @@
+dr_files/input.dr
+  h_361662506da91f 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "4cb7cd215e427f72c908ba13635e4cd0239018c7",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
