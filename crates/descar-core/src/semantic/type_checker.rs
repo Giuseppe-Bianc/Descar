@@ -412,8 +412,11 @@ impl TypeChecker {
 
     #[allow(clippy::too_many_lines)]
     fn visit_binary_expr(&mut self, left: &Expr, op: BinaryOp, right: &Expr, span: &SourceSpan) -> Option<Type> {
-        let mut left_type = self.visit_expr(left)?;
-        let mut right_type = self.visit_expr(right)?;
+        let left_type = self.visit_expr(left);
+        let right_type = self.visit_expr(right);
+        let (Some(mut left_type), Some(mut right_type)) = (left_type, right_type) else {
+            return None;
+        };
         // Distinzione tra operatori bitwise e altri operatori numerici
         if matches!(
             op,
@@ -726,15 +729,17 @@ impl TypeChecker {
                             format!("Cannot assign to immutable variable '{name}'"),
                             span,
                         );
-                        return None;
+                        None
+                    } else {
+                        Some(var.ty)
                     }
-                    var.ty
                 } else {
                     self.type_error_with_code(Some(ErrorCode::E2025), format!("Undefined variable '{name}'"), span);
-                    return None;
+                    None
                 }
             }
             Expr::ArrayAccess { array, index, span } => {
+                let mut target_is_mutable = true;
                 if let Some(name) = Self::base_variable_name(array) {
                     if let Some(var) = self.symbol_table.lookup_variable(name) {
                         if !var.mutable {
@@ -743,17 +748,19 @@ impl TypeChecker {
                                 format!("Cannot assign to immutable variable '{name}'"),
                                 span,
                             );
-                            return None;
+                            target_is_mutable = false;
                         }
                     }
                 }
-                self.visit_array_access(array, index, span)?
+                let array_access_type = self.visit_array_access(array, index, span);
+                if target_is_mutable { array_access_type } else { None }
             }
-            _ => {
-                return None;
-            }
+            _ => None,
         };
-        let value_type = self.visit_expr(value)?;
+        let value_type = self.visit_expr(value);
+        let (Some(target_type), Some(value_type)) = (target_type, value_type) else {
+            return None;
+        };
         if !self.is_assignable(&value_type, &target_type) {
             // Create specific error message for array elements
             let message = match target {
@@ -821,8 +828,11 @@ impl TypeChecker {
     }
 
     fn visit_array_access(&mut self, array: &Expr, index: &Expr, _span: &SourceSpan) -> Option<Type> {
-        let array_type = self.visit_expr(array)?;
-        let index_type = self.visit_expr(index)?;
+        let array_type = self.visit_expr(array);
+        let index_type = self.visit_expr(index);
+        let (Some(array_type), Some(index_type)) = (array_type, index_type) else {
+            return None;
+        };
         if !Self::is_integer_type(&index_type) {
             self.type_error_with_code(
                 Some(ErrorCode::E2030),
