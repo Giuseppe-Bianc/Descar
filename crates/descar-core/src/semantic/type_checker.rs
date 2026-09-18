@@ -567,6 +567,19 @@ impl TypeChecker {
             }
 
             UnaryOp::Increment | UnaryOp::Decrement => {
+                if let Some(name) = Self::base_variable_name(expr) {
+                    if let Some(var) = self.symbol_table.lookup_variable(name) {
+                        if !var.mutable {
+                            self.type_error_with_code(
+                                Some(ErrorCode::E2024),
+                                format!("Cannot assign to immutable variable '{name}'"),
+                                expr.span(),
+                            );
+                            return None;
+                        }
+                    }
+                }
+
                 if Self::is_numeric(&expr_type) {
                     Some(expr_type)
                 } else {
@@ -987,5 +1000,122 @@ impl TypeChecker {
 impl Default for TypeChecker {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn variable(name: &str, span: SourceSpan) -> Expr {
+        Expr::Variable { name: name.into(), span }
+    }
+
+    fn number(span: SourceSpan) -> Expr {
+        Expr::new_number_literal(Number::I64(1), span)
+    }
+
+    fn immutable_declarations(span: &SourceSpan) -> Vec<Stmt> {
+        let array_type = Type::Array {
+            element_type: Box::new(Type::I64),
+            size: Box::new(number(span.clone())),
+        };
+
+        vec![
+            Stmt::VarDeclaration {
+                bindings: vec![VarBinding { name: "value".into(), initializer: Some(number(span.clone())) }],
+                type_annotation: Type::I64,
+                is_mutable: false,
+                span: span.clone(),
+            },
+            Stmt::VarDeclaration {
+                bindings: vec![VarBinding { name: "items".into(), initializer: None }],
+                type_annotation: array_type,
+                is_mutable: false,
+                span: span.clone(),
+            },
+        ]
+    }
+
+    fn unary(op: UnaryOp, side: UnaryOpSide, expr: Expr, span: SourceSpan) -> Stmt {
+        Stmt::Expression {
+            expr: Box::new(Expr::Unary {
+                op,
+                side,
+                expr: Box::new(expr),
+                span,
+            }),
+        }
+    }
+
+    #[test]
+    fn immutable_increment_and_decrement_reject_prefix_and_postfix_targets() {
+        let span = SourceSpan::default();
+        let array_access = || Expr::ArrayAccess {
+            array: Box::new(variable("items", span.clone())),
+            index: Box::new(number(span.clone())),
+            span: span.clone(),
+        };
+
+        let cases = [
+            (UnaryOp::Increment, UnaryOpSide::Prefix, variable("value", span.clone())),
+            (UnaryOp::Increment, UnaryOpSide::Postfix, variable("value", span.clone())),
+            (UnaryOp::Decrement, UnaryOpSide::Prefix, variable("value", span.clone())),
+            (UnaryOp::Decrement, UnaryOpSide::Postfix, variable("value", span.clone())),
+            (UnaryOp::Increment, UnaryOpSide::Prefix, array_access()),
+            (UnaryOp::Increment, UnaryOpSide::Postfix, array_access()),
+            (
+                UnaryOp::Decrement,
+                UnaryOpSide::Prefix,
+                Expr::Grouping { expr: Box::new(array_access()), span: span.clone() },
+            ),
+            (
+                UnaryOp::Decrement,
+                UnaryOpSide::Postfix,
+                Expr::Grouping { expr: Box::new(array_access()), span: span.clone() },
+            ),
+        ];
+
+        for (op, side, target) in cases {
+            let mut statements = immutable_declarations(&span);
+            statements.push(unary(op, side, target, span.clone()));
+
+            let errors = TypeChecker::new().check(&statements);
+
+            assert_eq!(
+                errors.iter().filter_map(CompileError::error_code).filter(|code| **code == ErrorCode::E2024).count(),
+                1,
+                "expected one E2024 for {op:?} {side:?}"
+            );
+            assert!(
+                !errors.iter().any(|error| error.error_code() == Some(&ErrorCode::E2018)),
+                "immutable mutation must be rejected with E2024 before numeric validation"
+            );
+        }
+    }
+
+    #[test]
+    fn mutable_non_numeric_increment_still_uses_e2018() {
+        let span = SourceSpan::default();
+        let statements = [
+            Stmt::VarDeclaration {
+                bindings: vec![VarBinding { name: "flag".into(), initializer: Some(Expr::new_bool_literal(true, span.clone())) }],
+                type_annotation: Type::Bool,
+                is_mutable: true,
+                span: span.clone(),
+            },
+            unary(
+                UnaryOp::Increment,
+                UnaryOpSide::Prefix,
+                variable("flag", span.clone()),
+                span.clone(),
+            ),
+        ];
+
+        let errors = TypeChecker::new().check(&statements);
+
+        assert!(errors.iter().any(|error| error.error_code() == Some(&ErrorCode::E2018)));
+        assert!(!errors.iter().any(|error| error.error_code() == Some(&ErrorCode::E2024)));
     }
 }
