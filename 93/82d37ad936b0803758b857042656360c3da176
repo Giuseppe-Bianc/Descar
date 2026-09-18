@@ -1,0 +1,18 @@
+crates/descar-core/src/semantic/symbol_table.rs
+  h_361662506da91f 1-378
+crates/descar-core/src/semantic/mod.rs
+  h_361662506da91f 1-12
+crates/descar-core/src/semantic/type_checker.rs
+  h_361662506da91f 1-973
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "9382d37ad936b0803758b857042656360c3da176",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
