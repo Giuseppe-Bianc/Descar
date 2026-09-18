@@ -12,6 +12,13 @@ fn test_io_error_display() {
 }
 
 #[test]
+fn test_io_error_code_is_none() {
+    let io_error = std::io::Error::new(std::io::ErrorKind::NotFound, "File not found");
+    let error: CompileError = io_error.into();
+    assert_eq!(error.error_code(), None);
+}
+
+#[test]
 fn test_lexer_error_display_with_help() {
     make_error!(error, LexerError, 1, Some("Check the syntax".into()));
     let expected = "Unexpected token \"@\" at test_file:line 1:column 1-line 1:column 2\nhelp: Check the syntax";
