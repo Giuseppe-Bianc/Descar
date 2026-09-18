@@ -841,13 +841,15 @@ impl TypeChecker {
 
                 let mut table = [0u8; 100]; // 10x10 table for all combinations
 
-                // Populate the promotion table
+                // Populate the promotion table. Each pair needs its own slot,
+                // so the row/column index must be based on the table width,
+                // not on multiplication of the two type ids.
                 for (i, &rank1) in ranks.iter().enumerate() {
                     let id1 = type_ids[i];
                     for (j, &rank2) in ranks.iter().enumerate() {
                         let id2 = type_ids[j];
-                        let result_id = if rank1 > rank2 { id1 } else { id2 };
-                        table[id1 as usize * id2 as usize] = result_id;
+                        let result_id = if rank1 >= rank2 { id1 } else { id2 };
+                        table[id1 as usize * 10 + id2 as usize] = result_id;
                     }
                 }
 
@@ -855,10 +857,8 @@ impl TypeChecker {
             });
 
             // Lookup the promotion result using array indexing (O(1) operation)
-            let index = (id1 as usize) * (id2 as usize);
-            if index < 100 {
-                return Self::id_to_type(table[index]);
-            }
+            let index = (id1 as usize) * 10 + id2 as usize;
+            return Self::id_to_type(table[index]);
         }
 
         // For non-numeric types or edge cases, use the existing cache
