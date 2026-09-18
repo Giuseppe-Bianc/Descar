@@ -218,6 +218,7 @@ impl SymbolTable {
     ///
     /// * `name` - The name of the symbol to declare
     /// * `symbol` - The symbol metadata to associate with the name
+    /// * `declared_at` - The source span of the declaration being added
     ///
     /// # Returns
     ///
@@ -261,9 +262,9 @@ impl SymbolTable {
 
     /// Generic helper method to find symbols with a custom filter.
     ///
-    /// Searches through scopes from innermost to outermost, applying the provided
-    /// filter function to each matching symbol name. This allows for type-specific
-    /// lookups while maintaining a single search implementation.
+    /// Searches from the innermost scope outward and applies the filter to the
+    /// first symbol with the requested name. A symbol in an inner scope therefore
+    /// hides same-named symbols in outer scopes even when the filter rejects it.
     ///
     /// # Type Parameters
     ///
@@ -301,7 +302,7 @@ impl SymbolTable {
         self.find_symbol(name, |sym| Some(sym.clone()))
     }
 
-    /// Looks up a function symbol by name.
+    /// Looks up the innermost symbol with the given name as a function.
     ///
     /// # Arguments
     ///
@@ -309,8 +310,8 @@ impl SymbolTable {
     ///
     /// # Returns
     ///
-    /// An optional clone of the function symbol if found and is a function,
-    /// or `None` if not found or not a function.
+    /// A clone of the function symbol, or `None` if the name is not found or its
+    /// innermost declaration is not a function.
     #[must_use]
     pub fn lookup_function(&self, name: &str) -> Option<FunctionSymbol> {
         self.find_symbol(name, |sym| match sym {
@@ -319,7 +320,7 @@ impl SymbolTable {
         })
     }
 
-    /// Looks up a variable symbol by name.
+    /// Looks up the innermost symbol with the given name as a variable.
     ///
     /// # Arguments
     ///
@@ -327,8 +328,8 @@ impl SymbolTable {
     ///
     /// # Returns
     ///
-    /// An optional clone of the variable symbol if found and is a variable,
-    /// or `None` if not found or not a variable.
+    /// A clone of the variable symbol, or `None` if the name is not found or its
+    /// innermost declaration is not a variable.
     #[must_use]
     pub fn lookup_variable(&self, name: &str) -> Option<VariableSymbol> {
         self.find_symbol(name, |sym| match sym {

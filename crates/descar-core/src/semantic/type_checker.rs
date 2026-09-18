@@ -605,6 +605,7 @@ impl TypeChecker {
         })
     }
 
+    /// Returns the Descar type represented by a parsed numeric literal.
     #[must_use]
     pub const fn type_of_number(&self, n: &Number) -> Type {
         match n {
@@ -656,7 +657,11 @@ impl TypeChecker {
         })
     }
 
-    /// Checks if two types are the same, handling array types properly.
+    /// Returns whether two types are identical for type-checking purposes.
+    ///
+    /// Array element types are compared recursively. Nonnegative integer literal
+    /// lengths are normalized before comparison; if neither length can be
+    /// evaluated, the expressions must be structurally equal.
     #[must_use]
     pub fn is_same_type(&self, t1: &Type, t2: &Type) -> bool {
         match (t1, t2) {
@@ -683,7 +688,10 @@ impl TypeChecker {
         n.into().try_into().ok()
     }
 
-    /// Gets the size from an expression, handling all integer types and returning u64.
+    /// Evaluates a nonnegative integer literal as an array size.
+    ///
+    /// Returns `None` for negative integers, floating-point literals, and
+    /// expressions that are not integer literals.
     #[must_use]
     pub fn get_size(&self, expr: &Expr) -> Option<u64> {
         if let Expr::Literal { value, .. } = expr {
@@ -865,6 +873,14 @@ impl TypeChecker {
     }
 
     // Funzione per la promozione automatica dei tipi numerici
+    /// Selects a promoted type for a binary operation.
+    ///
+    /// Two numeric types produce the higher-ranked type. If only one input is in
+    /// the numeric hierarchy, that type is returned; if neither is, `t1` is returned.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the fallback promotion cache's mutex is poisoned.
     #[inline]
     #[allow(clippy::missing_panics_doc)]
     pub fn promote_numeric_types(&self, t1: &Type, t2: &Type) -> Type {
@@ -902,6 +918,12 @@ impl TypeChecker {
         t1.clone()
     }
 
+    /// Returns whether a value of `source` type can be assigned to `target`.
+    ///
+    /// In addition to identical types, this accepts supported numeric widening,
+    /// characters assigned to strings, null pointers assigned to arrays, vectors,
+    /// or custom types, recursively assignable vectors, and arrays with assignable
+    /// element types and equal evaluable lengths.
     #[inline]
     #[must_use]
     #[allow(clippy::unnested_or_patterns)]
@@ -974,6 +996,8 @@ impl TypeChecker {
         Self::is_integer_type(ty) || matches!(ty, Type::F32 | Type::F64)
     }
 
+    /// Returns whether a return appears in a statement, requiring both branches
+    /// of a conditional to contain returns.
     #[inline]
     #[allow(clippy::only_used_in_recursion, clippy::self_only_used_in_recursion)]
     fn function_has_return(&self, body: &Stmt) -> bool {

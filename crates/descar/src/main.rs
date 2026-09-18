@@ -27,12 +27,14 @@ fn print_file_size_report(path: &Path) {
     }
 }
 
+/// Reads a source file, reporting an I/O error and exiting if the read fails.
 fn read_input(path: &Path) -> String {
     fs::read_to_string(path).unwrap_or_else(|e| {
         handle_io_error("I/O", format!("failed to read '{}': {}", path.to_string_lossy(), e));
         process::exit(1);
     })
 }
+/// Returns the path as UTF-8, reporting an I/O error and exiting if conversion fails.
 fn path_to_str(path: &Path) -> &str {
     path.to_str().unwrap_or_else(|| {
         handle_io_error("I/O", format!("invalid file path '{}'", path.to_string_lossy()));
@@ -40,6 +42,10 @@ fn path_to_str(path: &Path) -> &str {
     })
 }
 
+/// Lexes, parses, and type-checks source input.
+///
+/// Returns the parsed statements when all stages succeed. If any stage reports
+/// diagnostics, prints them and exits with status code 1.
 fn run_frontend(file_path: &str, input: &str) -> Vec<Stmt> {
     let mut lexer = Lexer::new(file_path, input);
     let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);

@@ -98,6 +98,7 @@ impl fmt::Display for Type {
     }
 }
 
+/// Formats literal array lengths and uses `?` for unevaluated expressions.
 fn format_array_size(expr: &Expr) -> String {
     match expr {
         Expr::Literal { value: LiteralValue::Numeric(number), .. } => number.to_string(),
