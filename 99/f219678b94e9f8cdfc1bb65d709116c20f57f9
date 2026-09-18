@@ -1,0 +1,14 @@
+crates/descar-core/src/syntax/parser.rs
+  h_361662506da91f 703
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "99f219678b94e9f8cdfc1bb65d709116c20f57f9",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
