@@ -706,11 +706,11 @@ impl TypeChecker {
         }
     }
 
-    fn base_variable_name<'a>(&self, expr: &'a Expr) -> Option<&'a str> {
+    fn base_variable_name<'a>(expr: &'a Expr) -> Option<&'a str> {
         match expr {
             Expr::Variable { name, .. } => Some(name),
             Expr::ArrayAccess { array, .. } | Expr::Grouping { expr: array, .. } => {
-                self.base_variable_name(array)
+                Self::base_variable_name(array)
             }
             _ => None,
         }
@@ -735,7 +735,7 @@ impl TypeChecker {
                 }
             }
             Expr::ArrayAccess { array, index, span } => {
-                if let Some(name) = self.base_variable_name(array) {
+                if let Some(name) = Self::base_variable_name(array) {
                     if let Some(var) = self.symbol_table.lookup_variable(name) {
                         if !var.mutable {
                             self.type_error_with_code(
