@@ -410,20 +410,54 @@ impl TypeChecker {
     #[allow(clippy::too_many_lines)]
     fn visit_binary_expr(&mut self, left: &Expr, op: BinaryOp, right: &Expr, span: &SourceSpan) -> Option<Type> {
         let left_type = self.visit_expr(left);
+
+        let is_compound = matches!(
+            op,
+            BinaryOp::AddEqual
+                | BinaryOp::SubtractEqual
+                | BinaryOp::MultiplyEqual
+                | BinaryOp::DivideEqual
+                | BinaryOp::ModuloEqual
+                | BinaryOp::BitwiseAndEqual
+                | BinaryOp::BitwiseOrEqual
+                | BinaryOp::BitwiseXorEqual
+                | BinaryOp::ShiftLeftEqual
+                | BinaryOp::ShiftRightEqual
+        );
+
+        if is_compound {
+            if let Some(name) = Self::base_variable_name(left) {
+                if let Some(var) = self.symbol_table.lookup_variable(name) {
+                    if !var.mutable {
+                        self.type_error_with_code(
+                            Some(ErrorCode::E2024),
+                            format!("Cannot assign to immutable variable '{name}'"),
+                            left.span(),
+                        );
+                        return None;
+                    }
+                }
+            }
+        }
+
         let right_type = self.visit_expr(right);
         let (Some(mut left_type), Some(mut right_type)) = (left_type, right_type) else {
             return None;
         };
-        // Distinzione tra operatori bitwise e altri operatori numerici
+
         if matches!(
             op,
             BinaryOp::BitwiseAnd
+                | BinaryOp::BitwiseAndEqual
                 | BinaryOp::BitwiseOr
+                | BinaryOp::BitwiseOrEqual
                 | BinaryOp::BitwiseXor
+                | BinaryOp::BitwiseXorEqual
                 | BinaryOp::ShiftLeft
+                | BinaryOp::ShiftLeftEqual
                 | BinaryOp::ShiftRight
+                | BinaryOp::ShiftRightEqual
         ) {
-            // Solo tipi interi sono ammessi per operatori bitwise
             if Self::is_integer_type(&left_type) && Self::is_integer_type(&right_type) {
                 let common_type = self.promote_numeric_types(&left_type, &right_type);
                 left_type = common_type.clone();
@@ -441,10 +475,15 @@ impl TypeChecker {
         } else if matches!(
             op,
             BinaryOp::Add
+                | BinaryOp::AddEqual
                 | BinaryOp::Subtract
+                | BinaryOp::SubtractEqual
                 | BinaryOp::Multiply
+                | BinaryOp::MultiplyEqual
                 | BinaryOp::Divide
+                | BinaryOp::DivideEqual
                 | BinaryOp::Modulo
+                | BinaryOp::ModuloEqual
                 | BinaryOp::Equal
                 | BinaryOp::NotEqual
                 | BinaryOp::Less
@@ -454,11 +493,11 @@ impl TypeChecker {
         ) && Self::is_numeric(&left_type)
             && Self::is_numeric(&right_type)
         {
-            // Promozione numerica standard per operatori aritmetici e di confronto
             let common_type = self.promote_numeric_types(&left_type, &right_type);
             left_type = common_type.clone();
             right_type = common_type;
         }
+
         if !self.are_compatible(&left_type, &right_type) {
             let (code, message) = match op {
                 BinaryOp::And | BinaryOp::Or => (
@@ -467,7 +506,16 @@ impl TypeChecker {
                         "Logical operator '{op:?}' requires boolean operands types, found {left_type} and {right_type}"
                     ),
                 ),
-                BinaryOp::Add | BinaryOp::Subtract | BinaryOp::Multiply | BinaryOp::Divide | BinaryOp::Modulo => (
+                BinaryOp::Add
+                | BinaryOp::AddEqual
+                | BinaryOp::Subtract
+                | BinaryOp::SubtractEqual
+                | BinaryOp::Multiply
+                | BinaryOp::MultiplyEqual
+                | BinaryOp::Divide
+                | BinaryOp::DivideEqual
+                | BinaryOp::Modulo
+                | BinaryOp::ModuloEqual => (
                     ErrorCode::E2013,
                     format!("Binary operator '{op:?}' requires numeric operands, found {left_type} and {right_type}"),
                 ),
@@ -487,8 +535,18 @@ impl TypeChecker {
             self.type_error_with_code(Some(code), message, span);
             return None;
         }
+
         Some(match op {
-            BinaryOp::Add | BinaryOp::Subtract | BinaryOp::Multiply | BinaryOp::Divide | BinaryOp::Modulo => {
+            BinaryOp::Add
+            | BinaryOp::AddEqual
+            | BinaryOp::Subtract
+            | BinaryOp::SubtractEqual
+            | BinaryOp::Multiply
+            | BinaryOp::MultiplyEqual
+            | BinaryOp::Divide
+            | BinaryOp::DivideEqual
+            | BinaryOp::Modulo
+            | BinaryOp::ModuloEqual => {
                 if !Self::is_numeric(&left_type) {
                     self.type_error_with_code(
                         Some(ErrorCode::E2016),
@@ -515,11 +573,15 @@ impl TypeChecker {
                 Type::Bool
             }
             BinaryOp::BitwiseAnd
+            | BinaryOp::BitwiseAndEqual
             | BinaryOp::BitwiseOr
+            | BinaryOp::BitwiseOrEqual
             | BinaryOp::BitwiseXor
+            | BinaryOp::BitwiseXorEqual
             | BinaryOp::ShiftLeft
-            | BinaryOp::ShiftRight => left_type,
-            _ => todo!(),
+            | BinaryOp::ShiftLeftEqual
+            | BinaryOp::ShiftRight
+            | BinaryOp::ShiftRightEqual => left_type,
         })
     }
 
@@ -1108,6 +1170,130 @@ mod tests {
                 "immutable mutation must be rejected with E2024 before numeric validation"
             );
         }
+    }
+
+    #[test]
+    fn compound_operators_accept_mutable_targets() {
+        let span = SourceSpan::default();
+        let operators = [
+            BinaryOp::AddEqual,
+            BinaryOp::SubtractEqual,
+            BinaryOp::MultiplyEqual,
+            BinaryOp::DivideEqual,
+            BinaryOp::ModuloEqual,
+            BinaryOp::BitwiseAndEqual,
+            BinaryOp::BitwiseOrEqual,
+            BinaryOp::BitwiseXorEqual,
+            BinaryOp::ShiftLeftEqual,
+            BinaryOp::ShiftRightEqual,
+        ];
+
+        for op in operators {
+            let statements = [
+                Stmt::VarDeclaration {
+                    bindings: vec![VarBinding {
+                        name: "value".into(),
+                        initializer: Some(number(span.clone())),
+                    }],
+                    type_annotation: Type::I64,
+                    is_mutable: true,
+                    span: span.clone(),
+                },
+                Stmt::Expression {
+                    expr: Box::new(Expr::Binary {
+                        left: Box::new(variable("value", span.clone())),
+                        op,
+                        right: Box::new(number(span.clone())),
+                        span: span.clone(),
+                    }),
+                },
+            ];
+
+            let errors = TypeChecker::new().check(&statements);
+            assert!(errors.is_empty(), "unexpected errors for {op:?}: {errors:#?}");
+        }
+    }
+
+    #[test]
+    fn compound_operators_reject_immutable_targets_with_e2024() {
+        let span = SourceSpan::default();
+        let operators = [
+            BinaryOp::AddEqual,
+            BinaryOp::SubtractEqual,
+            BinaryOp::MultiplyEqual,
+            BinaryOp::DivideEqual,
+            BinaryOp::ModuloEqual,
+            BinaryOp::BitwiseAndEqual,
+            BinaryOp::BitwiseOrEqual,
+            BinaryOp::BitwiseXorEqual,
+            BinaryOp::ShiftLeftEqual,
+            BinaryOp::ShiftRightEqual,
+        ];
+
+        for op in operators {
+            let statements = [
+                Stmt::VarDeclaration {
+                    bindings: vec![VarBinding {
+                        name: "value".into(),
+                        initializer: Some(number(span.clone())),
+                    }],
+                    type_annotation: Type::I64,
+                    is_mutable: false,
+                    span: span.clone(),
+                },
+                Stmt::Expression {
+                    expr: Box::new(Expr::Binary {
+                        left: Box::new(variable("value", span.clone())),
+                        op,
+                        right: Box::new(number(span.clone())),
+                        span: span.clone(),
+                    }),
+                },
+            ];
+
+            let errors = TypeChecker::new().check(&statements);
+            assert_eq!(
+                errors.iter().filter_map(CompileError::error_code).filter(|code| **code == ErrorCode::E2024).count(),
+                1,
+                "expected one E2024 for {op:?}: {errors:#?}"
+            );
+        }
+    }
+
+    #[test]
+    fn compound_arithmetic_and_bitwise_operations_promote_numeric_operands() {
+        let span = SourceSpan::default();
+        let declarations = [
+            Stmt::VarDeclaration {
+                bindings: vec![VarBinding {
+                    name: "value".into(),
+                    initializer: Some(Expr::new_number_literal(Number::I8(1), span.clone())),
+                }],
+                type_annotation: Type::I8,
+                is_mutable: true,
+                span: span.clone(),
+            },
+        ];
+
+        let mut checker = TypeChecker::new();
+        checker.visit_statements(&declarations);
+
+        let arithmetic = checker.visit_binary_expr(
+            &variable("value", span.clone()),
+            BinaryOp::AddEqual,
+            &Expr::new_number_literal(Number::I64(1), span.clone()),
+            &span,
+        );
+        assert_eq!(arithmetic, Some(Type::I64));
+
+        let bitwise = checker.visit_binary_expr(
+            &variable("value", span.clone()),
+            BinaryOp::BitwiseAndEqual,
+            &Expr::new_number_literal(Number::I64(1), span.clone()),
+            &span,
+        );
+        assert_eq!(bitwise, Some(Type::I64));
+        assert!(checker.errors.is_empty(), "unexpected compound operation errors: {:#?}", checker.errors);
     }
 
     #[test]
