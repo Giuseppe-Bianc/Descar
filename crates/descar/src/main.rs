@@ -7,6 +7,7 @@ use std::{fs, process};
 use clap::{CommandFactory, Parser};
 use descar_cli::cli::{Args, Command};
 use descar_core::error::error_reporter::ErrorReporter;
+use descar_core::syntax::ast::Stmt;
 use descar_core::syntax::parser::JsavParser;
 
 use descar_core::file::{FileSizeInfo, FileSizeReport, SizeSystems};
@@ -39,6 +40,32 @@ fn path_to_str(path: &Path) -> &str {
     })
 }
 
+fn run_frontend(file_path: &str, input: &str) -> Vec<Stmt> {
+    let mut lexer = Lexer::new(file_path, input);
+    let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);
+    let error_reporter = ErrorReporter::new(lexer.get_line_tracker().clone());
+
+    if !lexer_errors.is_empty() {
+        eprintln!("{}", error_reporter.report_errors(lexer_errors));
+        process::exit(1);
+    }
+
+    let (statements, parser_errors) = JsavParser::new(&tokens).parse();
+    if !parser_errors.is_empty() {
+        eprintln!("{}", error_reporter.report_errors(parser_errors));
+        process::exit(1);
+    }
+
+    let mut type_checker = TypeChecker::new();
+    let type_checker_errors = type_checker.check(&statements);
+    if !type_checker_errors.is_empty() {
+        eprintln!("{}", error_reporter.report_errors(type_checker_errors));
+        process::exit(1);
+    }
+
+    statements
+}
+
 fn main() {
     let args = Args::parse();
     match args.command {
@@ -68,26 +95,9 @@ fn main() {
                 }
             }
 
-            let mut lexer = Lexer::new(file_path_str, &input);
-            let line_tracker = lexer.get_line_tracker();
-            let error_reporter = ErrorReporter::new(line_tracker.clone());
-            let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);
-            if !lexer_errors.is_empty() {
-                eprintln!("{}", error_reporter.report_errors(lexer_errors));
-                process::exit(1);
-            }
-
-            let (statements, parser_errors) = JsavParser::new(&tokens).parse();
-            if !parser_errors.is_empty() {
-                eprintln!("{}", error_reporter.report_errors(parser_errors));
-                process::exit(1);
-            }
-
-            let mut type_checker = TypeChecker::new();
-            let type_checker_errors = type_checker.check(&statements);
-            if !type_checker_errors.is_empty() {
-                eprintln!("{}", error_reporter.report_errors(type_checker_errors));
-                process::exit(1);
+            let statements = run_frontend(file_path_str, &input);
+            if !args.logging.quiet {
+                println!("Compilation successful: {file_path_str}");
             }
         }
         Some(Command::Check(args)) => {
@@ -112,27 +122,7 @@ fn main() {
                 }
             }
 
-            let mut lexer = Lexer::new(file_path_str, &input);
-            let line_tracker = lexer.get_line_tracker();
-            let error_reporter = ErrorReporter::new(line_tracker.clone());
-            let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);
-            if !lexer_errors.is_empty() {
-                eprintln!("{}", error_reporter.report_errors(lexer_errors));
-                process::exit(1);
-            }
-
-            let (statements, parser_errors) = JsavParser::new(&tokens).parse();
-            if !parser_errors.is_empty() {
-                eprintln!("{}", error_reporter.report_errors(parser_errors));
-                process::exit(1);
-            }
-
-            let mut type_checker = TypeChecker::new();
-            let type_checker_errors = type_checker.check(&statements);
-            if !type_checker_errors.is_empty() {
-                eprintln!("{}", error_reporter.report_errors(type_checker_errors));
-                process::exit(1);
-            }
+            let _statements = run_frontend(file_path_str, &input);
         }
     }
 }
