@@ -1,0 +1,5 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: "tc.promote_numeric_types(&Type::Bool, &Type::String)"
+---
+Bool

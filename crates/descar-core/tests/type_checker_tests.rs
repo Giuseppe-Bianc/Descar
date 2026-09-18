@@ -293,7 +293,7 @@ fn test_binary_arithmetic_invalid() {
 
     let errors = typecheck(ast);
     assert_eq!(errors.len(), 1);
-    assert_eq!(errors[0].message(), Some("Binary operator 'Add' requires Number operands, found bool and i32"));
+    assert_eq!(errors[0].message(), Some("Binary operator 'Add' requires numeric operands, found bool and i32"));
 }
 
 #[test]
