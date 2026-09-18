@@ -235,7 +235,7 @@ impl SymbolTable {
             let duplicate_span = match &symbol {
                 Symbol::Variable(v) => v.defined_at.clone(),
                 Symbol::Function(f) => f.defined_at.clone(),
-                _ => SourceSpan::default(),
+                Symbol::TypeAlias(_) => SourceSpan::default(),
             };
 
             return Err(CompileError::TypeError {

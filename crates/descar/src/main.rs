@@ -85,6 +85,20 @@ fn main() {
             }
         }
         Some(Command::Check(args)) => {
+            let file_path: &Path = args.input.as_path();
+
+            let input = {
+                fs::read_to_string(file_path).unwrap_or_else(|e| {
+                    handle_io_error("I/O", e);
+                    process::exit(1); // esce con codice 1
+                })
+            };
+
+            let file_path_str: &str = file_path.to_str().unwrap_or_else(|| {
+                handle_io_error("I/O", std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid file path"));
+                process::exit(1);
+            });
+
             if !args.logging.quiet {
                 match args.logging.verbose {
                     0 => {}
@@ -98,6 +112,28 @@ fn main() {
                         print_file_size_report(&args.input);
                     }
                 }
+            }
+
+            let mut lexer = Lexer::new(file_path_str, &input);
+            let line_tracker = lexer.get_line_tracker();
+            let error_reporter = ErrorReporter::new(line_tracker.clone());
+            let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);
+            if !lexer_errors.is_empty() {
+                eprintln!("{}", error_reporter.report_errors(lexer_errors));
+                process::exit(1);
+            }
+
+            let (statements, parser_errors) = JsavParser::new(&tokens).parse();
+            if !parser_errors.is_empty() {
+                eprintln!("{}", error_reporter.report_errors(parser_errors));
+                process::exit(1);
+            }
+
+            let mut type_checker = TypeChecker::new();
+            let type_checker_errors = type_checker.check(&statements);
+            if !type_checker_errors.is_empty() {
+                eprintln!("{}", error_reporter.report_errors(type_checker_errors));
+                process::exit(1);
             }
         }
     }
