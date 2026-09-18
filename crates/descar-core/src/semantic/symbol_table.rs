@@ -91,12 +91,18 @@ pub struct Scope {
 /// Implements a stack of scopes to support nested lexical scoping, with
 /// symbols resolved by searching from the innermost scope outward. Also
 /// tracks the current function context for return type checking.
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SymbolTable {
     /// Stack of scopes, with the current scope at the end
     scopes: Vec<Scope>,
     /// The currently active function (if inside a function)
     current_function: Option<FunctionSymbol>,
+}
+
+impl Default for SymbolTable {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl SymbolTable {
