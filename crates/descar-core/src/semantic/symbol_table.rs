@@ -232,19 +232,6 @@ impl SymbolTable {
         let current_scope = self.current_scope_mut().expect("At least one scope");
 
         if current_scope.symbols.contains_key(name) {
-            // Descar permits a variable declaration to shadow/rebind an
-            // existing variable in the same function scope. This is useful
-            // for sequential declarations such as:
-            //   var x: i64 = 1
-            //   var x: i32 = 2
-            // A function/type name remains a hard duplicate.
-            if matches!(current_scope.symbols.get(name), Some(Symbol::Variable(_)))
-                && matches!(symbol, Symbol::Variable(_))
-            {
-                current_scope.symbols.insert(name.into(), symbol);
-                return Ok(());
-            }
-
             let duplicate_span = match &symbol {
                 Symbol::Variable(v) => v.defined_at.clone(),
                 Symbol::Function(f) => f.defined_at.clone(),
@@ -261,7 +248,6 @@ impl SymbolTable {
                 help: None,
             });
         }
-
         current_scope.symbols.insert(name.into(), symbol);
         Ok(())
     }
