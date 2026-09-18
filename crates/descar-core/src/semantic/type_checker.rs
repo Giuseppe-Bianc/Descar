@@ -1137,17 +1137,17 @@ mod tests {
             return_type: Type::I64,
             body: Box::new(Stmt::While {
                 condition: Box::new(Expr::new_bool_literal(true, span.clone())),
-                body: Box::new(Stmt::Return {
-                    value: Some(number(span.clone())),
-                    span: span.clone(),
-                }),
+                body: Box::new(Stmt::Return { value: Some(number(span.clone())), span: span.clone() }),
                 span: span.clone(),
             }),
-            span: span.clone(),
+            span,
         }];
 
         let errors = TypeChecker::new().check(&statements);
-        assert!(!errors.iter().any(|error| error.error_code() == Some(&ErrorCode::E2003)), "unexpected missing-return error: {errors:#?}");
+        assert!(
+            !errors.iter().any(|error| error.error_code() == Some(&ErrorCode::E2003)),
+            "unexpected missing-return error: {errors:#?}"
+        );
     }
 
     #[test]
@@ -1161,17 +1161,17 @@ mod tests {
                 initializer: None,
                 condition: Some(Expr::new_bool_literal(true, span.clone())),
                 increment: None,
-                body: Box::new(Stmt::Return {
-                    value: Some(number(span.clone())),
-                    span: span.clone(),
-                }),
+                body: Box::new(Stmt::Return { value: Some(number(span.clone())), span: span.clone() }),
                 span: span.clone(),
             }),
-            span: span.clone(),
+            span,
         }];
 
         let errors = TypeChecker::new().check(&statements);
-        assert!(!errors.iter().any(|error| error.error_code() == Some(&ErrorCode::E2003)), "unexpected missing-return error: {errors:#?}");
+        assert!(
+            !errors.iter().any(|error| error.error_code() == Some(&ErrorCode::E2003)),
+            "unexpected missing-return error: {errors:#?}"
+        );
     }
 
     #[test]
