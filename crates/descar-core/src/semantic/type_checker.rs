@@ -1075,7 +1075,7 @@ impl TypeChecker {
     ///
     /// Returns the first matching type from the numeric hierarchy. When neither
     /// input belongs to the hierarchy, the first input type is used as a fallback.
-    fn compute_promotion(&self, t1: &Type, t2: &Type) Type {
+    fn compute_promotion(&self, t1: &Type, t2: &Type) -> Type {
         // Trova il tipo con rango più alto nella gerarchia
         for ty in &HIERARCHY {
             if t1 == ty || t2 == ty {
