@@ -12,10 +12,17 @@ use descar_core::syntax::parser::JsavParser;
 
 use descar_core::file::{FileSizeInfo, FileSizeReport, SizeSystems};
 
+/// Reports an I/O error using the CLI error formatting.
+///
+/// The error category and underlying error value are printed to standard error.
 fn handle_io_error<T: std::fmt::Display>(error_type: &str, e: T) {
     eprintln!("{} {}: {}\n", style("ERROR:").red().bold(), style(error_type).red(), style(e).yellow());
 }
 
+/// Reads filesystem metadata and prints a file size report.
+///
+/// The report contains both SI and IEC representations. Metadata failures are
+/// forwarded to the CLI I/O error handler.
 fn print_file_size_report(path: &Path) {
     match fs::metadata(path) {
         Ok(metadata) => {
