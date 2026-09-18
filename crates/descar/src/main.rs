@@ -95,7 +95,7 @@ fn main() {
                 }
             }
 
-            let statements = run_frontend(file_path_str, &input);
+            let _statements = run_frontend(file_path_str, &input);
             if !args.logging.quiet {
                 println!("Compilation successful: {file_path_str}");
             }
