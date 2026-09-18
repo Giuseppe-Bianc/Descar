@@ -255,10 +255,7 @@ impl SymbolTable {
             });
         }
 
-        self.current_scope_mut()
-            .expect("At least one scope")
-            .symbols
-            .insert(name.into(), symbol);
+        self.current_scope_mut().expect("At least one scope").symbols.insert(name.into(), symbol);
         Ok(())
     }
 
