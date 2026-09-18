@@ -1,3 +1,4 @@
+use descar_core::error::error_code::ErrorCode;
 use descar_core::lex::error::LexError;
 use descar_core::{
     error::compile_error::CompileError,
@@ -15,6 +16,16 @@ fn lex_kinds(input: &str) -> Vec<Result<TokenKind, CompileError>> {
         tokens.push(token.map(|t| t.kind));
     }
     tokens
+}
+
+#[test]
+fn get_line_tracker_returns_configured_tracker() {
+    let source = "first line\nsecond line";
+    let lexer = Lexer::new("test.dr", source);
+
+    let tracker = lexer.get_line_tracker();
+    assert_eq!(tracker.source(), source);
+    assert_eq!(tracker.span_for(0..5).file_path(), "test.dr");
 }
 
 #[test]
@@ -400,6 +411,19 @@ fn terminated_multiline_comment_is_skipped() {
     assert_eq!(tokens.len(), 2);
     assert_eq!(tokens[0].kind, TokenKind::IdentifierAscii("x".into()));
     assert_eq!(tokens[1].kind, TokenKind::Eof);
+}
+
+#[test]
+fn unterminated_multiline_comment_reports_e0008_with_help() {
+    let mut lexer = Lexer::new("test", "/* unclosed");
+    let (tokens, errors) = lexer_tokenize_with_errors(&mut lexer);
+
+    assert_eq!(tokens.len(), 1);
+    assert_eq!(tokens[0].kind, TokenKind::Eof);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].error_code().map(ErrorCode::code), Some("E0008"));
+    assert_eq!(errors[0].message(), Some("Unterminated multi-line comment: \"/* unclosed\""));
+    assert_eq!(errors[0].help(), Some("Add a closing */ to the comment."));
 }
 
 #[test]
