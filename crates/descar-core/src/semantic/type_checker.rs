@@ -163,8 +163,8 @@ impl TypeChecker {
     }
 
     // Helper method per dichiarare simboli
-    fn declare_symbol(&mut self, name: &str, symbol: Symbol) {
-        if let Err(e) = self.symbol_table.declare(name, symbol) {
+    fn declare_symbol(&mut self, name: &str, symbol: Symbol, declared_at: &SourceSpan) {
+        if let Err(e) = self.symbol_table.declare(name, symbol, declared_at.clone()) {
             self.errors.push(e);
         }
     }
@@ -230,6 +230,7 @@ impl TypeChecker {
                     defined_at: span.clone(),
                     last_assignment: None,
                 }),
+                span,
             );
         }
     }
@@ -243,7 +244,7 @@ impl TypeChecker {
             return_type: return_type.clone(),
             defined_at: span.clone(),
         };
-        self.declare_symbol(name, Symbol::Function(func_symbol));
+        self.declare_symbol(name, Symbol::Function(func_symbol), span);
         self.symbol_table.push_scope(ScopeKind::Function, Some(span.clone()));
         self.return_type_stack.push(return_type.clone());
         for param in parameters {
@@ -256,6 +257,7 @@ impl TypeChecker {
                     defined_at: param.span.clone(),
                     last_assignment: None,
                 }),
+                &param.span,
             );
         }
         match body {
