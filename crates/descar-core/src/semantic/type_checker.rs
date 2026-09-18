@@ -706,12 +706,10 @@ impl TypeChecker {
         }
     }
 
-    fn base_variable_name<'a>(expr: &'a Expr) -> Option<&'a str> {
+    fn base_variable_name(expr: &Expr) -> Option<&str> {
         match expr {
             Expr::Variable { name, .. } => Some(name),
-            Expr::ArrayAccess { array, .. } | Expr::Grouping { expr: array, .. } => {
-                Self::base_variable_name(array)
-            }
+            Expr::ArrayAccess { array, .. } | Expr::Grouping { expr: array, .. } => Self::base_variable_name(array),
             _ => None,
         }
     }
