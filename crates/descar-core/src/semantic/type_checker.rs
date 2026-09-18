@@ -723,15 +723,15 @@ impl TypeChecker {
         let target_type = match target {
             Expr::Variable { name, span } => {
                 if let Some(var) = self.symbol_table.lookup_variable(name) {
-                    if !var.mutable {
+                    if var.mutable {
+                        Some(var.ty)
+                    } else {
                         self.type_error_with_code(
                             Some(ErrorCode::E2024),
                             format!("Cannot assign to immutable variable '{name}'"),
                             span,
                         );
                         None
-                    } else {
-                        Some(var.ty)
                     }
                 } else {
                     self.type_error_with_code(Some(ErrorCode::E2025), format!("Undefined variable '{name}'"), span);
