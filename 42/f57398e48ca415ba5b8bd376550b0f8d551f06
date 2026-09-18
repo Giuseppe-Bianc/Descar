@@ -1,0 +1,14 @@
+crates/descar/src/main.rs
+  h_361662506da91f 28-41,49,51,96,98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "42f57398e48ca415ba5b8bd376550b0f8d551f06",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
