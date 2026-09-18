@@ -93,12 +93,6 @@ static TYPE_PROMOTION_CACHE: OnceLock<Mutex<HashMap<(Type, Type), Type>>> = Once
 // Precomputed type promotion lookup table for better performance
 static TYPE_PROMOTION_TABLE: OnceLock<[u8; 100]> = OnceLock::new();
 
-impl std::fmt::Display for Type {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
 #[allow(clippy::collapsible_if)]
 impl TypeChecker {
     /// Creates a new type checker with empty state.
