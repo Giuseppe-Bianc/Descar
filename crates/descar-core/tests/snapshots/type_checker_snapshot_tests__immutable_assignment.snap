@@ -1,0 +1,32 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: errors
+---
+[
+    TypeError {
+        code: Some(
+            E2024,
+        ),
+        message: "Cannot assign to immutable variable 'x'",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 2,
+                column: 5,
+                offset: 25,
+                index: 25,
+                utf8_offset: 25,
+                code_point_offset: 25,
+            },
+            end: SourceLocation {
+                line: 2,
+                column: 6,
+                offset: 26,
+                index: 26,
+                utf8_offset: 26,
+                code_point_offset: 26,
+            },
+        },
+        help: None,
+    },
+]

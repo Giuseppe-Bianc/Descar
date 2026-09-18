@@ -1,0 +1,32 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: errors
+---
+[
+    TypeError {
+        code: Some(
+            E2002,
+        ),
+        message: "Cannot assign f64 to array element of type i32",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 2,
+                column: 14,
+                offset: 43,
+                index: 43,
+                utf8_offset: 43,
+                code_point_offset: 43,
+            },
+            end: SourceLocation {
+                line: 2,
+                column: 18,
+                offset: 47,
+                index: 47,
+                utf8_offset: 47,
+                code_point_offset: 47,
+            },
+        },
+        help: None,
+    },
+]

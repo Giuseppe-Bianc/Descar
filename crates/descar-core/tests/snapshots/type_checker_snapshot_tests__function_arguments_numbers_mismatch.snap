@@ -1,0 +1,58 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: errors
+---
+[
+    TypeError {
+        code: Some(
+            E2003,
+        ),
+        message: "Function 'add' may not return value in all code paths (expected return type: i32)",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 1,
+                column: 1,
+                offset: 0,
+                index: 0,
+                utf8_offset: 0,
+                code_point_offset: 0,
+            },
+            end: SourceLocation {
+                line: 2,
+                column: 2,
+                offset: 32,
+                index: 32,
+                utf8_offset: 32,
+                code_point_offset: 32,
+            },
+        },
+        help: None,
+    },
+    TypeError {
+        code: Some(
+            E2028,
+        ),
+        message: "Function 'add' expects 2 arguments, found 3",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 3,
+                column: 4,
+                offset: 36,
+                index: 36,
+                utf8_offset: 36,
+                code_point_offset: 36,
+            },
+            end: SourceLocation {
+                line: 3,
+                column: 22,
+                offset: 54,
+                index: 54,
+                utf8_offset: 54,
+                code_point_offset: 54,
+            },
+        },
+        help: None,
+    },
+]

@@ -1,0 +1,32 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: errors
+---
+[
+    TypeError {
+        code: Some(
+            E2005,
+        ),
+        message: "Return statement must be inside function body",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 1,
+                column: 1,
+                offset: 0,
+                index: 0,
+                utf8_offset: 0,
+                code_point_offset: 0,
+            },
+            end: SourceLocation {
+                line: 1,
+                column: 13,
+                offset: 12,
+                index: 12,
+                utf8_offset: 12,
+                code_point_offset: 12,
+            },
+        },
+        help: None,
+    },
+]

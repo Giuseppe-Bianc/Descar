@@ -1,0 +1,32 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: errors
+---
+[
+    TypeError {
+        code: Some(
+            E2013,
+        ),
+        message: "Binary operator 'Add' requires numeric operands, found bool and i32",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 1,
+                column: 6,
+                offset: 5,
+                index: 5,
+                utf8_offset: 5,
+                code_point_offset: 5,
+            },
+            end: SourceLocation {
+                line: 1,
+                column: 7,
+                offset: 6,
+                index: 6,
+                utf8_offset: 6,
+                code_point_offset: 6,
+            },
+        },
+        help: None,
+    },
+]

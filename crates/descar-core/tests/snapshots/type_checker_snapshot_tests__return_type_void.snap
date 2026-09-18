@@ -1,0 +1,32 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: errors
+---
+[
+    TypeError {
+        code: Some(
+            E2008,
+        ),
+        message: "Return type mismatch, expected i32 found Void",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 2,
+                column: 5,
+                offset: 41,
+                index: 41,
+                utf8_offset: 41,
+                code_point_offset: 41,
+            },
+            end: SourceLocation {
+                line: 2,
+                column: 11,
+                offset: 47,
+                index: 47,
+                utf8_offset: 47,
+                code_point_offset: 47,
+            },
+        },
+        help: None,
+    },
+]
