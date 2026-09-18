@@ -706,6 +706,16 @@ impl TypeChecker {
         }
     }
 
+    fn base_variable_name<'a>(&self, expr: &'a Expr) -> Option<&'a str> {
+        match expr {
+            Expr::Variable { name, .. } => Some(name),
+            Expr::ArrayAccess { array, .. } | Expr::Grouping { expr: array, .. } => {
+                self.base_variable_name(array)
+            }
+            _ => None,
+        }
+    }
+
     fn visit_assign(&mut self, target: &Expr, value: &Expr, _span: &SourceSpan) -> Option<Type> {
         let target_type = match target {
             Expr::Variable { name, span } => {
@@ -725,7 +735,18 @@ impl TypeChecker {
                 }
             }
             Expr::ArrayAccess { array, index, span } => {
-                // Delegate to visit_array_access to check both array and index
+                if let Some(name) = self.base_variable_name(array) {
+                    if let Some(var) = self.symbol_table.lookup_variable(name) {
+                        if !var.mutable {
+                            self.type_error_with_code(
+                                Some(ErrorCode::E2024),
+                                format!("Cannot assign to immutable variable '{name}'"),
+                                span,
+                            );
+                            return None;
+                        }
+                    }
+                }
                 self.visit_array_access(array, index, span)?
             }
             _ => {
