@@ -28,13 +28,13 @@ fn print_file_size_report(path: &Path) {
 
 fn read_input(path: &Path) -> String {
     fs::read_to_string(path).unwrap_or_else(|e| {
-        handle_io_error("I/O", e);
+        handle_io_error("I/O", format!("failed to read '{}': {}", path.to_string_lossy(), e));
         process::exit(1);
     })
 }
 fn path_to_str(path: &Path) -> &str {
     path.to_str().unwrap_or_else(|| {
-        handle_io_error("I/O", std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid file path"));
+        handle_io_error("I/O", format!("invalid file path '{}'", path.to_string_lossy()));
         process::exit(1);
     })
 }
