@@ -1003,24 +1003,21 @@ impl Default for TypeChecker {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::syntax::ast::unary_op_side::UnaryOpSide;
 
     fn variable(name: &str, span: SourceSpan) -> Expr {
         Expr::Variable { name: name.into(), span }
     }
 
     fn number(span: SourceSpan) -> Expr {
-        Expr::new_number_literal(Number::I64(1), span)
+        Expr::new_number_literal(Number::Integer(1), span)
     }
 
     fn immutable_declarations(span: &SourceSpan) -> Vec<Stmt> {
-        let array_type = Type::Array {
-            element_type: Box::new(Type::I64),
-            size: Box::new(number(span.clone())),
-        };
+        let array_type = Type::Array { element_type: Box::new(Type::I64), size: Box::new(number(span.clone())) };
 
         vec![
             Stmt::VarDeclaration {
@@ -1039,14 +1036,7 @@ mod tests {
     }
 
     fn unary(op: UnaryOp, side: UnaryOpSide, expr: Expr, span: SourceSpan) -> Stmt {
-        Stmt::Expression {
-            expr: Box::new(Expr::Unary {
-                op,
-                side,
-                expr: Box::new(expr),
-                span,
-            }),
-        }
+        Stmt::Expression { expr: Box::new(Expr::Unary { op, side, expr: Box::new(expr), span }) }
     }
 
     #[test]
@@ -1100,17 +1090,15 @@ mod tests {
         let span = SourceSpan::default();
         let statements = [
             Stmt::VarDeclaration {
-                bindings: vec![VarBinding { name: "flag".into(), initializer: Some(Expr::new_bool_literal(true, span.clone())) }],
+                bindings: vec![VarBinding {
+                    name: "flag".into(),
+                    initializer: Some(Expr::new_bool_literal(true, span.clone())),
+                }],
                 type_annotation: Type::Bool,
                 is_mutable: true,
                 span: span.clone(),
             },
-            unary(
-                UnaryOp::Increment,
-                UnaryOpSide::Prefix,
-                variable("flag", span.clone()),
-                span.clone(),
-            ),
+            unary(UnaryOp::Increment, UnaryOpSide::Prefix, variable("flag", span.clone()), span),
         ];
 
         let errors = TypeChecker::new().check(&statements);
