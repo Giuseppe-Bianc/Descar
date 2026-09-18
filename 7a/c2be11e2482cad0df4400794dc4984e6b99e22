@@ -1,0 +1,18 @@
+dr_files/input.dr
+  h_361662506da91f 2,57
+crates/descar/src/main.rs
+  h_361662506da91f 3,80-84
+crates/descar-core/src/semantic/type_checker.rs
+  h_361662506da91f 39-40,72-73,75,95-99,115-116,153-154,188,196-197,207-208,216-218,220-222,266-269,302-307,318,404,534-535,542,545,547-549,555-567,569-581,644,653,681-683,686-688,942,948-955,967-975,999,1001-1012,1015
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7ac2be11e2482cad0df4400794dc4984e6b99e22",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
