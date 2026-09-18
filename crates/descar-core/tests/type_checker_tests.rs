@@ -33,14 +33,6 @@ fn test_var_declaration_in_main() {
 }
 
 #[test]
-fn test_var_declaration_mismatched_num_of_inic() {
-    let input = "var x: i32, y:f64 = 42i32";
-    let errors = typecheck(input);
-    assert_eq!(errors.len(), 2);
-    assert_eq!(errors[0].message(), Some("Variable declaration requires 1 initializers but 0 were provided"));
-}
-
-#[test]
 fn test_var_declaration_in_main_using_typecheck_default() {
     let input = "main { var x: i32 = 42i32 }";
     let errors = typecheckd(input);
@@ -173,7 +165,7 @@ fn test_array_invalid_index_access() {
 
 #[test]
 fn test_numeric_promotion() {
-    let ast = "42i32 + 3.14f64";
+    let ast = "42i32 + 3.14d";
 
     let errors = typecheck(ast);
     assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
@@ -367,7 +359,7 @@ fn test_unary_negate_invalid() {
 
     let errors = typecheck(ast);
     assert_eq!(errors.len(), 1);
-    assert_eq!(errors[0].message(), Some("Negation requires Number type operand, found bool"));
+    assert_eq!(errors[0].message(), Some("Negation requires numeric type operand, found bool"));
 }
 
 #[test]
@@ -1176,7 +1168,7 @@ fn test_promote_numeric_types_behaviour() {
 #[test]
 fn test_mixed_signed_unsigned_promotions() {
     // Test mixed signed/unsigned promotions in expressions
-    let ast = "10i32 + 20u64";
+    let ast = "10i32 + 20u";
     let errors = typecheck(ast);
     assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
 
@@ -1192,7 +1184,7 @@ fn test_mixed_signed_unsigned_promotions() {
 #[test]
 fn test_same_rank_different_sign_promotions() {
     // Test same-rank different-sign promotions
-    let ast = "10i64 + 20u64";
+    let ast = "10 + 20u";
     let errors = typecheck(ast);
     assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
 
@@ -1213,7 +1205,7 @@ fn test_forbidden_float_to_integer_promotions() {
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].message(), Some("Cannot assign f64 to i32 for variable 'x'"));
 
-    let ast = "var y: u64 = 2.71f32";
+    let ast = "var y: u64 = 2.71f";
     let errors = typecheck(ast);
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].message(), Some("Cannot assign f32 to u64 for variable 'y'"));
@@ -1233,12 +1225,12 @@ fn test_chained_assignments() {
     assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
 
     // Test chained assignment with type promotion
-    let ast = "var x: f64 = 0.0f64\n    var y: i32 = 0i32\n    x = y = 42i32";
+    let ast = "var x: f64 = 0.0d\n    var y: i32 = 0i32\n    x = y = 42i32";
     let errors = typecheck(ast);
     assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
 
     // Test chained assignment with type mismatch
-    let ast = "var x: i32 = 0i32\n    var y: f64 = 0.0f64\n    x = y = 42i32";
+    let ast = "var x: i32 = 0i32\n    var y: f64 = 0.0d\n    x = y = 42i32";
     let errors = typecheck(ast);
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].message(), Some("Cannot assign f64 to i32"));

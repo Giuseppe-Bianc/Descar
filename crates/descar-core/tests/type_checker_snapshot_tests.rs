@@ -145,7 +145,7 @@ fn test_array_invalid_index_access() {
 
 #[test]
 fn test_numeric_promotion() {
-    let ast = "42i32 + 3.14f64";
+    let ast = "42i32 + 3.14d";
 
     let errors = typecheck(ast);
     assert_debug_snapshot!(errors);

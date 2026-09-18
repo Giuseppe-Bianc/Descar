@@ -2,31 +2,4 @@
 source: crates/descar-core/tests/type_checker_snapshot_tests.rs
 expression: errors
 ---
-[
-    TypeError {
-        code: Some(
-            E2013,
-        ),
-        message: "Binary operator 'Add' requires numeric operands, found i32 and nullptr",
-        span: SourceSpan {
-            file_path: "test.vn",
-            start: SourceLocation {
-                line: 1,
-                column: 7,
-                offset: 6,
-                index: 6,
-                utf8_offset: 6,
-                code_point_offset: 6,
-            },
-            end: SourceLocation {
-                line: 1,
-                column: 8,
-                offset: 7,
-                index: 7,
-                utf8_offset: 7,
-                code_point_offset: 7,
-            },
-        },
-        help: None,
-    },
-]
+[]
