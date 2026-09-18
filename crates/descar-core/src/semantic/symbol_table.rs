@@ -283,14 +283,8 @@ impl SymbolTable {
     where
         F: Fn(&Symbol) -> Option<T>,
     {
-        for scope in self.scopes.iter().rev() {
-            if let Some(sym) = scope.symbols.get(name) {
-                if let Some(result) = filter(sym) {
-                    return Some(result);
-                }
-            }
-        }
-        None
+        let symbol = self.scopes.iter().rev().find_map(|scope| scope.symbols.get(name));
+        symbol.and_then(filter)
     }
 
     /// Looks up a symbol by name, searching through all scopes.
