@@ -90,7 +90,6 @@ const HIERARCHY: [Type; 10] =
 // Global cache for type promotion results
 static TYPE_PROMOTION_CACHE: OnceLock<Mutex<HashMap<(Type, Type), Type>>> = OnceLock::new();
 
-
 #[allow(clippy::collapsible_if)]
 impl TypeChecker {
     /// Creates a new type checker with empty state.
