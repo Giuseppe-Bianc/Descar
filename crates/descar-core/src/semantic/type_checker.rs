@@ -90,8 +90,6 @@ const HIERARCHY: [Type; 10] =
 // Global cache for type promotion results
 static TYPE_PROMOTION_CACHE: OnceLock<Mutex<HashMap<(Type, Type), Type>>> = OnceLock::new();
 
-// Precomputed type promotion lookup table for better performance
-static TYPE_PROMOTION_TABLE: OnceLock<[u8; 100]> = OnceLock::new();
 
 #[allow(clippy::collapsible_if)]
 impl TypeChecker {
@@ -857,37 +855,11 @@ impl TypeChecker {
     #[inline]
     #[allow(clippy::missing_panics_doc)]
     pub fn promote_numeric_types(&self, t1: &Type, t2: &Type) -> Type {
-        // For numeric types, use the optimized lookup table
-        if let (Some(id1), Some(id2)) = (Self::type_to_id(t1), Self::type_to_id(t2)) {
-            let table = TYPE_PROMOTION_TABLE.get_or_init(|| {
-                // Create a rank-based promotion table using array indexing for maximum performance
-                // Higher rank means higher precedence in promotion
-                let ranks = [1, 2, 3, 4, 1, 2, 3, 4, 5, 6]; // I8, I16, I32, I64, U8, U16, U32, U64, F32, F64
-                let type_ids = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]; // Corresponding numeric IDs
-
-                let mut table = [0u8; 100]; // 10x10 table for all combinations
-
-                // Populate the promotion table. Each pair needs its own slot,
-                // so the row/column index must be based on the table width,
-                // not on multiplication of the two type ids.
-                for (i, &rank1) in ranks.iter().enumerate() {
-                    let id1 = type_ids[i];
-                    for (j, &rank2) in ranks.iter().enumerate() {
-                        let id2 = type_ids[j];
-                        let result_id = if rank1 >= rank2 { id1 } else { id2 };
-                        table[id1 as usize * 10 + id2 as usize] = result_id;
-                    }
-                }
-
-                table
-            });
-
-            // Lookup the promotion result using array indexing (O(1) operation)
-            let index = (id1 as usize) * 10 + id2 as usize;
-            return Self::id_to_type(table[index]);
+        if let (Some(rank1), Some(rank2)) = (Self::promotion_rank(t1), Self::promotion_rank(t2)) {
+            return if rank1 >= rank2 { t1.clone() } else { t2.clone() };
         }
 
-        // For non-numeric types or edge cases, use the existing cache
+        // Preserve the existing path for non-numeric types and unsupported pairs.
         let cache = TYPE_PROMOTION_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
 
         // Create key for cache lookup
@@ -898,42 +870,11 @@ impl TypeChecker {
         cache_guard.entry(key).or_insert_with(|| self.compute_promotion(t1, t2)).clone()
     }
 
-    // Convert Type to numeric ID for fast lookup
     #[inline]
-    const fn type_to_id(ty: &Type) -> Option<u8> {
-        match ty {
-            Type::I8 => Some(0),
-            Type::I16 => Some(1),
-            Type::I32 => Some(2),
-            Type::I64 => Some(3),
-            Type::U8 => Some(4),
-            Type::U16 => Some(5),
-            Type::U32 => Some(6),
-            Type::U64 => Some(7),
-            Type::F32 => Some(8),
-            Type::F64 => Some(9),
-            _ => None,
-        }
+    fn promotion_rank(ty: &Type) -> Option<usize> {
+        HIERARCHY.iter().position(|candidate| candidate == ty).map(|index| HIERARCHY.len() - index)
     }
 
-    // Convert numeric ID back to Type
-    #[inline]
-    #[allow(clippy::match_same_arms)]
-    const fn id_to_type(id: u8) -> Type {
-        match id {
-            0 => Type::I8,
-            1 => Type::I16,
-            2 => Type::I32,
-            3 => Type::I64,
-            4 => Type::U8,
-            5 => Type::U16,
-            6 => Type::U32,
-            7 => Type::U64,
-            8 => Type::F32,
-            9 => Type::F64,
-            _ => Type::I32, // fallback for invalid IDs
-        }
-    }
     // Extract the original promotion logic into a separate function
     #[allow(clippy::unused_self)]
     fn compute_promotion(&self, t1: &Type, t2: &Type) -> Type {
