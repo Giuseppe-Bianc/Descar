@@ -245,6 +245,72 @@ fn test_main_function_signature() {
     assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
 }
 
+#[test]
+fn test_main_function_statement_path() {
+    let ast = "main { var x: i32 = 42i32 }";
+    let errors = typecheck(ast);
+    assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
+}
+
+#[test]
+fn test_if_condition_non_boolean_reports_e2004() {
+    let ast = "if (1i32) { 42i32 }";
+    let errors = typecheck(ast);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message(), Some("Condition in 'if' statement must be boolean, found i32"));
+}
+
+#[test]
+fn test_void_function_return_value_is_rejected() {
+    let ast = "fun log() { return 42i32 }";
+    let errors = typecheck(ast);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message(), Some("Cannot return a value from void function"));
+}
+
+#[test]
+fn test_immutable_assignment_in_expression_is_rejected() {
+    let ast = "const x: i32 = 1i32\n x = 2i32";
+    let errors = typecheck(ast);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message(), Some("Cannot assign to immutable variable 'x'"));
+}
+
+#[test]
+fn test_comparison_operator_type_mismatch_reports_compatible_types() {
+    let ast = "true < \"test\"";
+    let errors = typecheck(ast);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(
+        errors[0].message(),
+        Some("Comparison operator 'Less' requires compatible types, found bool and string")
+    );
+}
+
+#[test]
+fn test_arithmetic_operation_not_supported_for_bool() {
+    let ast = "true + false";
+    let errors = typecheck(ast);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message(), Some("Arithmetic operation not supported for bool"));
+}
+
+#[test]
+fn test_bitwise_not_requires_integer_operand() {
+    let ast = "~true";
+    let errors = typecheck(ast);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message(), Some("Bitwise not requires integer operand type, found bool"));
+}
+
+#[test]
+fn test_increment_on_immutable_variable_is_rejected() {
+    let ast = "const x: i32 = 0i32\n x++";
+    let errors = typecheck(ast);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message(), Some("Cannot assign to immutable variable 'x'"));
+}
+
 /*
 #[test]
 fn test_double_main_function_signature() {
