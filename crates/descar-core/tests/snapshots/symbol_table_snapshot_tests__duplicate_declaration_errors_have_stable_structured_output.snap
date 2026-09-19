@@ -1,0 +1,88 @@
+---
+source: crates/descar-core/tests/symbol_table_snapshot_tests.rs
+expression: errors
+---
+[
+    TypeError {
+        code: Some(
+            E2032,
+        ),
+        message: "Identifier 'value' already declared in this Global scope",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 1,
+                column: 13,
+                offset: 12,
+                index: 12,
+                utf8_offset: 12,
+                code_point_offset: 12,
+            },
+            end: SourceLocation {
+                line: 1,
+                column: 14,
+                offset: 13,
+                index: 13,
+                utf8_offset: 13,
+                code_point_offset: 13,
+            },
+        },
+        help: Some(
+            "Previous declaration at test.vn:line 1:column 1-line 1:column 2",
+        ),
+    },
+    TypeError {
+        code: Some(
+            E2032,
+        ),
+        message: "Identifier 'compute' already declared in this Global scope",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 1,
+                column: 13,
+                offset: 12,
+                index: 12,
+                utf8_offset: 12,
+                code_point_offset: 12,
+            },
+            end: SourceLocation {
+                line: 1,
+                column: 14,
+                offset: 13,
+                index: 13,
+                utf8_offset: 13,
+                code_point_offset: 13,
+            },
+        },
+        help: Some(
+            "Previous declaration at test.vn:line 1:column 5-line 1:column 6",
+        ),
+    },
+    TypeError {
+        code: Some(
+            E2032,
+        ),
+        message: "Identifier 'Number' already declared in this Global scope",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 1,
+                column: 13,
+                offset: 12,
+                index: 12,
+                utf8_offset: 12,
+                code_point_offset: 12,
+            },
+            end: SourceLocation {
+                line: 1,
+                column: 14,
+                offset: 13,
+                index: 13,
+                utf8_offset: 13,
+                code_point_offset: 13,
+            },
+        },
+        help: None,
+    },
+]
