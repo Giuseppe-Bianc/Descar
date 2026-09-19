@@ -1,0 +1,26 @@
+crates/descar-core/tests/type_checker_tests.rs
+  s_121f1236a17c62::t_50aecd3a68c6ac 248-271,274-283,288-313
+  s_121f1236a17c62::t_7740c7350433b7 284-287
+  s_121f1236a17c62::t_c42647143fa389 272-273
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bfe540ec58377b27411308619be950de648de5ac",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_121f1236a17c62": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "7a3225bd-767c-44ed-9293-a239c5fd9942",
+        "model": "mai-code-1.1-flash"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
