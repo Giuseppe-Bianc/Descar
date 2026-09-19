@@ -1,6 +1,7 @@
 use descar_core::error::compile_error::CompileError;
 use descar_core::lex::lexer::{Lexer, lexer_tokenize_with_errors};
 use descar_core::semantic::type_checker::TypeChecker;
+use descar_core::syntax::ast::binary_op::BinaryOp;
 use descar_core::syntax::ast::{Expr, LiteralValue, Type};
 use descar_core::syntax::parser::JsavParser;
 use descar_core::tokens::number::Number;
@@ -1485,6 +1486,50 @@ fn test_bitwise_not_accepts_integer_operand() {
 #[test]
 fn test_increment_mutable_numeric_variable() {
     let ast = "var x: i32 = 0i32\nx++";
+    let errors = typecheck(ast);
+
+    assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
+}
+
+#[test]
+fn test_if_condition_unknown_type_reaches_none_branch() {
+    let ast = "if (missing) { }";
+    let errors = typecheck(ast);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message(), Some("Undefined variable 'missing'"));
+}
+
+#[test]
+fn test_return_unknown_expression_reaches_none_branch() {
+    let ast = "fun test(): i32 { return missing }";
+    let errors = typecheck(ast);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message(), Some("Undefined variable 'missing'"));
+}
+
+#[test]
+fn test_compound_assignment_unknown_target_reaches_lookup_none() {
+    let checker_input = Expr::Binary {
+        left: Box::new(Expr::Variable { name: "missing".into(), span: dummy_span() }),
+        op: BinaryOp::AddEqual,
+        right: Box::new(Expr::Literal { value: LiteralValue::Numeric(Number::I32(1)), span: dummy_span() }),
+        span: dummy_span(),
+    };
+
+    let statements = vec![descar_core::syntax::ast::Stmt::Expression { expr: Box::new(checker_input) }];
+
+    let mut checker = TypeChecker::new();
+    let errors = checker.check(&statements);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message(), Some("Undefined variable 'missing'"));
+}
+
+#[test]
+fn test_increment_non_variable_expression_reaches_base_name_none() {
+    let ast = "fun f(): i32 { return 1i32 }\nf()++";
     let errors = typecheck(ast);
 
     assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
