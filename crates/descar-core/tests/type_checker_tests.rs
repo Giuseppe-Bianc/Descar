@@ -1430,3 +1430,62 @@ fn test_get_size() {
     let expr_variable = Expr::Variable { name: "x".into(), span: dummy_span() };
     assert_eq!(checker.get_size(&expr_variable), None);
 }
+
+#[test]
+fn test_duplicate_variable_declaration_reports_error() {
+    let ast = "var x: i32 = 1i32\nvar x: i32 = 2i32";
+    let errors = typecheck(ast);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message(), Some("Identifier 'x' already declared in this Global scope"));
+}
+
+#[test]
+fn test_return_expression_reaches_some_actual_type_path() {
+    let ast = "fun identity(): i64 { return 1i32 }";
+    let errors = typecheck(ast);
+
+    assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
+}
+
+#[test]
+fn test_mutable_compound_assignment_reaches_mutability_check_path() {
+    let ast = "var x: i32 = 1i32\nx += 2i32";
+    let errors = typecheck(ast);
+
+    assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
+}
+
+#[test]
+fn test_binary_expression_returns_none_when_rhs_type_is_unknown() {
+    let ast = "1i32 + missing";
+    let errors = typecheck(ast);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message(), Some("Undefined variable 'missing'"));
+}
+
+#[test]
+fn test_logical_operation_rejects_numeric_operands_after_compatibility_check() {
+    let ast = "1i32 && 2i32";
+    let errors = typecheck(ast);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message(), Some("Logical operation requires bool, found i32"));
+}
+
+#[test]
+fn test_bitwise_not_accepts_integer_operand() {
+    let ast = "~1i32";
+    let errors = typecheck(ast);
+
+    assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
+}
+
+#[test]
+fn test_increment_mutable_numeric_variable() {
+    let ast = "var x: i32 = 0i32\nx++";
+    let errors = typecheck(ast);
+
+    assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
+}
