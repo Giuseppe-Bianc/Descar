@@ -1,0 +1,27 @@
+crates/descar-core/tests/ast_printer_test.rs
+  h_361662506da91f 267-268
+  s_6606f06022f363::t_617bf09ed1753b 278
+  s_6606f06022f363::t_c806d7fdc604fe 265-266,269-277,279-281
+  s_6606f06022f363::t_87f44e8bcdb419 264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "56c78214a4bdd271a916955d1492fbe149f38d37",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_6606f06022f363": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "82b73880-e125-42c6-bbb4-0aa9ffecfced",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
