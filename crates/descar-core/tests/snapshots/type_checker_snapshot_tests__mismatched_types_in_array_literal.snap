@@ -1,0 +1,32 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: errors
+---
+[
+    TypeError {
+        code: Some(
+            E2021,
+        ),
+        message: "All array elements must be same type, found mixed types: i32 and char",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 1,
+                column: 25,
+                offset: 24,
+                index: 24,
+                utf8_offset: 24,
+                code_point_offset: 24,
+            },
+            end: SourceLocation {
+                line: 1,
+                column: 28,
+                offset: 27,
+                index: 27,
+                utf8_offset: 27,
+                code_point_offset: 27,
+            },
+        },
+        help: None,
+    },
+]

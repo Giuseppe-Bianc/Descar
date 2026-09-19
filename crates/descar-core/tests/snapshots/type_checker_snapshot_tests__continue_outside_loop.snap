@@ -1,0 +1,32 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: errors
+---
+[
+    TypeError {
+        code: Some(
+            E2010,
+        ),
+        message: "Continue statement outside loop",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 1,
+                column: 1,
+                offset: 0,
+                index: 0,
+                utf8_offset: 0,
+                code_point_offset: 0,
+            },
+            end: SourceLocation {
+                line: 1,
+                column: 9,
+                offset: 8,
+                index: 8,
+                utf8_offset: 8,
+                code_point_offset: 8,
+            },
+        },
+        help: None,
+    },
+]

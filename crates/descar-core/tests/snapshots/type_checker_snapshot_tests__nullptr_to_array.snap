@@ -1,0 +1,5 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: "tc.is_assignable(&Type::NullPtr, &array_ty)"
+---
+true

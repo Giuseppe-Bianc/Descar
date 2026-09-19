@@ -1,0 +1,32 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: errors
+---
+[
+    TypeError {
+        code: Some(
+            E2030,
+        ),
+        message: "Array index must be integer type, found nullptr",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 2,
+                column: 9,
+                offset: 38,
+                index: 38,
+                utf8_offset: 38,
+                code_point_offset: 38,
+            },
+            end: SourceLocation {
+                line: 2,
+                column: 16,
+                offset: 45,
+                index: 45,
+                utf8_offset: 45,
+                code_point_offset: 45,
+            },
+        },
+        help: None,
+    },
+]

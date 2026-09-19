@@ -262,6 +262,41 @@ fn pretty_print_type_annotations_cover_all_type_variants() {
 }
 
 #[test]
+fn pretty_print_array_types_formats_literal_and_unevaluated_sizes() {
+    let cases = [
+        (Type::Array { element_type: Box::new(Type::I16), size: Box::new(number(4)) }, "[i16; 4]"),
+        (Type::Array { element_type: Box::new(Type::Bool), size: Box::new(variable("length")) }, "[bool; ?]"),
+        (
+            Type::Vector {
+                element_type: Box::new(Type::Array { element_type: Box::new(Type::U8), size: Box::new(number(2)) }),
+            },
+            "vector<[u8; 2]>",
+        ),
+    ];
+
+    for (type_annotation, expected) in cases {
+        assert_eq!(type_annotation.to_string(), expected);
+    }
+}
+
+#[test]
+fn type_display_covers_scalar_custom_and_array_size_paths() {
+    let cases = [
+        (Type::I8, "i8"),
+        (Type::U16, "u16"),
+        (Type::U32, "u32"),
+        (Type::Custom { name: Arc::from("Widget") }, "Widget"),
+        (Type::Void, "void"),
+        (Type::Array { element_type: Box::new(Type::I32), size: Box::new(number(3)) }, "[i32; 3]"),
+        (Type::Array { element_type: Box::new(Type::I32), size: Box::new(variable("size")) }, "[i32; ?]"),
+    ];
+
+    for (type_annotation, expected) in cases {
+        assert_eq!(type_annotation.to_string(), expected);
+    }
+}
+
+#[test]
 fn pretty_print_functions_cover_empty_and_populated_parameters_and_bodies() {
     let parameter_a = Parameter::new("left".into(), Type::I32, span(0, 1));
     let parameter_b = Parameter::new("right".into(), Type::Vector { element_type: Box::new(Type::Bool) }, span(0, 1));

@@ -1,4 +1,5 @@
 fun a(num1: i8, num2: i8): i8 {
+    var array, arr: i64 = 0,0
     ++array
     arr++
     return 0i8
@@ -53,5 +54,5 @@ main {
     //arr3[0]
     //a(1i8, 2i8) = 3i8
 
-    var a,b,c: i32 = 1,2,3
+    var a3,b3,c3: i32 = 1i32,2i32,3i32
 }
