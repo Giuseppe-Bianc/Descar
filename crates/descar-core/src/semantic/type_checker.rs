@@ -501,10 +501,16 @@ impl TypeChecker {
         }
 
         let right_type = self.visit_expr(right);
+
         let (Some(mut left_type), Some(mut right_type)) = (left_type, right_type) else {
             return None;
         };
 
+        /*
+         * Bitwise and shift operators have their own compatibility rules.
+         * They require integer operands and therefore must be handled before
+         * the generic compatibility check below.
+         */
         if matches!(
             op,
             BinaryOp::BitwiseAnd
@@ -532,7 +538,13 @@ impl TypeChecker {
                 );
                 return None;
             }
-        } else if matches!(
+        }
+
+        /*
+         * Arithmetic and comparison operators use numeric promotion when both
+         * operands are numeric.
+         */
+        if matches!(
             op,
             BinaryOp::Add
                 | BinaryOp::AddEqual
@@ -558,40 +570,81 @@ impl TypeChecker {
             right_type = common_type;
         }
 
-        if !self.are_compatible(&left_type, &right_type) {
-            let (code, message) = match op {
-                BinaryOp::And | BinaryOp::Or => (
-                    ErrorCode::E2012,
-                    format!(
-                        "Logical operator '{op:?}' requires boolean operands types, found {left_type} and {right_type}"
-                    ),
-                ),
-                BinaryOp::Add
-                | BinaryOp::AddEqual
-                | BinaryOp::Subtract
-                | BinaryOp::SubtractEqual
-                | BinaryOp::Multiply
-                | BinaryOp::MultiplyEqual
-                | BinaryOp::Divide
-                | BinaryOp::DivideEqual
-                | BinaryOp::Modulo
-                | BinaryOp::ModuloEqual => (
-                    ErrorCode::E2013,
-                    format!("Binary operator '{op:?}' requires numeric operands, found {left_type} and {right_type}"),
-                ),
-                BinaryOp::Equal
-                | BinaryOp::NotEqual
-                | BinaryOp::Less
-                | BinaryOp::LessEqual
-                | BinaryOp::Greater
-                | BinaryOp::GreaterEqual => (
-                    ErrorCode::E2014,
-                    format!(
-                        "Comparison operator '{op:?}' requires compatible types, found {left_type} and {right_type}"
-                    ),
-                ),
-                _ => (ErrorCode::E2015, format!("Type mismatch in binary operation: {left_type} and {right_type}")),
-            };
+        /*
+         * At this point bitwise operators have already been completely
+         * validated above. The compatibility check therefore only applies
+         * to logical, arithmetic, and comparison operators.
+         *
+         * There is intentionally no fallback `_ => E2015` here because all
+         * currently defined BinaryOp variants are explicitly classified.
+         */
+        let compatibility_error = match op {
+            BinaryOp::And | BinaryOp::Or => {
+                if self.are_compatible(&left_type, &right_type) {
+                    None
+                } else {
+                    Some((
+                        ErrorCode::E2012,
+                        format!(
+                            "Logical operator '{op:?}' requires boolean operands types, found {left_type} and {right_type}"
+                        ),
+                    ))
+                }
+            }
+
+            BinaryOp::Add
+            | BinaryOp::AddEqual
+            | BinaryOp::Subtract
+            | BinaryOp::SubtractEqual
+            | BinaryOp::Multiply
+            | BinaryOp::MultiplyEqual
+            | BinaryOp::Divide
+            | BinaryOp::DivideEqual
+            | BinaryOp::Modulo
+            | BinaryOp::ModuloEqual => {
+                if self.are_compatible(&left_type, &right_type) {
+                    None
+                } else {
+                    Some((
+                        ErrorCode::E2013,
+                        format!(
+                            "Binary operator '{op:?}' requires numeric operands, found {left_type} and {right_type}"
+                        ),
+                    ))
+                }
+            }
+
+            BinaryOp::Equal
+            | BinaryOp::NotEqual
+            | BinaryOp::Less
+            | BinaryOp::LessEqual
+            | BinaryOp::Greater
+            | BinaryOp::GreaterEqual => {
+                if self.are_compatible(&left_type, &right_type) {
+                    None
+                } else {
+                    Some((
+                        ErrorCode::E2014,
+                        format!(
+                            "Comparison operator '{op:?}' requires compatible types, found {left_type} and {right_type}"
+                        ),
+                    ))
+                }
+            }
+
+            BinaryOp::BitwiseAnd
+            | BinaryOp::BitwiseAndEqual
+            | BinaryOp::BitwiseOr
+            | BinaryOp::BitwiseOrEqual
+            | BinaryOp::BitwiseXor
+            | BinaryOp::BitwiseXorEqual
+            | BinaryOp::ShiftLeft
+            | BinaryOp::ShiftLeftEqual
+            | BinaryOp::ShiftRight
+            | BinaryOp::ShiftRightEqual => None,
+        };
+
+        if let Some((code, message)) = compatibility_error {
             self.type_error_with_code(Some(code), message, span);
             return None;
         }
@@ -616,12 +669,14 @@ impl TypeChecker {
                 }
                 left_type
             }
+
             BinaryOp::Equal
             | BinaryOp::NotEqual
             | BinaryOp::Less
             | BinaryOp::LessEqual
             | BinaryOp::Greater
             | BinaryOp::GreaterEqual => Type::Bool,
+
             BinaryOp::And | BinaryOp::Or => {
                 if left_type != Type::Bool {
                     self.type_error_with_code(
@@ -632,6 +687,7 @@ impl TypeChecker {
                 }
                 Type::Bool
             }
+
             BinaryOp::BitwiseAnd
             | BinaryOp::BitwiseAndEqual
             | BinaryOp::BitwiseOr
