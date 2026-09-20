@@ -1534,3 +1534,47 @@ fn test_increment_non_variable_expression_reaches_base_name_none() {
 
     assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
 }
+
+#[test]
+fn test_is_same_type_array_with_non_evaluable_sizes() {
+    let checker = TypeChecker::new();
+
+    let size_n = Expr::Variable { name: "n".into(), span: dummy_span() };
+
+    let array1 = Type::Array { element_type: Box::new(Type::I32), size: Box::new(size_n.clone()) };
+
+    let array2 = Type::Array { element_type: Box::new(Type::I32), size: Box::new(size_n) };
+
+    // get_size() returns None for both sizes.
+    // This executes:
+    // (None, None) => size1 == size2
+    assert!(checker.is_same_type(&array1, &array2));
+
+    let size_m = Expr::Variable { name: "m".into(), span: dummy_span() };
+
+    let array3 = Type::Array { element_type: Box::new(Type::I32), size: Box::new(size_m) };
+
+    // Still (None, None), but the expressions are structurally different.
+    assert!(!checker.is_same_type(&array1, &array3));
+}
+
+#[test]
+fn test_is_same_type_array_with_one_non_evaluable_size() {
+    let checker = TypeChecker::new();
+
+    let known_size = Expr::Literal { value: LiteralValue::Numeric(Number::Integer(5)), span: dummy_span() };
+
+    let unknown_size = Expr::Variable { name: "n".into(), span: dummy_span() };
+
+    let array_with_known_size = Type::Array { element_type: Box::new(Type::I32), size: Box::new(known_size) };
+
+    let array_with_unknown_size = Type::Array { element_type: Box::new(Type::I32), size: Box::new(unknown_size) };
+
+    // get_size() returns Some(5) and None.
+    // This executes:
+    // _ => false
+    assert!(!checker.is_same_type(&array_with_known_size, &array_with_unknown_size));
+
+    // Also cover the opposite ordering: None, Some.
+    assert!(!checker.is_same_type(&array_with_unknown_size, &array_with_known_size));
+}
