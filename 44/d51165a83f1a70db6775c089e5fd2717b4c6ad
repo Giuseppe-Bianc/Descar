@@ -1,0 +1,14 @@
+crates/descar-core/src/semantic/type_checker.rs
+  h_361662506da91f 504,509-513,541-547,573-597,599,601,603-609,611,614-615,617-632,634,644-647,672,679,690
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "44d51165a83f1a70db6775c089e5fd2717b4c6ad",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
