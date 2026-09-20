@@ -875,8 +875,7 @@ impl TypeChecker {
     }
 
     /// Converts a signed integer to u64 if possible.
-    #[allow(clippy::unused_self)]
-    fn signed_to_size<T: Into<i64> + Copy>(&self, n: T) -> Option<u64> {
+    fn signed_to_size<T: Into<i64> + Copy>(n: T) -> Option<u64> {
         n.into().try_into().ok()
     }
 
@@ -888,10 +887,10 @@ impl TypeChecker {
     pub fn get_size(&self, expr: &Expr) -> Option<u64> {
         if let Expr::Literal { value, .. } = expr {
             match value {
-                LiteralValue::Numeric(Number::I8(n)) => self.signed_to_size(*n),
-                LiteralValue::Numeric(Number::I16(n)) => self.signed_to_size(*n),
-                LiteralValue::Numeric(Number::I32(n)) => self.signed_to_size(*n),
-                LiteralValue::Numeric(Number::Integer(n)) => self.signed_to_size(*n),
+                LiteralValue::Numeric(Number::I8(n)) => Self::signed_to_size(*n),
+                LiteralValue::Numeric(Number::I16(n)) => Self::signed_to_size(*n),
+                LiteralValue::Numeric(Number::I32(n)) => Self::signed_to_size(*n),
+                LiteralValue::Numeric(Number::Integer(n)) => Self::signed_to_size(*n),
                 // Unsigned types (already efficient)
                 LiteralValue::Numeric(Number::U8(n)) => Some(u64::from(*n)),
                 LiteralValue::Numeric(Number::U16(n)) => Some(u64::from(*n)),
