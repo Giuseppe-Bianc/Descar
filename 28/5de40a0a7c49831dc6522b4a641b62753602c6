@@ -1,0 +1,25 @@
+crates/descar-core/src/semantic/type_checker.rs
+  h_361662506da91f 811-822
+  s_b70ebae22c28c1::t_fbbae1751d7efe 841-842
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "285de40a0a7c49831dc6522b4a641b62753602c6",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_b70ebae22c28c1": {
+      "agent_id": {
+        "tool": "github-copilot",
+        "id": "c10b7b77-6316-4083-a0fc-351cfd63c59d",
+        "model": "gpt-5.6-luna"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
