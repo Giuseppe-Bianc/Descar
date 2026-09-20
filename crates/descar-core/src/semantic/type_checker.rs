@@ -90,7 +90,6 @@ const HIERARCHY: [Type; 10] =
 // Global cache for type promotion results
 static TYPE_PROMOTION_CACHE: OnceLock<Mutex<HashMap<(Type, Type), Type>>> = OnceLock::new();
 
-#[allow(clippy::collapsible_if)]
 impl TypeChecker {
     /// Creates a new type checker with empty state.
     ///
@@ -223,16 +222,15 @@ impl TypeChecker {
         &mut self, bindings: &[VarBinding], type_annotation: &Type, is_mutable: bool, span: &SourceSpan,
     ) {
         for binding in bindings {
-            if let Some(init_expr) = binding.initializer.as_ref() {
-                if let Some(init_type) = self.visit_expr(init_expr) {
-                    if !self.is_assignable(&init_type, type_annotation) {
-                        self.type_error_with_code(
-                            Some(ErrorCode::E2002),
-                            format!("Cannot assign {init_type} to {type_annotation} for variable '{}'", binding.name),
-                            init_expr.span(),
-                        );
-                    }
-                }
+            if let Some(init_expr) = binding.initializer.as_ref()
+                && let Some(init_type) = self.visit_expr(init_expr)
+                && !self.is_assignable(&init_type, type_annotation)
+            {
+                self.type_error_with_code(
+                    Some(ErrorCode::E2002),
+                    format!("Cannot assign {init_type} to {type_annotation} for variable '{}'", binding.name),
+                    init_expr.span(),
+                );
             }
 
             self.declare_symbol(
@@ -309,14 +307,14 @@ impl TypeChecker {
     ///
     /// Reports E2004 when the condition expression produces a non-boolean type.
     fn check_condition(&mut self, condition: &Expr, construct: &str) {
-        if let Some(cond_type) = self.visit_expr(condition) {
-            if cond_type != Type::Bool {
-                self.type_error_with_code(
-                    Some(ErrorCode::E2004),
-                    format!("Condition in {construct} must be boolean, found {cond_type}"),
-                    condition.span(),
-                );
-            }
+        if let Some(cond_type) = self.visit_expr(condition)
+            && cond_type != Type::Bool
+        {
+            self.type_error_with_code(
+                Some(ErrorCode::E2004),
+                format!("Condition in {construct} must be boolean, found {cond_type}"),
+                condition.span(),
+            );
         }
     }
 
@@ -409,14 +407,14 @@ impl TypeChecker {
                 );
             }
             (Some(expr), _) => {
-                if let Some(actual_type) = self.visit_expr(expr) {
-                    if !self.is_assignable(&actual_type, &expected_type) {
-                        self.type_error_with_code(
-                            Some(ErrorCode::E2007),
-                            format!("Return type mismatch: expected {expected_type} found {actual_type}"),
-                            expr.span(),
-                        );
-                    }
+                if let Some(actual_type) = self.visit_expr(expr)
+                    && !self.is_assignable(&actual_type, &expected_type)
+                {
+                    self.type_error_with_code(
+                        Some(ErrorCode::E2007),
+                        format!("Return type mismatch: expected {expected_type} found {actual_type}"),
+                        expr.span(),
+                    );
                 }
             }
             (None, Type::Void) => {}
@@ -489,19 +487,17 @@ impl TypeChecker {
                 | BinaryOp::ShiftRightEqual
         );
 
-        if is_compound {
-            if let Some(name) = Self::base_variable_name(left) {
-                if let Some(var) = self.symbol_table.lookup_variable(name) {
-                    if !var.mutable {
-                        self.type_error_with_code(
-                            Some(ErrorCode::E2024),
-                            format!("Cannot assign to immutable variable '{name}'"),
-                            left.span(),
-                        );
-                        return None;
-                    }
-                }
-            }
+        if is_compound
+            && let Some(name) = Self::base_variable_name(left)
+            && let Some(var) = self.symbol_table.lookup_variable(name)
+            && !var.mutable
+        {
+            self.type_error_with_code(
+                Some(ErrorCode::E2024),
+                format!("Cannot assign to immutable variable '{name}'"),
+                left.span(),
+            );
+            return None;
         }
 
         let right_type = self.visit_expr(right);
@@ -697,17 +693,16 @@ impl TypeChecker {
             }
 
             UnaryOp::Increment | UnaryOp::Decrement => {
-                if let Some(name) = Self::base_variable_name(expr) {
-                    if let Some(var) = self.symbol_table.lookup_variable(name) {
-                        if !var.mutable {
-                            self.type_error_with_code(
-                                Some(ErrorCode::E2024),
-                                format!("Cannot assign to immutable variable '{name}'"),
-                                expr.span(),
-                            );
-                            return None;
-                        }
-                    }
+                if let Some(name) = Self::base_variable_name(expr)
+                    && let Some(var) = self.symbol_table.lookup_variable(name)
+                    && !var.mutable
+                {
+                    self.type_error_with_code(
+                        Some(ErrorCode::E2024),
+                        format!("Cannot assign to immutable variable '{name}'"),
+                        expr.span(),
+                    );
+                    return None;
                 }
 
                 if Self::is_numeric(&expr_type) {
@@ -909,19 +904,19 @@ impl TypeChecker {
                 }
             }
             Expr::ArrayAccess { array, index, span } => {
-                let mut target_is_mutable = true;
-                if let Some(name) = Self::base_variable_name(array) {
-                    if let Some(var) = self.symbol_table.lookup_variable(name) {
-                        if !var.mutable {
-                            self.type_error_with_code(
-                                Some(ErrorCode::E2024),
-                                format!("Cannot assign to immutable variable '{name}'"),
-                                span,
-                            );
-                            target_is_mutable = false;
-                        }
-                    }
-                }
+                let target_is_mutable = if let Some(name) = Self::base_variable_name(array)
+                    && let Some(var) = self.symbol_table.lookup_variable(name)
+                    && !var.mutable
+                {
+                    self.type_error_with_code(
+                        Some(ErrorCode::E2024),
+                        format!("Cannot assign to immutable variable '{name}'"),
+                        span,
+                    );
+                    false
+                } else {
+                    true
+                };
                 let array_access_type = self.visit_array_access(array, index, span);
                 if target_is_mutable { array_access_type } else { None }
             }
@@ -984,19 +979,14 @@ impl TypeChecker {
             );
         }
         for (i, (arg, param)) in arguments.iter().zip(&func.parameters).enumerate() {
-            if let Some(arg_type) = self.visit_expr(arg) {
-                if !self.is_assignable(&arg_type, &param.type_annotation) {
-                    self.type_error_with_code(
-                        Some(ErrorCode::E2029),
-                        format!(
-                            "Argument {} type mismatch: expected {}, found {}",
-                            i + 1,
-                            param.type_annotation,
-                            arg_type
-                        ),
-                        arg.span(),
-                    );
-                }
+            if let Some(arg_type) = self.visit_expr(arg)
+                && !self.is_assignable(&arg_type, &param.type_annotation)
+            {
+                self.type_error_with_code(
+                    Some(ErrorCode::E2029),
+                    format!("Argument {} type mismatch: expected {}, found {}", i + 1, param.type_annotation, arg_type),
+                    arg.span(),
+                );
             }
         }
         Some(func.return_type.clone())
