@@ -808,6 +808,18 @@ impl TypeChecker {
         }
     }
 
+    fn record_array_element_type(&mut self, element_type: &mut Option<Type>, ty: Type, span: &SourceSpan) {
+        match element_type.as_ref() {
+            Some(prev) if !self.is_same_type(prev, &ty) => self.type_error_with_code(
+                Some(ErrorCode::E2021),
+                format!("All array elements must be same type, found mixed types: {prev} and {ty}"),
+                span,
+            ),
+            Some(_) => {}
+            None => *element_type = Some(ty),
+        }
+    }
+
     #[allow(clippy::cast_possible_wrap)]
     /// Infers the type of an array literal and validates its elements.
     ///
@@ -826,19 +838,8 @@ impl TypeChecker {
         let len = elements.len();
         let mut element_type = None;
         for element in elements {
-            if let Some(ty) = self.visit_expr(element) {
-                if let Some(prev) = &element_type {
-                    if !self.is_same_type(prev, &ty) {
-                        self.type_error_with_code(
-                            Some(ErrorCode::E2021),
-                            format!("All array elements must be same type, found mixed types: {prev} and {ty}"),
-                            element.span(),
-                        );
-                    }
-                } else {
-                    element_type = Some(ty);
-                }
-            }
+            let Some(ty) = self.visit_expr(element) else { continue };
+            self.record_array_element_type(&mut element_type, ty, element.span());
         }
         element_type.map(|ty| {
             // Create proper size expression with actual length
