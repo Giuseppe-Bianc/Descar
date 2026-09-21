@@ -1,0 +1,32 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: errors
+---
+[
+    TypeError {
+        code: Some(
+            E2007,
+        ),
+        message: "Return type mismatch: expected i32 found bool",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 2,
+                column: 12,
+                offset: 48,
+                index: 48,
+                utf8_offset: 48,
+                code_point_offset: 48,
+            },
+            end: SourceLocation {
+                line: 2,
+                column: 16,
+                offset: 52,
+                index: 52,
+                utf8_offset: 52,
+                code_point_offset: 52,
+            },
+        },
+        help: None,
+    },
+]

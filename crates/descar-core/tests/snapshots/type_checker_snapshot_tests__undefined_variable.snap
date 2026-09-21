@@ -1,0 +1,32 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: errors
+---
+[
+    TypeError {
+        code: Some(
+            E2023,
+        ),
+        message: "Undefined variable 'undefined'",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 1,
+                column: 1,
+                offset: 0,
+                index: 0,
+                utf8_offset: 0,
+                code_point_offset: 0,
+            },
+            end: SourceLocation {
+                line: 1,
+                column: 10,
+                offset: 9,
+                index: 9,
+                utf8_offset: 9,
+                code_point_offset: 9,
+            },
+        },
+        help: None,
+    },
+]

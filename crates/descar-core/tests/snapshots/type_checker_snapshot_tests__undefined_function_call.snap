@@ -1,0 +1,32 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: errors
+---
+[
+    TypeError {
+        code: Some(
+            E2027,
+        ),
+        message: "Undefined function: 'undefined_function'",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 1,
+                column: 1,
+                offset: 0,
+                index: 0,
+                utf8_offset: 0,
+                code_point_offset: 0,
+            },
+            end: SourceLocation {
+                line: 1,
+                column: 19,
+                offset: 18,
+                index: 18,
+                utf8_offset: 18,
+                code_point_offset: 18,
+            },
+        },
+        help: None,
+    },
+]

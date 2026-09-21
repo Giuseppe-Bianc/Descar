@@ -1,0 +1,32 @@
+---
+source: crates/descar-core/tests/type_checker_snapshot_tests.rs
+expression: errors
+---
+[
+    TypeError {
+        code: Some(
+            E2020,
+        ),
+        message: "Array literals must have at least one element for type inference",
+        span: SourceSpan {
+            file_path: "test.vn",
+            start: SourceLocation {
+                line: 1,
+                column: 19,
+                offset: 18,
+                index: 18,
+                utf8_offset: 18,
+                code_point_offset: 18,
+            },
+            end: SourceLocation {
+                line: 1,
+                column: 21,
+                offset: 20,
+                index: 20,
+                utf8_offset: 20,
+                code_point_offset: 20,
+            },
+        },
+        help: None,
+    },
+]
