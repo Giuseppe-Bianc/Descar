@@ -1578,3 +1578,18 @@ fn test_is_same_type_array_with_one_non_evaluable_size() {
     // Also cover the opposite ordering: None, Some.
     assert!(!checker.is_same_type(&array_with_unknown_size, &array_with_known_size));
 }
+
+#[test]
+fn test_function_used_as_variable() {
+    let ast = "
+        fun foo(): i32 {
+            return 42i32
+        }
+        foo
+    ";
+
+    let errors = typecheck(ast);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].message(), Some("'foo' is a function and cannot be used as variable"));
+}
