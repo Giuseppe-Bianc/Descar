@@ -976,7 +976,10 @@ impl TypeChecker {
                 let array_access_type = self.visit_array_access(array, index, span);
                 if target_is_mutable { array_access_type } else { None }
             }
-            _ => None,
+            _ => {
+                self.type_error_with_code(Some(ErrorCode::E1003), "Invalid assignment target", target.span());
+                None
+            }
         };
         let value_type = self.visit_expr(value);
         let (Some(target_type), Some(value_type)) = (target_type, value_type) else {

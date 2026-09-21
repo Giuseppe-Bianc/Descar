@@ -1,8 +1,9 @@
 use descar_core::error::compile_error::CompileError;
+use descar_core::error::error_code::ErrorCode;
 use descar_core::lex::lexer::{Lexer, lexer_tokenize_with_errors};
 use descar_core::semantic::type_checker::TypeChecker;
 use descar_core::syntax::ast::binary_op::BinaryOp;
-use descar_core::syntax::ast::{Expr, LiteralValue, Type};
+use descar_core::syntax::ast::{Expr, LiteralValue, Stmt, Type};
 use descar_core::syntax::parser::JsavParser;
 use descar_core::tokens::number::Number;
 use descar_core::utils::dummy_span;
@@ -1594,7 +1595,6 @@ fn test_function_used_as_variable() {
     assert_eq!(errors[0].message(), Some("'foo' is a function and cannot be used as variable"));
 }
 
-
 #[test]
 fn test_immutable_array_element_assignment() {
     let ast = "const arr: i32[2] = {1i32,2i32}
@@ -1603,8 +1603,22 @@ fn test_immutable_array_element_assignment() {
     let errors = typecheck(ast);
 
     assert_eq!(errors.len(), 1);
-    assert_eq!(
-        errors[0].message(),
-        Some("Cannot assign to immutable variable 'arr'")
-    );
+    assert_eq!(errors[0].message(), Some("Cannot assign to immutable variable 'arr'"));
+}
+
+#[test]
+fn test_assign_to_non_lvalue_target_reports_e1003() {
+    let statements = [Stmt::Expression {
+        expr: Box::new(Expr::Assign {
+            target: Box::new(Expr::new_number_literal(Number::Integer(1), dummy_span())),
+            value: Box::new(Expr::new_number_literal(Number::Integer(2), dummy_span())),
+            span: dummy_span(),
+        }),
+    }];
+
+    let errors = TypeChecker::new().check(&statements);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].error_code(), Some(&ErrorCode::E1003));
+    assert_eq!(errors[0].message(), Some("Invalid assignment target"));
 }
