@@ -1623,7 +1623,6 @@ fn test_assign_to_non_lvalue_target_reports_e1003() {
     assert_eq!(errors[0].message(), Some("Invalid assignment target"));
 }
 
-
 #[test]
 fn test_array_access_on_undefined_array_returns_none() {
     let errors = typecheck("undefined[0]");
@@ -1632,30 +1631,17 @@ fn test_array_access_on_undefined_array_returns_none() {
     assert_eq!(errors[0].error_code(), Some(&ErrorCode::E2023));
 }
 
-
 #[test]
 fn test_is_assignable_arrays_with_non_evaluable_sizes() {
     let tc = TypeChecker::new();
 
-    let known_size = Expr::Literal {
-        value: LiteralValue::Numeric(Number::Integer(5)),
-        span: dummy_span(),
-    };
+    let known_size = Expr::Literal { value: LiteralValue::Numeric(Number::Integer(5)), span: dummy_span() };
 
-    let unknown_size = Expr::Variable {
-        name: "n".into(),
-        span: dummy_span(),
-    };
+    let unknown_size = Expr::Variable { name: "n".into(), span: dummy_span() };
 
-    let known_array = Type::Array {
-        element_type: Box::new(Type::I32),
-        size: Box::new(known_size),
-    };
+    let known_array = Type::Array { element_type: Box::new(Type::I32), size: Box::new(known_size) };
 
-    let unknown_array = Type::Array {
-        element_type: Box::new(Type::I32),
-        size: Box::new(unknown_size),
-    };
+    let unknown_array = Type::Array { element_type: Box::new(Type::I32), size: Box::new(unknown_size) };
 
     // Some(5), None -> covered by the `_ => false` branch.
     assert!(!tc.is_assignable(&known_array, &unknown_array));
