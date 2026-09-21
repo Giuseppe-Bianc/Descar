@@ -1593,3 +1593,18 @@ fn test_function_used_as_variable() {
     assert_eq!(errors.len(), 1);
     assert_eq!(errors[0].message(), Some("'foo' is a function and cannot be used as variable"));
 }
+
+
+#[test]
+fn test_immutable_array_element_assignment() {
+    let ast = "const arr: i32[2] = {1i32,2i32}
+    arr[0] = 3i32";
+
+    let errors = typecheck(ast);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(
+        errors[0].message(),
+        Some("Cannot assign to immutable variable 'arr'")
+    );
+}
