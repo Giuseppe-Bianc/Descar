@@ -392,3 +392,13 @@ fn current_function_context_starts_empty_can_be_replaced_and_can_be_cleared() {
     assert!(table.current_function().is_none());
     assert!(table.current_function_return_type().is_none());
 }
+
+#[test]
+fn push_global_scope_is_ignored() {
+    let mut table = SymbolTable::new();
+
+    table.push_scope(ScopeKind::Global, None);
+
+    assert_eq!(table.scope_count(), 1);
+    assert_eq!(table.current_scope_kind(), Some(ScopeKind::Global));
+}

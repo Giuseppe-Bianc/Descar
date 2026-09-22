@@ -198,8 +198,6 @@ impl SymbolTable {
     /// assert_eq!(table.scope_count(), 2);
     /// ```
     pub fn push_scope(&mut self, kind: ScopeKind, defined_at: Option<SourceSpan>) {
-        debug_assert_ne!(kind, ScopeKind::Global, "Global scope cannot be pushed");
-
         if kind == ScopeKind::Global {
             return;
         }
