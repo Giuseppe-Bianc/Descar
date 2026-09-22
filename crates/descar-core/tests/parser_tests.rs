@@ -7,6 +7,7 @@ use descar_core::{
             stmt::Stmt, unary_op::UnaryOp, unary_op_side::UnaryOpSide,
         },
         parser::JsavParser,
+        precendence::Precedence,
     },
 };
 
@@ -260,4 +261,30 @@ fn reports_maximum_recursion_depth_for_deep_grouping() {
     let (_, errors) = handle.join().expect("parser recursion test thread panicked");
 
     assert_has_error(&errors, ErrorCode::E1001);
+}
+
+fn token_from(input: &str) -> descar_core::tokens::token::Token {
+    let mut lexer = Lexer::new("precedence_test", input);
+
+    lexer.next_token().expect("expected a token").expect("expected valid token")
+}
+
+#[test]
+fn unary_binding_power_returns_zero_for_non_unary_operator() {
+    let token = token_from("+");
+
+    let precedence = Precedence::unary_binding_power(&token);
+
+    assert_eq!(precedence.left, 0);
+    assert_eq!(precedence.right, 0);
+}
+
+#[test]
+fn unary_binding_power_returns_expected_value_for_unary_operator() {
+    let token = token_from("!");
+
+    let precedence = Precedence::unary_binding_power(&token);
+
+    assert_eq!(precedence.left, 24);
+    assert_eq!(precedence.right, 23);
 }
