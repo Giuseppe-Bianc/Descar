@@ -35,7 +35,7 @@ fn new_and_default_start_with_single_empty_global_scope() {
     assert_eq!(new_table.scope_count(), 1);
     assert_eq!(new_table.current_scope_kind(), Some(ScopeKind::Global));
     assert!(new_table.current_scope().is_some_and(|scope| {
-        scope.kind == ScopeKind::Global && scope.symbols.is_empty() && scope.defined_at.is_none()
+        scope.kind() == ScopeKind::Global && scope.is_empty() && scope.defined_at().is_none()
     }));
     assert!(new_table.current_function().is_none());
 }
@@ -51,9 +51,9 @@ fn push_scope_creates_empty_scope_with_kind_and_definition_location() {
     assert_eq!(table.current_scope_kind(), Some(ScopeKind::Block));
 
     let current = table.current_scope().expect("current scope must exist");
-    assert_eq!(current.kind, ScopeKind::Block);
-    assert_eq!(current.defined_at, Some(definition_span));
-    assert!(current.symbols.is_empty());
+    assert_eq!(current.kind(), ScopeKind::Block);
+    assert_eq!(current.defined_at(), Some(definition_span).as_ref());
+    assert!(current.is_empty());
 }
 
 #[test]
@@ -352,19 +352,17 @@ fn declare_allows_empty_symbol_name_because_no_name_validation_is_implemented() 
 }
 
 #[test]
-fn current_scope_mut_exposes_the_actual_current_scope() {
-    let mut table = SymbolTable::new();
+fn current_scope_exposes_read_only_scope_state() {
+    let table = SymbolTable::new();
 
-    {
-        let scope = table.current_scope_mut().expect("global scope must exist");
-        scope.kind = ScopeKind::Block;
-        scope.defined_at = Some(span(2, 3));
-        scope.symbols.insert(Arc::from("injected"), Symbol::TypeAlias(Type::Bool));
-    }
+    let scope = table.current_scope().expect("global scope must exist");
 
-    assert_eq!(table.current_scope_kind(), Some(ScopeKind::Block));
-    assert_eq!(table.current_scope().and_then(|scope| scope.defined_at.clone()), Some(span(2, 3)));
-    assert_eq!(table.lookup("injected"), Some(Symbol::TypeAlias(Type::Bool)));
+    assert_eq!(scope.kind(), ScopeKind::Global);
+    assert!(scope.defined_at().is_none());
+    assert!(scope.is_empty());
+    assert_eq!(scope.symbol_count(), 0);
+    assert!(!scope.contains("injected"));
+    assert!(scope.symbol("injected").is_none());
 }
 
 #[test]

@@ -69,28 +69,85 @@ pub enum ScopeKind {
     /// A block scope (e.g., inside if, while, for, or explicit blocks)
     Block,
     // Future: Struct scope for struct member access
-    //Struct,
+    // Struct,
 }
 
 /// Represents a single scope in the symbol table hierarchy.
 ///
 /// Each scope maintains its own symbol mappings and can be nested within
 /// other scopes to implement lexical scoping rules.
+///
+/// The fields of `Scope` are intentionally private. Access to scope state
+/// must be performed through controlled methods so that callers cannot
+/// bypass symbol table invariants.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scope {
-    /// The kind of scope (global, function, block)
-    pub kind: ScopeKind,
-    /// Symbols defined in this scope
-    pub symbols: HashMap<Arc<str>, Symbol>,
-    /// Optional source location where this scope was created
-    pub defined_at: Option<SourceSpan>,
+    kind: ScopeKind,
+    symbols: HashMap<Arc<str>, Symbol>,
+    defined_at: Option<SourceSpan>,
+}
+
+impl Scope {
+    /// Creates a new empty scope.
+    ///
+    /// This constructor is private to the symbol table module. Scope creation
+    /// is controlled by `SymbolTable::new()` and `SymbolTable::push_scope()`.
+    fn new(kind: ScopeKind, defined_at: Option<SourceSpan>) -> Self {
+        Self { kind, symbols: HashMap::new(), defined_at }
+    }
+
+    /// Returns the kind of this scope.
+    #[inline]
+    #[must_use]
+    pub const fn kind(&self) -> ScopeKind {
+        self.kind
+    }
+
+    /// Returns the source location where this scope was created.
+    #[inline]
+    #[must_use]
+    pub const fn defined_at(&self) -> Option<&SourceSpan> {
+        self.defined_at.as_ref()
+    }
+
+    /// Returns the symbol associated with `name` in this scope only.
+    ///
+    /// This method does not search outer scopes.
+    #[inline]
+    #[must_use]
+    pub fn symbol(&self, name: &str) -> Option<&Symbol> {
+        self.symbols.get(name)
+    }
+
+    /// Returns whether this scope contains a symbol with `name`.
+    ///
+    /// This method checks this scope only and does not perform lexical lookup.
+    #[inline]
+    #[must_use]
+    pub fn contains(&self, name: &str) -> bool {
+        self.symbols.contains_key(name)
+    }
+
+    /// Returns the number of symbols declared directly in this scope.
+    #[inline]
+    #[must_use]
+    pub fn symbol_count(&self) -> usize {
+        self.symbols.len()
+    }
+
+    /// Returns whether this scope contains no symbols.
+    #[inline]
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.symbols.is_empty()
+    }
 }
 
 /// The symbol table manages lexical scoping and symbol resolution.
 ///
 /// Implements a stack of scopes to support nested lexical scoping, with
-/// symbols resolved by searching from the innermost scope outward. Also
-/// tracks the current function context for return type checking.
+/// symbols resolved by searching from the innermost scope outward.
+/// Also tracks the current function context for return type checking.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SymbolTable {
     /// Stack of scopes, with the current scope at the end
@@ -121,10 +178,7 @@ impl SymbolTable {
     /// ```
     #[must_use]
     pub fn new() -> Self {
-        Self {
-            scopes: vec![Scope { kind: ScopeKind::Global, symbols: HashMap::new(), defined_at: None }],
-            current_function: None,
-        }
+        Self { scopes: vec![Scope::new(ScopeKind::Global, None)], current_function: None }
     }
 
     /// Pushes a new scope onto the scope stack.
@@ -144,7 +198,7 @@ impl SymbolTable {
     /// assert_eq!(table.scope_count(), 2);
     /// ```
     pub fn push_scope(&mut self, kind: ScopeKind, defined_at: Option<SourceSpan>) {
-        self.scopes.push(Scope { kind, symbols: HashMap::new(), defined_at });
+        self.scopes.push(Scope::new(kind, defined_at));
     }
 
     /// Pops the current scope from the scope stack.
@@ -181,24 +235,16 @@ impl SymbolTable {
 
     /// Returns a reference to the current (innermost) scope.
     ///
+    /// The returned scope is read-only. Mutation must be performed through
+    /// symbol table APIs such as `declare()`.
+    ///
     /// # Returns
     ///
-    /// An optional reference to the current scope, or `None` if no scopes exist
-    /// (which should never happen in practice due to the global scope invariant).
+    /// An optional reference to the current scope.
     #[inline]
     #[must_use]
     pub fn current_scope(&self) -> Option<&Scope> {
         self.scopes.last()
-    }
-
-    /// Returns a mutable reference to the current (innermost) scope.
-    ///
-    /// # Returns
-    ///
-    /// An optional mutable reference to the current scope, or `None` if no scopes
-    /// exist (which should never happen in practice).
-    pub fn current_scope_mut(&mut self) -> Option<&mut Scope> {
-        self.scopes.last_mut()
     }
 
     /// Returns the kind of the current scope.
@@ -209,7 +255,28 @@ impl SymbolTable {
     #[inline]
     #[must_use]
     pub fn current_scope_kind(&self) -> Option<ScopeKind> {
-        self.current_scope().map(|s| s.kind)
+        self.current_scope().map(Scope::kind)
+    }
+
+    /// Looks up a symbol in the current scope only.
+    ///
+    /// Outer scopes are intentionally ignored.
+    ///
+    /// This method provides controlled read-only access to the current scope
+    /// without exposing the internal symbol map.
+    #[inline]
+    #[must_use]
+    pub fn current_symbol(&self, name: &str) -> Option<&Symbol> {
+        self.current_scope().and_then(|scope| scope.symbol(name))
+    }
+
+    /// Returns whether the current scope contains `name`.
+    ///
+    /// Outer scopes are intentionally ignored.
+    #[inline]
+    #[must_use]
+    pub fn contains_current(&self, name: &str) -> bool {
+        self.current_scope().is_some_and(|scope| scope.contains(name))
     }
 
     /// Declares a new symbol in the current scope.
@@ -256,7 +323,8 @@ impl SymbolTable {
             });
         }
 
-        self.current_scope_mut().expect("At least one scope").symbols.insert(name.into(), symbol);
+        self.scopes.last_mut().expect("At least one scope").symbols.insert(name.into(), symbol);
+
         Ok(())
     }
 
@@ -269,22 +337,13 @@ impl SymbolTable {
     /// # Type Parameters
     ///
     /// * `F` - Filter function that extracts desired data from a symbol
-    /// * `T` - The type of data to return
-    ///
-    /// # Arguments
-    ///
-    /// * `name` - The symbol name to search for
-    /// * `filter` - Function that converts a symbol to the desired result type
-    ///
-    /// # Returns
-    ///
-    /// The first successful result from applying the filter, or `None` if not found.
-    #[allow(clippy::collapsible_if)]
+    /// * `T` - Type of data returned by the filter
     fn find_symbol<F, T>(&self, name: &str, filter: F) -> Option<T>
     where
         F: Fn(&Symbol) -> Option<T>,
     {
-        let symbol = self.scopes.iter().rev().find_map(|scope| scope.symbols.get(name));
+        let symbol = self.scopes.iter().rev().find_map(|scope| scope.symbol(name));
+
         symbol.and_then(filter)
     }
 
