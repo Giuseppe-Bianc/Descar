@@ -181,7 +181,7 @@ impl SymbolTable {
         Self { scopes: vec![Scope::new(ScopeKind::Global, None)], current_function: None }
     }
 
-    /// Pushes a new scope onto the scope stack.
+    /// Opens a non-global scope.
     ///
     /// # Arguments
     ///
@@ -198,10 +198,16 @@ impl SymbolTable {
     /// assert_eq!(table.scope_count(), 2);
     /// ```
     pub fn push_scope(&mut self, kind: ScopeKind, defined_at: Option<SourceSpan>) {
+        debug_assert_ne!(kind, ScopeKind::Global, "Global scope cannot be pushed");
+
+        if kind == ScopeKind::Global {
+            return;
+        }
+
         self.scopes.push(Scope::new(kind, defined_at));
     }
 
-    /// Pops the current scope from the scope stack.
+    /// Closes the current non-global scope.
     ///
     /// The global scope is never popped to maintain invariant that at least
     /// one scope always exists.
@@ -358,7 +364,7 @@ impl SymbolTable {
     /// An optional clone of the symbol if found, or `None` if not found.
     #[must_use]
     pub fn lookup(&self, name: &str) -> Option<Symbol> {
-        self.find_symbol(name, |sym| Some(sym.clone()))
+        self.find_symbol(name, |symbol| Some(symbol.clone()))
     }
 
     /// Looks up the innermost symbol with the given name as a function.
@@ -373,8 +379,8 @@ impl SymbolTable {
     /// innermost declaration is not a function.
     #[must_use]
     pub fn lookup_function(&self, name: &str) -> Option<FunctionSymbol> {
-        self.find_symbol(name, |sym| match sym {
-            Symbol::Function(f) => Some(f.clone()),
+        self.find_symbol(name, |symbol| match symbol {
+            Symbol::Function(function) => Some(function.clone()),
             _ => None,
         })
     }
@@ -391,8 +397,8 @@ impl SymbolTable {
     /// innermost declaration is not a variable.
     #[must_use]
     pub fn lookup_variable(&self, name: &str) -> Option<VariableSymbol> {
-        self.find_symbol(name, |sym| match sym {
-            Symbol::Variable(v) => Some(v.clone()),
+        self.find_symbol(name, |symbol| match symbol {
+            Symbol::Variable(variable) => Some(variable.clone()),
             _ => None,
         })
     }
@@ -435,6 +441,6 @@ impl SymbolTable {
     /// not currently inside a function.
     #[must_use]
     pub fn current_function_return_type(&self) -> Option<Type> {
-        self.current_function().map(|f| f.return_type.clone())
+        self.current_function().map(|function| function.return_type.clone())
     }
 }
