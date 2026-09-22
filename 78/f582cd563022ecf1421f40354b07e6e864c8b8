@@ -1,0 +1,14 @@
+crates/descar-core/tests/symbol_table_tests.rs
+  h_361662506da91f 395-402
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "78f582cd563022ecf1421f40354b07e6e864c8b8",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
