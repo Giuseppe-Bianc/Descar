@@ -403,7 +403,6 @@ fn push_global_scope_is_ignored() {
     assert_eq!(table.current_scope_kind(), Some(ScopeKind::Global));
 }
 
-
 #[test]
 fn current_symbol_returns_only_symbol_from_current_scope() {
     let mut table = SymbolTable::new();
@@ -413,9 +412,7 @@ fn current_symbol_returns_only_symbol_from_current_scope() {
     let outer = variable_symbol("value", Type::I32, true, outer_span.clone(), None);
     let inner = variable_symbol("value", Type::Bool, false, inner_span.clone(), None);
 
-    table
-        .declare("value", outer.clone(), outer_span)
-        .expect("outer declaration must succeed");
+    table.declare("value", outer.clone(), outer_span).expect("outer declaration must succeed");
 
     assert_eq!(table.current_symbol("value"), Some(&outer));
     assert_eq!(table.current_symbol("missing"), None);
@@ -424,9 +421,7 @@ fn current_symbol_returns_only_symbol_from_current_scope() {
 
     assert_eq!(table.current_symbol("value"), None);
 
-    table
-        .declare("value", inner.clone(), inner_span)
-        .expect("inner declaration must succeed");
+    table.declare("value", inner.clone(), inner_span).expect("inner declaration must succeed");
 
     assert_eq!(table.current_symbol("value"), Some(&inner));
     assert_eq!(table.current_symbol("missing"), None);
@@ -436,7 +431,6 @@ fn current_symbol_returns_only_symbol_from_current_scope() {
     assert_eq!(table.current_symbol("value"), Some(&outer));
 }
 
-
 #[test]
 fn contains_current_checks_only_the_current_scope() {
     let mut table = SymbolTable::new();
@@ -444,11 +438,7 @@ fn contains_current_checks_only_the_current_scope() {
     let inner_span = span(4, 5);
 
     table
-        .declare(
-            "value",
-            variable_symbol("value", Type::I32, true, outer_span.clone(), None),
-            outer_span,
-        )
+        .declare("value", variable_symbol("value", Type::I32, true, outer_span.clone(), None), outer_span)
         .expect("outer declaration must succeed");
 
     assert!(table.contains_current("value"));
@@ -460,11 +450,7 @@ fn contains_current_checks_only_the_current_scope() {
     assert!(!table.contains_current("missing"));
 
     table
-        .declare(
-            "value",
-            variable_symbol("value", Type::Bool, false, inner_span.clone(), None),
-            inner_span,
-        )
+        .declare("value", variable_symbol("value", Type::Bool, false, inner_span.clone(), None), inner_span)
         .expect("inner declaration must succeed");
 
     assert!(table.contains_current("value"));

@@ -3,6 +3,7 @@ use std::sync::Arc;
 use descar_core::{
     location::{source_location::SourceLocation, source_span::SourceSpan},
     printers::ast_printer::{pretty_print, pretty_print_stmt},
+    printers::branch_type::{BranchConfig, BranchType},
     syntax::ast::{
         ast_type::Type,
         binary_op::BinaryOp,
@@ -479,4 +480,196 @@ fn pretty_print_output_is_deterministic_and_ansi_stripping_is_safe() {
     assert_eq!(first, second);
     assert_eq!(strip_ansi_codes(&first), rendered_expr(&expression));
     assert!(first.ends_with('\n'));
+}
+
+#[test]
+fn branch_config_new_initializes_all_branch_types() {
+    let config = BranchConfig::new(BranchType::Middle, BranchType::Last, BranchType::Middle);
+
+    assert_eq!(config.parent_type, BranchType::Middle);
+    assert_eq!(config.current_type, BranchType::Last);
+    assert_eq!(config.child_type, BranchType::Middle);
+}
+
+#[test]
+fn pretty_print_array_types_covers_variable_grouping_and_binary_sizes() {
+    let cases = [
+        (Type::Array { element_type: Box::new(Type::I32), size: Box::new(variable("length")) }, "[i32; length]"),
+        (
+            Type::Array {
+                element_type: Box::new(Type::I32),
+                size: Box::new(Expr::Grouping { expr: Box::new(variable("length")), span: span(0, 8) }),
+            },
+            "[i32; (length)]",
+        ),
+        (
+            Type::Array {
+                element_type: Box::new(Type::I32),
+                size: Box::new(Expr::Binary {
+                    left: Box::new(variable("length")),
+                    op: BinaryOp::Add,
+                    right: Box::new(number(1)),
+                    span: span(0, 10),
+                }),
+            },
+            "[i32; length ADD 1]",
+        ),
+    ];
+
+    for (type_annotation, expected) in cases {
+        let statement = Stmt::VarDeclaration { bindings: vec![], type_annotation, is_mutable: false, span: span(0, 1) };
+
+        let output = rendered_stmt(&statement);
+
+        assert!(output.contains(&format!("Type:\n        └── {expected}")), "missing {expected:?} in {output:?}");
+    }
+}
+
+#[test]
+fn pretty_print_array_types_cover_unary_prefix_and_postfix_sizes() {
+    let prefix_array = Stmt::VarDeclaration {
+        bindings: vec![],
+        type_annotation: Type::Array {
+            element_type: Box::new(Type::I32),
+            size: Box::new(Expr::Unary {
+                op: UnaryOp::Negate,
+                side: UnaryOpSide::Prefix,
+                expr: Box::new(number(4)),
+                span: span(0, 3),
+            }),
+        },
+        is_mutable: false,
+        span: span(0, 1),
+    };
+
+    let postfix_array = Stmt::VarDeclaration {
+        bindings: vec![],
+        type_annotation: Type::Array {
+            element_type: Box::new(Type::I32),
+            size: Box::new(Expr::Unary {
+                op: UnaryOp::Negate,
+                side: UnaryOpSide::Postfix,
+                expr: Box::new(number(4)),
+                span: span(0, 3),
+            }),
+        },
+        is_mutable: false,
+        span: span(0, 1),
+    };
+
+    let prefix_output = rendered_stmt(&prefix_array);
+    let postfix_output = rendered_stmt(&postfix_array);
+
+    assert!(prefix_output.contains("[i32; NEGATE4]"));
+    assert!(postfix_output.contains("[i32; 4NEGATE]"));
+}
+
+#[test]
+fn pretty_print_array_type_with_assignment_size_covers_format_type_size_assignment() {
+    let array_type = Type::Array {
+        element_type: Box::new(Type::I32),
+        size: Box::new(Expr::Assign {
+            target: Box::new(variable("length")),
+            value: Box::new(number(4)),
+            span: span(0, 8),
+        }),
+    };
+
+    let statement =
+        Stmt::VarDeclaration { bindings: vec![], type_annotation: array_type, is_mutable: false, span: span(0, 12) };
+
+    let output = rendered_stmt(&statement);
+
+    assert!(output.contains("ConstDeclaration"));
+    assert!(output.contains("Type:"));
+    assert!(output.contains("[i32; length = 4]"));
+}
+
+#[test]
+fn pretty_print_array_type_with_call_size_covers_format_type_size_call() {
+    let array_type = Type::Array {
+        element_type: Box::new(Type::I32),
+        size: Box::new(Expr::Call {
+            callee: Box::new(variable("get_size")),
+            arguments: vec![number(4), variable("length")],
+            span: span(0, 15),
+        }),
+    };
+
+    let statement =
+        Stmt::VarDeclaration { bindings: vec![], type_annotation: array_type, is_mutable: false, span: span(0, 1) };
+
+    let output = rendered_stmt(&statement);
+
+    assert!(output.contains("Type:"));
+    assert!(output.contains("[i32; get_size(4, length)]"));
+}
+
+#[test]
+fn pretty_print_array_type_with_array_access_size_covers_format_type_size_array_access() {
+    let array_type = Type::Array {
+        element_type: Box::new(Type::I32),
+        size: Box::new(Expr::ArrayAccess {
+            array: Box::new(variable("lengths")),
+            index: Box::new(number(0)),
+            span: span(0, 9),
+        }),
+    };
+
+    let statement =
+        Stmt::VarDeclaration { bindings: vec![], type_annotation: array_type, is_mutable: false, span: span(0, 1) };
+
+    let output = rendered_stmt(&statement);
+
+    assert!(output.contains("ConstDeclaration"));
+    assert!(output.contains("Type:"));
+    assert!(output.contains("[i32; lengths[0]]"));
+}
+
+#[test]
+fn pretty_print_array_type_size_handles_array_literal() {
+    let populated_array_size = Stmt::VarDeclaration {
+        bindings: vec![],
+        type_annotation: Type::Array {
+            element_type: Box::new(Type::I32),
+            size: Box::new(Expr::ArrayLiteral {
+                elements: vec![
+                    number(1),
+                    variable("length"),
+                    Expr::Grouping { expr: Box::new(number(3)), span: span(0, 3) },
+                ],
+                span: span(0, 10),
+            }),
+        },
+        is_mutable: false,
+        span: span(0, 10),
+    };
+
+    let empty_array_size = Stmt::VarDeclaration {
+        bindings: vec![],
+        type_annotation: Type::Array {
+            element_type: Box::new(Type::I32),
+            size: Box::new(Expr::ArrayLiteral { elements: vec![], span: span(0, 2) }),
+        },
+        is_mutable: false,
+        span: span(0, 2),
+    };
+
+    let populated_output = rendered_stmt(&populated_array_size);
+    let empty_output = rendered_stmt(&empty_array_size);
+
+    assert!(populated_output.contains("Type:"));
+    assert!(populated_output.contains("[i32; {1, length, (3)}]"));
+
+    assert!(empty_output.contains("Type:"));
+    assert!(empty_output.contains("[i32; {}]"));
+}
+
+#[test]
+fn pretty_print_main_function_with_empty_body_covers_empty_stmt_body() {
+    let main_function = Stmt::MainFunction { body: Box::new(statement_block(vec![])), span: span(0, 1) };
+
+    let output = rendered_stmt(&main_function);
+
+    assert_eq!(output, "└── MainFunction\n    └── (empty)\n");
 }
