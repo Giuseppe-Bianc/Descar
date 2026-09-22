@@ -1,0 +1,16 @@
+crates/descar-core/src/semantic/symbol_table.rs
+  h_361662506da91f 79-82,85-143,150,181,201,238-239,250,254-258,261,263,265-266,269-279,326-327,340,345-346
+crates/descar-core/tests/symbol_table_tests.rs
+  h_361662506da91f 38,54-55,355-356,358,360-365
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b23bc5459f60c58256e8a7e1d8987509e673f409",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
