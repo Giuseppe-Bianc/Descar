@@ -402,3 +402,75 @@ fn push_global_scope_is_ignored() {
     assert_eq!(table.scope_count(), 1);
     assert_eq!(table.current_scope_kind(), Some(ScopeKind::Global));
 }
+
+
+#[test]
+fn current_symbol_returns_only_symbol_from_current_scope() {
+    let mut table = SymbolTable::new();
+    let outer_span = span(0, 1);
+    let inner_span = span(4, 5);
+
+    let outer = variable_symbol("value", Type::I32, true, outer_span.clone(), None);
+    let inner = variable_symbol("value", Type::Bool, false, inner_span.clone(), None);
+
+    table
+        .declare("value", outer.clone(), outer_span)
+        .expect("outer declaration must succeed");
+
+    assert_eq!(table.current_symbol("value"), Some(&outer));
+    assert_eq!(table.current_symbol("missing"), None);
+
+    table.push_scope(ScopeKind::Block, Some(inner_span.clone()));
+
+    assert_eq!(table.current_symbol("value"), None);
+
+    table
+        .declare("value", inner.clone(), inner_span)
+        .expect("inner declaration must succeed");
+
+    assert_eq!(table.current_symbol("value"), Some(&inner));
+    assert_eq!(table.current_symbol("missing"), None);
+
+    table.pop_scope();
+
+    assert_eq!(table.current_symbol("value"), Some(&outer));
+}
+
+
+#[test]
+fn contains_current_checks_only_the_current_scope() {
+    let mut table = SymbolTable::new();
+    let outer_span = span(0, 1);
+    let inner_span = span(4, 5);
+
+    table
+        .declare(
+            "value",
+            variable_symbol("value", Type::I32, true, outer_span.clone(), None),
+            outer_span,
+        )
+        .expect("outer declaration must succeed");
+
+    assert!(table.contains_current("value"));
+    assert!(!table.contains_current("missing"));
+
+    table.push_scope(ScopeKind::Block, Some(inner_span.clone()));
+
+    assert!(!table.contains_current("value"));
+    assert!(!table.contains_current("missing"));
+
+    table
+        .declare(
+            "value",
+            variable_symbol("value", Type::Bool, false, inner_span.clone(), None),
+            inner_span,
+        )
+        .expect("inner declaration must succeed");
+
+    assert!(table.contains_current("value"));
+    assert!(!table.contains_current("missing"));
+
+    table.pop_scope();
+
+    assert!(table.contains_current("value"));
+}
