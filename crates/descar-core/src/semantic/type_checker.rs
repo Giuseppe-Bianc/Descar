@@ -175,7 +175,7 @@ impl TypeChecker {
             Ok(ast) => Ok(ast),
             Err(message) => {
                 self.errors.push(CompileError::TypeError {
-                    code: Some(ErrorCode::E2999),
+                    code: Some(ErrorCode::E2032),
                     message: Arc::from(format!("Fully typed AST invariant violated: {message}")),
                     span: statements.first().map_or_else(SourceSpan::default, |stmt| stmt.span().clone()),
                     help: None,
