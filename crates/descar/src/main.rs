@@ -1,13 +1,13 @@
 use console::style;
 use descar_core::lex::lexer::{Lexer, lexer_tokenize_with_errors};
 use descar_core::semantic::type_checker::TypeChecker;
+use descar_core::semantic::FullyTypedAst;
 use std::path::Path;
 use std::{fs, process};
 
 use clap::{CommandFactory, Parser};
 use descar_cli::cli::{Args, Command};
 use descar_core::error::error_reporter::ErrorReporter;
-use descar_core::syntax::ast::Stmt;
 use descar_core::syntax::parser::JsavParser;
 
 use descar_core::file::{FileSizeInfo, FileSizeReport, SizeSystems};
@@ -53,7 +53,7 @@ fn path_to_str(path: &Path) -> &str {
 ///
 /// Returns the parsed statements when all stages succeed. If any stage reports
 /// diagnostics, prints them and exits with status code 1.
-fn run_frontend(file_path: &str, input: &str) -> Vec<Stmt> {
+fn run_frontend(file_path: &str, input: &str) -> FullyTypedAst {
     let mut lexer = Lexer::new(file_path, input);
     let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);
     let error_reporter = ErrorReporter::new(lexer.get_line_tracker().clone());
@@ -70,13 +70,15 @@ fn run_frontend(file_path: &str, input: &str) -> Vec<Stmt> {
     }
 
     let mut type_checker = TypeChecker::new();
-    let type_checker_errors = type_checker.check(&statements);
-    if !type_checker_errors.is_empty() {
-        eprintln!("{}", error_reporter.report_errors(type_checker_errors));
-        process::exit(1);
-    }
+    let typed_ast = match type_checker.check_typed(&statements) {
+        Ok(ast) => ast,
+        Err(type_checker_errors) => {
+            eprintln!("{}", error_reporter.report_errors(type_checker_errors));
+            process::exit(1);
+        }
+    };
 
-    statements
+    typed_ast
 }
 
 fn main() {
@@ -108,7 +110,7 @@ fn main() {
                 }
             }
 
-            let _statements = run_frontend(file_path_str, &input);
+            let _typed_ast = run_frontend(file_path_str, &input);
             if !args.logging.quiet {
                 println!("Compilation successful: {file_path_str}");
             }
