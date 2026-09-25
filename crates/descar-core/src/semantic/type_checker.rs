@@ -157,6 +157,10 @@ impl TypeChecker {
     /// ```
     pub fn check(&mut self, statements: &[Stmt]) -> Vec<CompileError> {
         self.resolved_types.clear();
+        self.errors.clear();
+        self.symbol_table = SymbolTable::new();
+        self.return_type_stack.clear();
+        self.in_loop = false;
         self.visit_statements(statements);
         std::mem::take(&mut self.errors)
     }
@@ -165,6 +169,9 @@ impl TypeChecker {
     pub fn check_typed(&mut self, statements: &[Stmt]) -> Result<FullyTypedAst, Vec<CompileError>> {
         self.resolved_types.clear();
         self.errors.clear();
+        self.symbol_table = SymbolTable::new();
+        self.return_type_stack.clear();
+        self.in_loop = false;
         self.visit_statements(statements);
 
         if !self.errors.is_empty() {
