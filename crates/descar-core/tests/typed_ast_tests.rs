@@ -79,13 +79,18 @@ fn typed_ast_resolves_function_identifier_as_callable_signature() {
 fn failed_type_check_does_not_produce_a_partial_typed_ast() {
     let s = span();
     let statements = [Stmt::Expression {
-        expr: Box::new(Expr::Literal {
-            value: LiteralValue::StringLit("bad".into()),
+        expr: Box::new(Expr::Binary {
+            left: Box::new(Expr::Literal {
+                value: LiteralValue::StringLit("bad".into()),
+                span: s.clone(),
+            }),
+            op: BinaryOp::Add,
+            right: Box::new(Expr::new_number_literal(Number::I32(1), s.clone())),
             span: s.clone(),
         }),
     }];
 
     let mut checker = TypeChecker::new();
     let result = checker.check_typed(&statements);
-    assert!(result.is_ok(), "string literal itself is valid");
+    assert!(result.is_err(), "invalid typing must not produce a typed AST");
 }
