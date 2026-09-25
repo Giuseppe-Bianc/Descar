@@ -36,6 +36,7 @@ use crate::error::compile_error::CompileError;
 use crate::error::error_code::ErrorCode;
 use crate::location::source_span::SourceSpan;
 use crate::semantic::symbol_table::{FunctionSymbol, ScopeKind, Symbol, SymbolTable, VariableSymbol};
+use crate::semantic::typed_ast::{FullyTypedAst, ResolvedType};
 use crate::syntax::ast::binary_op::BinaryOp;
 use crate::syntax::ast::else_branch::ElseBranch;
 use crate::syntax::ast::stmt::VarBinding;
@@ -81,6 +82,7 @@ pub struct TypeChecker {
     return_type_stack: Vec<Type>,
     errors: Vec<CompileError>,
     symbol_table: SymbolTable,
+    resolved_types: HashMap<usize, ResolvedType>,
 }
 
 // Gerarchia per la promozione dei tipi numerici
@@ -109,7 +111,7 @@ impl TypeChecker {
     /// ```
     #[must_use]
     pub fn new() -> Self {
-        Self { symbol_table: SymbolTable::new(), errors: Vec::new(), in_loop: false, return_type_stack: Vec::new() }
+        Self { symbol_table: SymbolTable::new(), errors: Vec::new(), in_loop: false, return_type_stack: Vec::new(), resolved_types: HashMap::new() }
     }
 
     /// Records a type error with an optional error code.
@@ -154,8 +156,39 @@ impl TypeChecker {
     /// }
     /// ```
     pub fn check(&mut self, statements: &[Stmt]) -> Vec<CompileError> {
+        self.resolved_types.clear();
         self.visit_statements(statements);
         std::mem::take(&mut self.errors)
+    }
+
+    /// Type-checks the program and returns an isomorphic fully typed AST.
+    pub fn check_typed(&mut self, statements: &[Stmt]) -> Result<FullyTypedAst, Vec<CompileError>> {
+        self.resolved_types.clear();
+        self.errors.clear();
+        self.visit_statements(statements);
+
+        if !self.errors.is_empty() {
+            return Err(std::mem::take(&mut self.errors));
+        }
+
+        match FullyTypedAst::from_statements(statements, &self.resolved_types) {
+            Ok(ast) => Ok(ast),
+            Err(message) => {
+                self.errors.push(CompileError::TypeError {
+                    code: Some(ErrorCode::E2999),
+                    message: Arc::from(format!("Fully typed AST invariant violated: {message}")),
+                    span: statements.first().map_or_else(SourceSpan::default, |stmt| stmt.span().clone()),
+                    help: None,
+                });
+                Err(std::mem::take(&mut self.errors))
+            }
+        }
+    }
+
+    /// Returns the semantic type recorded for an expression.
+    #[must_use]
+    pub fn resolved_type(&self, expr: &Expr) -> Option<&ResolvedType> {
+        self.resolved_types.get(&(std::ptr::from_ref(expr) as usize))
     }
 
     // Helper method per dichiarare simboli
@@ -451,7 +484,7 @@ impl TypeChecker {
     /// Returns the inferred or declared type of the expression when analysis
     /// succeeds.
     fn visit_expr(&mut self, expr: &Expr) -> Option<Type> {
-        match expr {
+        let result = match expr {
             Expr::Binary { left, op, right, span } => self.visit_binary_expr(left, *op, right, span),
             Expr::Unary { op, expr, span, .. } => self.visit_unary_expr(*op, expr, span),
             Expr::Grouping { expr, span: _ } => self.visit_expr(expr),
@@ -461,7 +494,12 @@ impl TypeChecker {
             Expr::Assign { target, value, span } => self.visit_assign(target, value, span),
             Expr::Call { callee, arguments, span } => self.visit_call(callee, arguments, span),
             Expr::ArrayAccess { array, index, span } => self.visit_array_access(array, index, span),
+        };
+
+        if let Some(ty) = result.clone() {
+            self.resolved_types.insert(std::ptr::from_ref(expr) as usize, ResolvedType::value(ty));
         }
+        result
     }
 
     #[allow(clippy::too_many_lines)]
@@ -1048,6 +1086,13 @@ impl TypeChecker {
                 );
             }
         }
+        self.resolved_types.insert(
+            std::ptr::from_ref(callee) as usize,
+            ResolvedType::function(
+                func.parameters.iter().map(|p| p.type_annotation.clone()).collect(),
+                func.return_type.clone(),
+            ),
+        );
         Some(func.return_type.clone())
     }
 
