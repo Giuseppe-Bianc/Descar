@@ -1,4 +1,4 @@
-use descar_core::semantic::{FullyTypedAst, ResolvedType};
+use descar_core::semantic::{FullyTypedAst, ResolvedType, TypedExprKind, TypedStmt};
 use descar_core::semantic::type_checker::TypeChecker;
 use descar_core::syntax::ast::{BinaryOp, Expr, LiteralValue, Stmt, Type};
 use descar_core::tokens::number::Number;
@@ -22,11 +22,11 @@ fn typed_ast_preserves_expression_hierarchy_and_types_every_expression() {
     let typed = checker.check_typed(&statements).expect("program must type-check");
 
     let FullyTypedAst { statements } = typed;
-    let Stmt::Expression { expr } = &statements[0] else { panic!("expected expression statement") };
+    let TypedStmt::Expression { expr } = &statements[0] else { panic!("expected expression statement") };
     assert_eq!(expr.ty, ResolvedType::Value(Type::I64));
 
     match &expr.kind {
-        descar_core::semantic::TypedExprKind::Binary { left, right, .. } => {
+        TypedExprKind::Binary { left, right, .. } => {
             assert_eq!(left.ty, ResolvedType::Value(Type::I32));
             assert_eq!(right.ty, ResolvedType::Value(Type::I64));
         }
@@ -60,11 +60,11 @@ fn typed_ast_resolves_function_identifier_as_callable_signature() {
 
     let mut checker = TypeChecker::new();
     let typed = checker.check_typed(&[function, call]).expect("program must type-check");
-    let Stmt::Expression { expr } = &typed.statements[1] else { panic!("expected call statement") };
+    let TypedStmt::Expression { expr } = &typed.statements[1] else { panic!("expected call statement") };
 
     assert_eq!(expr.ty, ResolvedType::Value(Type::I32));
     match &expr.kind {
-        descar_core::semantic::TypedExprKind::Call { callee, arguments } => {
+        TypedExprKind::Call { callee, arguments } => {
             assert_eq!(
                 callee.ty,
                 ResolvedType::Function { parameters: vec![Type::I32], return_type: Type::I32 }
