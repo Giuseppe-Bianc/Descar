@@ -272,26 +272,114 @@ Il percorso viene troncato per mostrare soltanto gli ultimi 2 componenti, con pr
 
 ## 4. Valori numerici (`Number`)
 
-`Number` rappresenta un letterale numerico con il suo tipo concreto e valore, preservando la rappresentazione originale del sorgente.
+`Number` rappresenta i valori numerici ottenuti dai literal numerici. L'enum conserva il tipo concreto del literal e il valore decodificato nei tipi primitivi corrispondenti.
+
+L'implementazione corrente è:
 
 ```rust
 enum Number {
-    I8(i8),                      // [-128, 127],   suffisso sorgente: i8
-    I16(i16),                    // [-32768, 32767], suffisso: i16
-    I32(i32),                    // [-2^31, 2^31-1], suffisso: i32
-    Integer(i64),                // [-2^63, 2^63-1], no suffisso (default intero con segno)
-    U8(u8),                      // [0, 255],        suffisso: u8
-    U16(u16),                    // [0, 65535],      suffisso: u16
-    U32(u32),                    // [0, 2^32-1],     suffisso: u32
-    UnsignedInteger(u64),        // [0, 2^64-1],     suffisso: u o U (default intero senza segno)
-    Float32(f32),                // IEEE 754 single, suffisso: f
-    Float64(f64),                // IEEE 754 double, no suffisso (default floating-point)
-    Scientific32(f32, i32),      // base × 10^exp, IEEE 754 single, suffisso esponente + f
-    Scientific64(f64, i32),      // base × 10^exp, IEEE 754 double, no suffisso
+    I8(i8),
+    I16(i16),
+    I32(i32),
+    Integer(i64),
+    U8(u8),
+    U16(u16),
+    U32(u32),
+    UnsignedInteger(u64),
+    Float32(f32),
+    Float64(f64),
+    Scientific32(f32, i32),
+    Scientific64(f64, i32),
 }
 ```
 
-**Corrispondenza con `Type`:**
+### 4.1 Varianti e intervalli
+
+| Variante | Rappresentazione | Intervallo / formato | Tipo Descar |
+| --- | --- | --- | --- |
+| `I8(i8)` | intero signed a 8 bit | -128 .. 127 | `Type::I8` |
+| `I16(i16)` | intero signed a 16 bit | -32.768 .. 32.767 | `Type::I16` |
+| `I32(i32)` | intero signed a 32 bit | -2.147.483.648 .. 2.147.483.647 | `Type::I32` |
+| `Integer(i64)` | intero signed a 64 bit | -9.223.372.036.854.775.808 .. 9.223.372.036.854.775.807 | `Type::I64` |
+| `U8(u8)` | intero unsigned a 8 bit | 0 .. 255 | `Type::U8` |
+| `U16(u16)` | intero unsigned a 16 bit | 0 .. 65.535 | `Type::U16` |
+| `U32(u32)` | intero unsigned a 32 bit | 0 .. 4.294.967.295 | `Type::U32` |
+| `UnsignedInteger(u64)` | intero unsigned a 64 bit | 0 .. 18.446.744.073.709.551.615 | `Type::U64` |
+| `Float32(f32)` | floating-point IEEE 754 single precision | circa 7 cifre decimali di precisione | `Type::F32` |
+| `Float64(f64)` | floating-point IEEE 754 double precision | circa 15-17 cifre decimali di precisione | `Type::F64` |
+| `Scientific32(f32, i32)` | base + esponente decimale | base `f32`, esponente `i32`, valore concettuale base × 10^esponente | `Type::F32` |
+| `Scientific64(f64, i32)` | base + esponente decimale | base `f64`, esponente `i32`, valore concettuale base × 10^esponente | `Type::F64` |
+
+`Integer` è il tipo intero signed predefinito quando non viene specificato un suffisso; `UnsignedInteger` è il tipo intero unsigned a 64 bit usato per i literal unsigned senza specificazione di una larghezza inferiore.
+
+### 4.2 Rappresentazione e formattazione
+
+`Number` **non conserva il lexeme originale completo**. I campi delle varianti contengono il valore decodificato, non la stringa sorgente.
+
+L'implementazione di `Display` ricostruisce una rappresentazione canonica a partire dai campi:
+
+| Variante | Formattazione `Display` |
+| --- | --- |
+| `I8(x)` | `x` seguito da `i8` |
+| `I16(x)` | `x` seguito da `i16` |
+| `I32(x)` | `x` seguito da `i32` |
+| `Integer(x)` | `x` |
+| `U8(x)` | `x` seguito da `u8` |
+| `U16(x)` | `x` seguito da `u16` |
+| `U32(x)` | `x` seguito da `u32` |
+| `UnsignedInteger(x)` | `x` |
+| `Float32(x)` | formattazione standard di `f32` |
+| `Float64(x)` | formattazione standard di `f64` |
+| `Scientific32(base, exp)` | `baseeexp` |
+| `Scientific64(base, exp)` | `baseeexp` |
+
+Per esempio, l'implementazione garantisce:
+
+```text
+Number::I8(-42).to_string()                  == "-42i8"
+Number::U32(123456).to_string()              == "123456u32"
+Number::Float64(3.14159).to_string()         == "3.14159"
+Number::Scientific32(6.022, 23).to_string()  == "6.022e23"
+```
+
+La formattazione non reintroduce automaticamente un eventuale suffisso sorgente `f` per `Float32` o `Scientific32`, né un eventuale suffisso `u` per `UnsignedInteger`. Questi dettagli lessicali non sono memorizzati nei campi dell'enum.
+
+### 4.3 Uguaglianza
+
+`Number` implementa `PartialEq` ed `Eq`.
+
+- Le varianti intere confrontano direttamente i rispettivi valori.
+- `Float32` e `Float64` confrontano la rappresentazione bit a bit tramite `to_bits()`.
+- `Scientific32` confronta bit a bit la base e normalmente l'esponente con confronto intero.
+- `Scientific64` segue la stessa regola.
+- Varianti differenti non sono mai uguali, anche quando rappresentano lo stesso valore matematico.
+
+Di conseguenza:
+
+```text
+Integer(42) != Float64(42.0)
+Float64(NaN) == Float64(NaN)       // se le due NaN hanno gli stessi bit
+Float64(-0.0) != Float64(+0.0)
+Scientific64(1.0, 2) != Scientific64(10.0, 1)
+```
+
+L'uguaglianza di `Number` è quindi un'uguaglianza strutturale della rappresentazione memorizzata, non un'uguaglianza matematica cross-variant.
+
+### 4.4 Hash
+
+`Number` implementa `Hash` in modo coerente con `PartialEq`.
+
+L'hash include innanzitutto il discriminante della variante. Per gli interi viene hashato il valore; per i floating-point viene hashata la rappresentazione restituita da `to_bits()`; per le varianti scientifiche vengono hashati base e esponente.
+
+Pertanto due varianti differenti che hanno lo stesso valore numerico non hanno lo stesso significato strutturale e il discriminante contribuisce a distinguerle.
+
+### 4.5 Validazione lessicale
+
+I commenti di `number.rs` specificano che i limiti dei tipi vengono verificati a livello lessicale, così da rilevare overflow e underflow durante la tokenizzazione prima delle fasi successive della compilazione.
+
+La struttura `Number` non espone una fase separata di validazione del range: una volta costruita, ogni variante contiene già un valore del proprio tipo Rust. La specifica AST considera quindi valide le istanze rappresentabili dalle varianti dell'enum.
+
+### 4.6 Corrispondenza completa con `Type`
 
 | `Number` | `Type` derivato |
 | --- | --- |
@@ -307,17 +395,6 @@ enum Number {
 | `Float64(_)` | `Type::F64` |
 | `Scientific32(_, _)` | `Type::F32` |
 | `Scientific64(_, _)` | `Type::F64` |
-
-**Uguaglianza e hash per floating-point:** l'uguaglianza è definita per bit (`to_bits()`), non per valore matematico. Di conseguenza:
-
-- `NaN == NaN` (stessa rappresentazione bit a bit) è `true`.
-- `-0.0 == +0.0` è `false`.
-- `Integer(42) != Float64(42.0)` anche se matematicamente equivalenti.
-- Due varianti distinte non sono mai uguali.
-
-**Validità:** tutti i valori di `Number` sono considerati validi a livello AST; la verifica dell'overflow o underflow avviene durante la fase lessicale, prima della costruzione dell'AST.
-
----
 
 ## 5. Valori letterali (`LiteralValue`)
 
