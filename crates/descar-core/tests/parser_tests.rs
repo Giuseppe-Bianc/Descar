@@ -84,7 +84,7 @@ fn parses_assignment_calls_and_array_access() {
 }
 
 #[test]
-fn parses_all_compound_assignment_operators() {
+/// Verifies that all supported compound-assignment operators produce the expected binary AST node.\nfn parses_all_compound_assignment_operators() {
     let cases = [
         ("x += 1", BinaryOp::AddEqual),
         ("x -= 1", BinaryOp::SubtractEqual),
@@ -119,7 +119,7 @@ fn parses_all_compound_assignment_operators() {
 }
 
 #[test]
-fn rejects_invalid_compound_assignment_targets() {
+/// Verifies that non-assignable expressions are rejected as compound-assignment targets.\nfn rejects_invalid_compound_assignment_targets() {
     for input in ["1 += 2", "x + y += 2"] {
         let (statements, errors) = parse(input);
         assert_has_error(&errors, ErrorCode::E1003);
@@ -128,7 +128,7 @@ fn rejects_invalid_compound_assignment_targets() {
 }
 
 #[test]
-fn parses_compound_assignment_to_array_element() {
+/// Verifies that an array element is accepted as a compound-assignment target.\nfn parses_compound_assignment_to_array_element() {
     let (statements, errors) = parse("items[1] += 2");
     assert_no_errors(&errors);
     assert!(matches!(
