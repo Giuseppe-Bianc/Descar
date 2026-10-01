@@ -1451,6 +1451,15 @@ fn test_return_expression_reaches_some_actual_type_path() {
 }
 
 #[test]
+fn test_all_compound_assignments_typecheck_from_source() {
+    for operator in ["+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="] {
+        let ast = format!("var x: i32 = 8i32\nx {operator} 1i32");
+        let errors = typecheck(&ast);
+        assert!(errors.is_empty(), "unexpected errors for {operator}: {errors:?}");
+    }
+}
+
+#[test]
 fn test_mutable_compound_assignment_reaches_mutability_check_path() {
     let ast = "var x: i32 = 1i32\nx += 2i32";
     let errors = typecheck(ast);
