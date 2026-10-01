@@ -485,14 +485,25 @@ enum UnaryOp {
 
 ### 7.2 `UnaryOpSide`
 
+`UnaryOpSide` rappresenta il lato sul quale un operatore unario viene applicato rispetto al proprio operando.
+
 ```rust
 enum UnaryOpSide {
-    Prefix,   // operatore precede l'operando (es. -x, !flag, ++i)
-    Postfix,  // operatore segue l'operando (es. i++, i--)
+    Prefix,
+    Postfix,
 }
 ```
 
-**Combinazioni valide:**
+Le due varianti hanno la seguente semantica:
+
+| Variante | Semantica | Esempi |
+| --- | --- | --- |
+| `Prefix` | l'operatore precede l'operando | `-x`, `!flag`, `++i` |
+| `Postfix` | l'operatore segue l'operando | `i++`, `i--` |
+
+La enum distingue quindi esclusivamente la posizione dell'operatore rispetto all'operando. Non codifica internamente quali coppie `(UnaryOp, UnaryOpSide)` siano ammesse. Di conseguenza, un'istanza dell'AST può strutturalmente rappresentare anche una combinazione non prevista dalla grammatica del linguaggio; la validità di tale combinazione è stabilita separatamente dalle regole semantiche della specifica.
+
+**Combinazioni semantiche ammesse:**
 
 | `UnaryOp` | `Prefix` | `Postfix` |
 | --- | --- | --- |
@@ -501,8 +512,6 @@ enum UnaryOpSide {
 | `BitwiseNot` | sì | no |
 | `Increment` | sì | sì |
 | `Decrement` | sì | sì |
-
-**Validità formale:** le combinazioni di `UnaryOp` e `UnaryOpSide` elencate nella tabella precedente costituiscono un vincolo di validità **semantica** dell'AST. L'AST Rust può rappresentare anche combinazioni non valide, ma tali istanze devono essere rifiutate dal controllo di validità semantica secondo la regola §15.3.12.1. Il parser genera esclusivamente combinazioni valide.
 
 **Tipo risultato degli operatori unari:**
 
@@ -1354,7 +1363,7 @@ Un'istanza dell'AST è **semanticamente valida** se e solo se soddisfa **tutte**
 10. La condizione di `if`, `while`, e `for` deve avere tipo `Bool`.
 11. Ogni operatore binario richiede i tipi degli operandi come specificato in §14.4.
 12. Ogni operatore unario richiede il tipo dell'operando come specificato in §14.5.
-12.1. Per ogni `Expr::Unary { op, side, ... }`, la coppia `(op, side)` deve essere una delle combinazioni valide definite in §7.2. Sono valide esclusivamente le seguenti combinazioni:
+12.1. Per ogni `Expr::Unary { op, side, ... }`, `side` ha la semantica definita da `UnaryOpSide`: `Prefix` indica che l'operatore precede l'operando, mentre `Postfix` indica che lo segue. La coppia `(op, side)` deve inoltre essere una delle combinazioni semantiche ammesse definite in §7.2. Sono valide esclusivamente le seguenti combinazioni:
    - `(Negate, Prefix)`
    - `(Not, Prefix)`
    - `(BitwiseNot, Prefix)`
