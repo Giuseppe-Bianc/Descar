@@ -566,7 +566,7 @@ ArrayLiteral {
 
 **Vincoli:**
 
-- `elements.len() >= 1`: array vuoto (`[]`) è strutturalmente rappresentabile ma produce errore semantico `E2020`.
+- `elements.len() >= 1`: array vuoto (`{}`) è strutturalmente rappresentabile ma produce errore semantico `E2020`.
 - Tutti gli elementi devono avere lo stesso tipo (no promozione implicita tra elementi); tipi misti producono `E2021`.
 - Il tipo degli elementi non deve essere `Void` né `NullPtr`.
 
