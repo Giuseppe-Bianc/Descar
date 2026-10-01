@@ -1303,34 +1303,102 @@ Un'istanza dell'AST è **semanticamente valida** se e solo se soddisfa **tutte**
 
 ## 16. Gerarchia di precedenza degli operatori
 
-La precedenza è implementata con il parser Pratt; i binding power definiscono precedenza e associatività.
+La precedenza è definita dal modulo `crates/descar-core/src/syntax/precendence.rs` tramite binding power Pratt. La struttura `Precedence` contiene due valori:
 
-### 16.1 Operatori binari (infix)
+```rust
+pub struct Precedence {
+    pub left: u8,
+    pub right: u8,
+}
+```
 
-| Binding power (left, right) | Operatori | Associatività |
+`binding_power(token)` restituisce la coppia `(left, right)` associata al token. Per i token non classificati come operatori infix/postfix restituisce `(0, 0)`.
+
+### 16.1 Operatori infix e postfix
+
+La tabella normativa deve corrispondere alla funzione `Precedence::binding_power`:
+
+| Binding power (left, right) | Token | Categoria |
 | --- | --- | --- |
-| (2, 1) | `=`, `+=`, `-=`, `&=`, `\|=`, `%=`, `^=`, `*=`, `/=`, `<<=`, `>>=` | destra |
-| (4, 3) | `\|\|` | sinistra |
-| (6, 5) | `&&` | sinistra |
-| (8, 7) | `==`, `!=` | sinistra |
-| (10, 9) | `<`, `<=`, `>`, `>=` | sinistra |
-| (12, 11) | `\|` | sinistra |
-| (14, 13) | `^` | sinistra |
-| (16, 15) | `&` | sinistra |
-| (18, 17) | `<<`, `>>` | sinistra |
-| (20, 19) | `+`, `-` | sinistra |
-| (22, 21) | `*`, `/`, `%` | sinistra |
-| (27, 26) | `(`, `[`, `.`, `++` (postfix), `--` (postfix) | sinistra |
+| (2, 1) | `=`, `+=`, `-=`, `&=`, `|=`, `%=`, `^=`, `*=`, `/=`, `<<=`, `>>=` | assegnazione / assegnazione composta |
+| (4, 3) | `||` | logico |
+| (6, 5) | `&&` | logico |
+| (8, 7) | `==`, `!=` | uguaglianza |
+| (10, 9) | `<`, `<=`, `>`, `>=` | confronto |
+| (12, 11) | `|` | bitwise OR |
+| (14, 13) | `^` | bitwise XOR |
+| (16, 15) | `&` | bitwise AND |
+| (18, 17) | `<<`, `>>` | shift |
+| (20, 19) | `+`, `-` | aritmetico |
+| (22, 21) | `*`, `/`, `%` | aritmetico |
+| (27, 26) | `(`, `[`, `.`, `++`, `--` | postfix / accesso |
 
-### 16.2 Operatori unari (prefix)
+La voce con binding power `(27, 26)` comprende token che non sono tutti operatori binari. La coppia documenta comunque la precedenza restituita da `Precedence::binding_power` per chiamata, accesso, membro e incremento/decremento postfix.
 
-| Binding power (left, right) | Operatori |
-|---|---|
-| (24, 23) | `!`, `-`, `~`, `++` (prefix), `--` (prefix) |
+**Nota:** il token `.` è incluso nella tabella di precedenza perché `binding_power` gli assegna `(27,26)`. La sua eventuale rappresentazione nell'AST e il relativo supporto sintattico sono definiti dalle sezioni dedicate alle espressioni e non dalla sola tabella di precedenza.
 
-**Regola del parser Pratt:** un operatore infix con `left_bp` viene consumato se e solo se `left_bp > min_bp` corrente. Gli operatori di assegnazione hanno `left_bp = 2, right_bp = 1` (associativi a destra perché il right_bp è inferiore al left_bp).
+### 16.2 Operatori unari prefix
 
----
+La funzione `Precedence::unary_binding_power` assegna:
+
+| Binding power (left, right) | Token |
+| --- | --- |
+| (24, 23) | `!`, `-`, `~`, `++`, `--` |
+
+Questi token sono interpretati come operatori prefix quando vengono gestiti da `nud`. Per `++` e `--`, la forma postfix usa invece la coppia `(27,26)` di §16.1.
+
+### 16.3 Regola effettiva del Pratt parser
+
+Il parser corrente implementa il ciclo Pratt con la seguente condizione:
+
+```text
+lbp = Precedence::binding_power(token).left
+
+se lbp <= min_bp:
+    arresta il parsing dell'espressione corrente
+
+altrimenti:
+    consuma il token tramite led
+```
+
+Equivalentemente, un operatore viene consumato quando:
+
+```text
+left_bp > min_bp
+```
+
+Per gli operatori infix, il ramo destro viene analizzato usando il relativo `right_bp`:
+
+```text
+right = parse_expr(right_bp)
+```
+
+Con l'implementazione corrente, tutte le coppie infix definite da `Precedence::binding_power` hanno `left_bp > right_bp`. Di conseguenza, il successivo operatore con la stessa precedenza soddisfa nuovamente la condizione `left_bp > min_bp` nel ramo destro.
+
+Perciò, con il parser corrente, gli operatori infix della stessa classe di precedenza sono associati a destra:
+
+```text
+a - b - c
+=> a - (b - c)
+
+a + b + c
+=> a + (b + c)
+
+a = b = c
+=> a = (b = c)
+```
+
+La coppia `(2,1)` rende quindi l'assegnazione destra-associativa, ma la stessa relazione `left_bp > right_bp` è presente anche per le altre classi infix. La documentazione non deve descrivere queste classi come sinistra-associative finché la regola del parser rimane quella sopra riportata.
+
+La precedenza relativa resta determinata dal valore di `left_bp`: un operatore con binding power maggiore viene consumato prima di uno con binding power minore.
+
+### 16.4 Mapping degli operatori di assegnazione
+
+Il token `=` appartiene alla classe di binding power `(2,1)), ma non viene rappresentato come `BinaryOp`. Il parser lo converte in `Expr::Assign`.
+
+Gli operatori composti `+=`, `-=`, `&=`, `|=`, `%=`, `^=`, `*=`, `/=`, `<<=`, `>>=` vengono invece rappresentati come `Expr::Binary` con la corrispondente variante `BinaryOp`.
+
+Questa distinzione è parte della specifica AST e deve rimanere coerente con la tabella di precedenza.
 
 ## 17. Tabella dei simboli e scoping
 
