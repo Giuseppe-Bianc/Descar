@@ -548,7 +548,17 @@ impl<'a> JsavParser<'a> {
             | TokenKind::Or
             | TokenKind::Xor
             | TokenKind::ShiftLeft
-            | TokenKind::ShiftRight => self.parse_binary(left, token),
+            | TokenKind::ShiftRight
+            | TokenKind::PlusEqual
+            | TokenKind::MinusEqual
+            | TokenKind::StarEqual
+            | TokenKind::SlashEqual
+            | TokenKind::PercentEqual
+            | TokenKind::AndEqual
+            | TokenKind::OrEqual
+            | TokenKind::XorEqual
+            | TokenKind::ShiftLeftEqual
+            | TokenKind::ShiftRightEqual => self.parse_binary(left, token),
 
             TokenKind::PlusPlus => {
                 let span = left.span().merge(&token.span);
