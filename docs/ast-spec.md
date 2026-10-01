@@ -122,24 +122,59 @@ Ogni nodo dell'AST porta informazioni di posizione sorgente tramite i seguenti t
 
 Rappresenta una posizione puntuale nel sorgente.
 
-```text
-SourceLocation {
-    line:               usize,   // riga 1-based
-    column:             usize,   // colonna 1-based
-    offset:             usize,   // offset in byte dal byte 0 del file (0-based)
-    index:              usize,   // indice di carattere Unicode (0-based)
-    utf8_offset:        usize,   // offset UTF-8, o UNKNOWN (usize::MAX) se non calcolato
-    code_point_offset:  usize,   // offset in code point Unicode, o UNKNOWN se non calcolato
+L'implementazione Rust corrente è:
+
+```rust
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd, Default, Hash)]
+pub struct SourceLocation {
+    line: usize,
+    column: usize,
+    offset: usize,
+    index: usize,
+    utf8_offset: usize,
+    code_point_offset: usize,
 }
 ```
 
-**Costante speciale:** `UNKNOWN = usize::MAX` è usata per indicare che `utf8_offset` o `code_point_offset` non è stato calcolato. Un implementatore non deve interpretare `UNKNOWN` come una posizione valida.
+I campi sono privati e sono accessibili tramite i relativi getter. Il costruttore canonico è `SourceLocation::new(line, column, offset, index, utf8_offset, code_point_offset)`.
 
-**Invariante:** se `utf8_offset != UNKNOWN` allora `utf8_offset == offset` (in sorgenti ASCII puri); in sorgenti Unicode i due valori possono divergere.
+**Semantica dei campi:**
 
-**Ordinamento:** `SourceLocation` è ordinata per `offset` (confronto tra posizioni byte).
+- `line`: numero di riga 1-based.
+- `column`: numero di colonna 1-based.
+- `offset`: offset in byte 0-based.
+- `index`: indice di carattere 0-based.
+- `utf8_offset`: offset UTF-8, oppure `UNKNOWN` se non calcolato.
+- `code_point_offset`: offset in code point Unicode, oppure `UNKNOWN` se non calcolato.
 
-**Default:** `SourceLocation::default()` ha tutti i campi a zero. Viene usato per nodi sintetici senza posizione sorgente reale (es. durante i test).
+**Costante speciale:** `UNKNOWN = usize::MAX` indica che un campo opzionale non è stato calcolato. `UNKNOWN` non rappresenta una posizione valida.
+
+**Uguaglianza:** `SourceLocation` deriva `PartialEq` ed `Eq`; il confronto considera tutti i sei campi della struttura. Due posizioni con lo stesso `offset` ma valori diversi negli altri campi possono quindi essere diverse.
+
+**Ordinamento:** `SourceLocation` deriva `Ord` e `PartialOrd`. L'ordinamento è quello derivato dalla struttura Rust e confronta i campi nell'ordine della loro dichiarazione:
+
+```text
+line
+column
+offset
+index
+utf8_offset
+code_point_offset
+```
+
+Pertanto non è corretto descrivere l'ordinamento come basato esclusivamente su `offset`.
+
+**Hash:** `SourceLocation` deriva `Hash`; il valore hash comprende i campi della struttura secondo la normale semantica del derive Rust.
+
+**Default:** `SourceLocation::default()` produce una struttura con tutti i sei campi impostati a `0`. Questa rappresentazione può essere usata per posizioni sintetiche. La struttura `SourceLocation` non contiene un campo separato che distingua una posizione sintetica da una posizione reale.
+
+**Display:** la rappresentazione testuale implementata da `Display` è:
+
+```text
+line <line>:column <column>
+```
+
+L'implementazione corrente non include `offset`, `index`, `utf8_offset` o `code_point_offset` nella stringa visualizzata.
 
 ### 3.2 `SourceSpan`
 
