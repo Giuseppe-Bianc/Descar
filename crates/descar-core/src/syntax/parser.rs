@@ -548,8 +548,10 @@ impl<'a> JsavParser<'a> {
             | TokenKind::Or
             | TokenKind::Xor
             | TokenKind::ShiftLeft
-            | TokenKind::ShiftRight
-            | TokenKind::PlusEqual
+            | TokenKind::ShiftRight => self.parse_binary(left, token),
+
+            // Compound assignment
+            TokenKind::PlusEqual
             | TokenKind::MinusEqual
             | TokenKind::StarEqual
             | TokenKind::SlashEqual
