@@ -526,7 +526,8 @@ impl<'a> JsavParser<'a> {
         }
     }
 
-    /// Parses an infix or postfix token using the accumulated left expression.\n    fn led(&mut self, left: Expr) -> Option<Expr> {
+    /// Parses an infix or postfix token using the accumulated left expression.
+    fn led(&mut self, left: Expr) -> Option<Expr> {
         let token = self.advance()?.clone();
 
         match token.kind {
@@ -589,7 +590,8 @@ impl<'a> JsavParser<'a> {
         }
     }
 
-    /// Validates a compound-assignment target and preserves its `Expr::Binary` representation.\n    fn parse_compound_assignment(&mut self, left: Expr, token: Token) -> Option<Expr> {
+    /// Validates a compound-assignment target and preserves its `Expr::Binary` representation.
+    fn parse_compound_assignment(&mut self, left: Expr, token: Token) -> Option<Expr> {
         if !Self::is_valid_assignment_target(&left) {
             self.report_invalid_assignment_target(&left);
             return None;
@@ -599,11 +601,13 @@ impl<'a> JsavParser<'a> {
     }
 
     #[inline]
-    /// Returns whether an expression can be used as an assignment target.\n    const fn is_valid_assignment_target(expr: &Expr) -> bool {
+    /// Returns whether an expression can be used as an assignment target.
+    const fn is_valid_assignment_target(expr: &Expr) -> bool {
         matches!(expr, Expr::Variable { .. } | Expr::ArrayAccess { .. })
     }
 
-    /// Reports the standard parser error for an invalid assignment target.\n    fn report_invalid_assignment_target(&mut self, left: &Expr) {
+    /// Reports the standard parser error for an invalid assignment target.
+    fn report_invalid_assignment_target(&mut self, left: &Expr) {
         let help_msg = "Only variables and array elements can be assigned to. Consider using a variable name or an array access expression.";
 
         self.errors.push(CompileError::SyntaxError {
@@ -666,7 +670,8 @@ impl<'a> JsavParser<'a> {
         Some(Expr::Grouping { expr: Box::new(expr?), span: self.merge_span(start_token) })
     }
 
-    /// Parses a simple `=` assignment after validating its left-hand side.\n    fn parse_assignment(&mut self, left: Expr, token: &Token) -> Option<Expr> {
+    /// Parses a simple `=` assignment after validating its left-hand side.
+    fn parse_assignment(&mut self, left: Expr, token: &Token) -> Option<Expr> {
         let value = self.parse_expr(1).unwrap_or_else(|| Expr::null_expr(token.span.clone()));
 
         let span = left.span().merge(value.span());
