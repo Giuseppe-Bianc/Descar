@@ -145,9 +145,9 @@ I campi sono privati e sono accessibili tramite i relativi getter. Il costruttor
 - `offset`: offset in byte 0-based.
 - `index`: indice di carattere 0-based.
 - `utf8_offset`: offset UTF-8, oppure `UNKNOWN` se non calcolato.
-- `code_point_offset`: offset in code point Unicode, oppure `UNKNOWN` se non calcolato.
+- `code_point_offset`: offset in code point, oppure `UNKNOWN` se non calcolato.
 
-**Costante speciale:** `UNKNOWN = usize::MAX` indica che un campo opzionale non è stato calcolato. `UNKNOWN` non rappresenta una posizione valida.
+**Costante speciale:** `UNKNOWN = usize::MAX` indica che un campo opzionale non è stato calcolato.
 
 **Uguaglianza:** `SourceLocation` deriva `PartialEq` ed `Eq`; il confronto considera tutti i sei campi della struttura. Due posizioni con lo stesso `offset` ma valori diversi negli altri campi possono quindi essere diverse.
 
@@ -162,11 +162,11 @@ utf8_offset
 code_point_offset
 ```
 
-Pertanto non è corretto descrivere l'ordinamento come basato esclusivamente su `offset`.
+Pertanto l'ordinamento non è basato esclusivamente su `offset`.
 
 **Hash:** `SourceLocation` deriva `Hash`; il valore hash comprende i campi della struttura secondo la normale semantica del derive Rust.
 
-**Default:** `SourceLocation::default()` produce una struttura con tutti i sei campi impostati a `0`. Questa rappresentazione può essere usata per posizioni sintetiche. La struttura `SourceLocation` non contiene un campo separato che distingua una posizione sintetica da una posizione reale.
+**Default:** `SourceLocation::default()` produce una struttura con tutti i sei campi impostati a `0`. Questo valore è usato per rappresentare posizioni sintetiche o valori di default. Poiché non esiste un campo separato che distingua una posizione sintetica da una reale, `line = 0` e `column = 0` non devono essere interpretati come coordinate sorgente 1-based valide.
 
 **Display:** la rappresentazione testuale implementata da `Display` è:
 
@@ -174,7 +174,7 @@ Pertanto non è corretto descrivere l'ordinamento come basato esclusivamente su 
 line <line>:column <column>
 ```
 
-L'implementazione corrente non include `offset`, `index`, `utf8_offset` o `code_point_offset` nella stringa visualizzata.
+L'implementazione non include `offset`, `index`, `utf8_offset` o `code_point_offset` nella stringa visualizzata.
 
 ### 3.2 `SourceSpan`
 
@@ -188,25 +188,85 @@ SourceSpan {
 }
 ```
 
-**Invarianti:**
+**Costruttore:**
 
-- `start.offset <= end.offset` (l'intervallo è valido o vuoto).
-- Se `start.offset == end.offset`, lo span è **vuoto** (point span); indica una posizione puntuale senza testo coperto.
-- `file_path` deve essere non vuoto per span non-default.
-- Non è garantito che `start` e `end` appartengano alla stessa riga; span multi-riga sono ammessi.
+`SourceSpan::new(file_path, start, end)` non esegue alcuna validazione. È responsabilità del chiamante fornire un intervallo valido.
 
-**Lunghezza:** `end.offset - start.offset` in byte UTF-8. Un carattere multibyte (es. `'€'`, 3 byte in UTF-8) contribuisce con 3 alla lunghezza, non con 1.
+**Invarianti semantici richiesti dalla specifica:**
 
-**Metodi chiave:**
+- `start.offset <= end.offset`.
+- Se `start.offset == end.offset`, lo span ha lunghezza zero ed è quindi vuoto.
+- La convenzione half-open determina che `start` sia incluso e `end` escluso.
+- Gli span possono estendersi su più righe.
+- Per gli span ordinari associati a un file sorgente, `file_path` identifica il file a cui appartengono le due posizioni. `SourceSpan::default()` usa invece una stringa vuota come percorso.
 
-- `length()`: lunghezza in byte.
-- `is_empty()`: `true` ↔ `start == end`.
-- `is_multiline()`: `true` ↔ `start.line != end.line`.
-- `contains(loc)`: `true` ↔ `loc.offset ∈ [start.offset, end.offset)`.
-- `overlaps(other)`: `true` ↔ gli intervalli si intersecano strettamente (adiacenti non si sovrappongono).
-- `merge(other)`: produce lo span minimo contenente entrambi; il `file_path` risultante è quello di `self`.
+**Lunghezza:** `length()` restituisce la differenza tra gli offset byte di fine e inizio, usando la semantica UTF-8 in byte.
 
-**Default:** `SourceSpan::default()` ha `file_path = ""`, `start` e `end` entrambi default. Usato per nodi sintetici.
+Un carattere multibyte, come `'€'`, contribuisce con 3 alla lunghezza, non con 1.
+
+Se per errore il chiamante costruisce uno span con `end.offset < start.offset`, l'implementazione di `length()` usa una sottrazione saturante e restituisce `0`. Questo non rende però l'intervallo semanticamente ben formato secondo l'invariante precedente.
+
+**`is_empty()`:**
+
+`is_empty()` è implementato come equivalenza con `length() == 0`.
+
+Per uno span ben formato, ciò equivale a:
+
+```text
+start.offset == end.offset
+```
+
+Non equivale invece necessariamente a `start == end`, perché `SourceLocation::Eq` confronta tutti i sei campi della posizione.
+
+**`is_multiline()`:**
+
+`is_multiline()` restituisce `true` quando:
+
+```text
+start.line != end.line
+```
+
+**`contains(location)`:**
+
+`contains(location)` verifica esclusivamente l'offset byte secondo l'intervallo half-open:
+
+```text
+location.offset >= start.offset &&
+location.offset < end.offset
+```
+
+Pertanto la verifica non confronta direttamente `line`, `column`, `index`, `utf8_offset` o `code_point_offset`.
+
+**`overlaps(other)`:**
+
+`overlaps(other)` verifica l'intersezione stretta tra gli intervalli half-open. Due span adiacenti non si sovrappongono.
+
+**`merge(other)`:**
+
+`merge(other)` produce il minimo intervallo che contiene entrambi gli span, scegliendo lo start con offset minore e l'end con offset maggiore.
+
+L'implementazione conserva il `file_path` di `self`. La documentazione di `SourceSpan::merge` assume che i due span appartengano allo stesso file; la specifica non definisce il risultato di un merge tra file differenti come operazione semanticamente significativa.
+
+**Default:** `SourceSpan::default()` ha `file_path = ""`, `start = SourceLocation::default()` ed `end = SourceLocation::default()`. È usato per nodi o dati sintetici.
+
+**Display:** la rappresentazione testuale di `SourceSpan` dipende dalla sua lunghezza.
+
+Per uno span non vuoto:
+
+```text
+<truncated_path>:<start_location>-<end_location>
+```
+
+Per uno span vuoto:
+
+```text
+<truncated_path>:<start_location>
+```
+
+dove `start_location` e `end_location` usano la rappresentazione di `SourceLocation::Display`.
+
+Il percorso viene troncato per mostrare soltanto gli ultimi 2 componenti, con prefisso `..` quando il percorso originale contiene più componenti. Per il percorso di default vuoto, viene applicata la stessa funzione di troncamento del percorso.
+
 
 ---
 
