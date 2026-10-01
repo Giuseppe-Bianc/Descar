@@ -1451,7 +1451,7 @@ fn test_return_expression_reaches_some_actual_type_path() {
 }
 
 #[test]
-fn test_all_compound_assignments_typecheck_from_source() {
+/// Verifies that all supported compound-assignment operators reach semantic type checking successfully.\nfn test_all_compound_assignments_typecheck_from_source() {
     for operator in ["+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<=", ">>="] {
         let ast = format!("var x: i32 = 8i32\nx {operator} 1i32");
         let errors = typecheck(&ast);
