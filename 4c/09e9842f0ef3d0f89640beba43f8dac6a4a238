@@ -1,0 +1,16 @@
+crates/descar-core/tests/type_checker_tests.rs
+  h_361662506da91f 1454
+crates/descar-core/tests/parser_tests.rs
+  h_361662506da91f 87,122,131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "4c09e9842f0ef3d0f89640beba43f8dac6a4a238",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
