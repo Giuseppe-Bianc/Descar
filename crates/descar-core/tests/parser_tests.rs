@@ -119,6 +119,33 @@ fn parses_all_compound_assignment_operators() {
 }
 
 #[test]
+fn rejects_invalid_compound_assignment_targets() {
+    for input in ["1 += 2", "x + y += 2"] {
+        let (statements, errors) = parse(input);
+        assert_has_error(&errors, ErrorCode::E1003);
+        assert!(statements.is_empty(), "invalid compound assignment should not produce a statement: {statements:#?}");
+    }
+}
+
+#[test]
+fn parses_compound_assignment_to_array_element() {
+    let (statements, errors) = parse("items[1] += 2");
+    assert_no_errors(&errors);
+    assert!(matches!(
+        &statements[..],
+        [Stmt::Expression { expr }]
+            if matches!(
+                expr.as_ref(),
+                Expr::Binary {
+                    op: BinaryOp::AddEqual,
+                    left,
+                    ..
+                } if matches!(left.as_ref(), Expr::ArrayAccess { .. })
+            )
+    ));
+}
+
+#[test]
 fn parses_prefix_and_postfix_unary_expressions() {
     let input = "++value\nvalue--\n!ready\n~bits";
     let (statements, errors) = parse(input);
