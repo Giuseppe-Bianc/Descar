@@ -502,7 +502,7 @@ enum UnaryOpSide {
 | `Increment` | sì | sì |
 | `Decrement` | sì | sì |
 
-**Nota:** l'AST non impedisce strutturalmente combinazioni invalide (es. `Negate` postfix), ma il type checker non riconosce tale forma e il parser non la genera. Una specifica di validità formale deve considerare invalide le combinazioni non elencate sopra.
+**Validità formale:** le combinazioni di `UnaryOp` e `UnaryOpSide` elencate nella tabella precedente costituiscono un vincolo di validità **semantica** dell'AST. L'AST Rust può rappresentare anche combinazioni non valide, ma tali istanze devono essere rifiutate dal controllo di validità semantica secondo la regola §15.3.12.1. Il parser genera esclusivamente combinazioni valide.
 
 **Tipo risultato degli operatori unari:**
 
@@ -1354,6 +1354,15 @@ Un'istanza dell'AST è **semanticamente valida** se e solo se soddisfa **tutte**
 10. La condizione di `if`, `while`, e `for` deve avere tipo `Bool`.
 11. Ogni operatore binario richiede i tipi degli operandi come specificato in §14.4.
 12. Ogni operatore unario richiede il tipo dell'operando come specificato in §14.5.
+12.1. Per ogni `Expr::Unary { op, side, ... }`, la coppia `(op, side)` deve essere una delle combinazioni valide definite in §7.2. Sono valide esclusivamente le seguenti combinazioni:
+   - `(Negate, Prefix)`
+   - `(Not, Prefix)`
+   - `(BitwiseNot, Prefix)`
+   - `(Increment, Prefix)`
+   - `(Increment, Postfix)`
+   - `(Decrement, Prefix)`
+   - `(Decrement, Postfix)`
+   Le combinazioni non elencate, incluse `(Negate, Postfix)`, `(Not, Postfix)` e `(BitwiseNot, Postfix)`, rendono l'AST semanticamente invalido.
 13. Ogni argomento di una chiamata di funzione deve avere tipo assegnabile al tipo del parametro corrispondente.
 14. Un `return` con valore deve avere tipo assegnabile al tipo di ritorno della funzione.
 15. Un `return` senza valore è valido solo in funzioni void.
