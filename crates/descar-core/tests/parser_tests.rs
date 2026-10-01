@@ -84,6 +84,68 @@ fn parses_assignment_calls_and_array_access() {
 }
 
 #[test]
+fn parses_all_compound_assignment_operators() {
+    let cases = [
+        ("x += 1", BinaryOp::AddEqual),
+        ("x -= 1", BinaryOp::SubtractEqual),
+        ("x *= 1", BinaryOp::MultiplyEqual),
+        ("x /= 1", BinaryOp::DivideEqual),
+        ("x %= 1", BinaryOp::ModuloEqual),
+        ("x &= 1", BinaryOp::BitwiseAndEqual),
+        ("x |= 1", BinaryOp::BitwiseOrEqual),
+        ("x ^= 1", BinaryOp::BitwiseXorEqual),
+        ("x <<= 1", BinaryOp::ShiftLeftEqual),
+        ("x >>= 1", BinaryOp::ShiftRightEqual),
+    ];
+
+    for (input, expected_op) in cases {
+        let (statements, errors) = parse(input);
+        assert_no_errors(&errors);
+        assert!(
+            matches!(
+                statements.as_slice(),
+                [Stmt::Expression { expr }]
+                    if matches!(
+                        expr.as_ref(),
+                        Expr::Binary { op, left, right, .. }
+                            if *op == expected_op
+                                && matches!(left.as_ref(), Expr::Variable { name, .. } if name == "x")
+                                && matches!(right.as_ref(), Expr::Literal { .. })
+                    )
+            ),
+            "unexpected AST for {input:?}: {statements:#?}"
+        );
+    }
+}
+
+#[test]
+fn rejects_invalid_compound_assignment_targets() {
+    for input in ["1 += 2", "x + y += 2"] {
+        let (statements, errors) = parse(input);
+        assert_has_error(&errors, ErrorCode::E1003);
+        assert!(statements.is_empty(), "invalid compound assignment should not produce a statement: {statements:#?}");
+    }
+}
+
+#[test]
+fn parses_compound_assignment_to_array_element() {
+    let (statements, errors) = parse("items[1] += 2");
+    assert_no_errors(&errors);
+    assert!(matches!(
+        &statements[..],
+        [Stmt::Expression { expr }]
+            if matches!(
+                expr.as_ref(),
+                Expr::Binary {
+                    op: BinaryOp::AddEqual,
+                    left,
+                    ..
+                } if matches!(left.as_ref(), Expr::ArrayAccess { .. })
+            )
+    ));
+}
+
+#[test]
 fn parses_prefix_and_postfix_unary_expressions() {
     let input = "++value\nvalue--\n!ready\n~bits";
     let (statements, errors) = parse(input);

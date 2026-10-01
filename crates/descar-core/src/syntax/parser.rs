@@ -526,6 +526,7 @@ impl<'a> JsavParser<'a> {
         }
     }
 
+    /// Parses an infix or postfix token using the accumulated left expression.
     fn led(&mut self, left: Expr) -> Option<Expr> {
         let token = self.advance()?.clone();
 
@@ -549,6 +550,18 @@ impl<'a> JsavParser<'a> {
             | TokenKind::Xor
             | TokenKind::ShiftLeft
             | TokenKind::ShiftRight => self.parse_binary(left, token),
+
+            // Compound assignment
+            TokenKind::PlusEqual
+            | TokenKind::MinusEqual
+            | TokenKind::StarEqual
+            | TokenKind::SlashEqual
+            | TokenKind::PercentEqual
+            | TokenKind::AndEqual
+            | TokenKind::OrEqual
+            | TokenKind::XorEqual
+            | TokenKind::ShiftLeftEqual
+            | TokenKind::ShiftRightEqual => self.parse_compound_assignment(left, token),
 
             TokenKind::PlusPlus => {
                 let span = left.span().merge(&token.span);
@@ -575,6 +588,34 @@ impl<'a> JsavParser<'a> {
                 None
             }
         }
+    }
+
+    /// Validates a compound-assignment target and preserves its `Expr::Binary` representation.
+    fn parse_compound_assignment(&mut self, left: Expr, token: Token) -> Option<Expr> {
+        if !Self::is_valid_assignment_target(&left) {
+            self.report_invalid_assignment_target(&left);
+            return None;
+        }
+
+        self.parse_binary(left, token)
+    }
+
+    #[inline]
+    /// Returns whether an expression can be used as an assignment target.
+    const fn is_valid_assignment_target(expr: &Expr) -> bool {
+        matches!(expr, Expr::Variable { .. } | Expr::ArrayAccess { .. })
+    }
+
+    /// Reports the standard parser error for an invalid assignment target.
+    fn report_invalid_assignment_target(&mut self, left: &Expr) {
+        let help_msg = "Only variables and array elements can be assigned to. Consider using a variable name or an array access expression.";
+
+        self.errors.push(CompileError::SyntaxError {
+            code: Some(ErrorCode::E1003),
+            message: "Invalid left-hand side in assignment".into(),
+            span: left.span().clone(),
+            help: Some(help_msg.to_string()),
+        });
     }
 
     // Parsing operations
@@ -629,23 +670,14 @@ impl<'a> JsavParser<'a> {
         Some(Expr::Grouping { expr: Box::new(expr?), span: self.merge_span(start_token) })
     }
 
+    /// Parses a simple `=` assignment after validating its left-hand side.
     fn parse_assignment(&mut self, left: Expr, token: &Token) -> Option<Expr> {
         let value = self.parse_expr(1).unwrap_or_else(|| Expr::null_expr(token.span.clone()));
 
         let span = left.span().merge(value.span());
 
-        // Check if left is valid l-value (variable or array access)
-        let valid = matches!(&left, Expr::Variable { .. } | Expr::ArrayAccess { .. });
-
-        if !valid {
-            let help_msg = "Only variables and array elements can be assigned to. Consider using a variable name or an array access expression.";
-
-            self.errors.push(CompileError::SyntaxError {
-                code: Some(ErrorCode::E1003),
-                message: "Invalid left-hand side in assignment".into(),
-                span: left.span().clone(),
-                help: Some(help_msg.to_string()),
-            });
+        if !Self::is_valid_assignment_target(&left) {
+            self.report_invalid_assignment_target(&left);
             return None;
         }
 
