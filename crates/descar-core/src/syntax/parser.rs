@@ -558,7 +558,7 @@ impl<'a> JsavParser<'a> {
             | TokenKind::OrEqual
             | TokenKind::XorEqual
             | TokenKind::ShiftLeftEqual
-            | TokenKind::ShiftRightEqual => self.parse_binary(left, token),
+            | TokenKind::ShiftRightEqual => self.parse_compound_assignment(left, token),
 
             TokenKind::PlusPlus => {
                 let span = left.span().merge(&token.span);
@@ -585,6 +585,32 @@ impl<'a> JsavParser<'a> {
                 None
             }
         }
+    }
+
+    fn parse_compound_assignment(&mut self, left: Expr, token: Token) -> Option<Expr> {
+        if !Self::is_valid_assignment_target(&left) {
+            self.report_invalid_assignment_target(&left);
+            return None;
+        }
+
+        self.parse_binary(left, token)
+    }
+
+    #[inline]
+    const fn is_valid_assignment_target(expr: &Expr) -> bool {
+        matches!(expr, Expr::Variable { .. } | Expr::ArrayAccess { .. })
+    }
+
+    fn report_invalid_assignment_target(&mut self, left: &Expr) {
+        let help_msg =
+            "Only variables and array elements can be assigned to. Consider using a variable name or an array access expression.";
+
+        self.errors.push(CompileError::SyntaxError {
+            code: Some(ErrorCode::E1003),
+            message: "Invalid left-hand side in assignment".into(),
+            span: left.span().clone(),
+            help: Some(help_msg.to_string()),
+        });
     }
 
     // Parsing operations
@@ -644,18 +670,8 @@ impl<'a> JsavParser<'a> {
 
         let span = left.span().merge(value.span());
 
-        // Check if left is valid l-value (variable or array access)
-        let valid = matches!(&left, Expr::Variable { .. } | Expr::ArrayAccess { .. });
-
-        if !valid {
-            let help_msg = "Only variables and array elements can be assigned to. Consider using a variable name or an array access expression.";
-
-            self.errors.push(CompileError::SyntaxError {
-                code: Some(ErrorCode::E1003),
-                message: "Invalid left-hand side in assignment".into(),
-                span: left.span().clone(),
-                help: Some(help_msg.to_string()),
-            });
+        if !Self::is_valid_assignment_target(&left) {
+            self.report_invalid_assignment_target(&left);
             return None;
         }
 
