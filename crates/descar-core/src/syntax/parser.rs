@@ -604,8 +604,7 @@ impl<'a> JsavParser<'a> {
     }
 
     fn report_invalid_assignment_target(&mut self, left: &Expr) {
-        let help_msg =
-            "Only variables and array elements can be assigned to. Consider using a variable name or an array access expression.";
+        let help_msg = "Only variables and array elements can be assigned to. Consider using a variable name or an array access expression.";
 
         self.errors.push(CompileError::SyntaxError {
             code: Some(ErrorCode::E1003),
