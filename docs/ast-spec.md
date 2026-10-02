@@ -267,7 +267,6 @@ dove `start_location` e `end_location` usano la rappresentazione di `SourceLocat
 
 Il percorso viene troncato per mostrare soltanto gli ultimi 2 componenti, con prefisso `..` quando il percorso originale contiene più componenti. Per il percorso di default vuoto, viene applicata la stessa funzione di troncamento del percorso.
 
-
 ---
 
 ## 4. Valori numerici (`Number`)
@@ -466,6 +465,8 @@ enum LiteralValue {
 Un operatore composto è uno tra: `AddEqual`, `SubtractEqual`, `MultiplyEqual`, `DivideEqual`, `ModuloEqual`, `BitwiseAndEqual`, `BitwiseOrEqual`, `BitwiseXorEqual`, `ShiftLeftEqual`, `ShiftRightEqual`.
 
 **Vincolo aggiuntivo per operatori composti:** il sotto-nodo `left` nell'`Expr::Binary` corrispondente deve identificare una variabile mutabile. La verifica avviene tramite estrazione del nome base della variabile (`base_variable_name`).
+
+**Vincolo di tipo per operatori composti:** il tipo di `Expr::Binary` è il tipo di `left`. Il tipo promosso degli operandi, calcolato con le regole dell'operatore base (§14.4), deve coincidere con il tipo di `left`; in caso contrario si emette `E2002`
 
 ---
 
@@ -671,7 +672,7 @@ Ogni variante di `Expr` porta un campo `span: SourceSpan`. Il metodo `span()` è
 
 ### 12.1 `Expr::Binary`
 
-```
+```text
 Binary {
     left:  Box<Expr>,   // operando sinistro
     op:    BinaryOp,    // operatore
@@ -682,7 +683,7 @@ Binary {
 
 **Semantica:** valuta `left`, valuta `right`, applica `op`. Per gli operatori composti (`AddEqual`, ecc.), `left` è anche il target dell'assegnamento.
 
-**Vincoli di tipo:** vedi §14.4.
+**Vincoli di tipo:** vedi §14.4. Per gli operatori composti il tipo di `Expr::Binary` è il tipo di `left`.
 
 **Invariante di span:** `span` deve coprire integralmente `left.span()`, il simbolo dell'operatore, e `right.span()`.
 
@@ -1201,7 +1202,7 @@ La seconda riga di ciascuna coppia non modifica il risultato della prima.
 
 ### 14.4 Regole di tipo per operatori binari
 
-**Operatori aritmetici** (`Add`, `Subtract`, `Multiply`, `Divide`, `Modulo` e le loro varianti `*Equal`):
+**Operatori aritmetici** (`Add`, `Subtract`, `Multiply`, `Divide`, `Modulo`):
 
 - Entrambi gli operandi devono essere numerici dopo promozione.
 - Il tipo risultante è il tipo promosso dei due operandi.
@@ -1221,27 +1222,27 @@ La seconda riga di ciascuna coppia non modifica il risultato della prima.
 - Se non compatibili, errore `E2012`.
 - Se l'operando sinistro non è `Bool`, errore aggiuntivo `E2017`.
 
-**Operatori bitwise e shift** (`BitwiseAnd`, `BitwiseOr`, `BitwiseXor`, `ShiftLeft`, `ShiftRight` e le loro varianti `*Equal`):
+**Operatori bitwise e shift** (`BitwiseAnd`, `BitwiseOr`, `BitwiseXor`, `ShiftLeft`, `ShiftRight`):
 
 - Entrambi gli operandi devono essere tipi interi.
 - Promozione numerica applicata.
 - Il tipo risultante è il tipo promosso degli operandi interi.
 - Se non interi, errore `E2011`.
 
-**Operatori composti** (tutte le varianti `*Equal`)
+**Operatori composti** (tutte le varianti `*Equal`):
 
-1. left deve essere una variabile mutabile, oppure un accesso ad array
-   su variabile mutabile. L'immutabilità produce E2024 prima di
+1. `left` deve essere una variabile mutabile, oppure un accesso ad array
+   su variabile mutabile. L'immutabilità produce `E2024` **prima** di
    qualsiasi verifica di tipo.
-2. Sia T il tipo di left. La validità degli operandi e il tipo promosso P
+2. Sia `T` il tipo di `left`. La validità degli operandi e il tipo promosso `P`
    sono determinati con le regole dell'operatore base corrispondente
    (`AddEqual` come `Add`, `ShiftLeftEqual` come `ShiftLeft`, e così via),
-   inclusi i codici E2011, E2013 e E2016.
-3. Il tipo di `Expr::Binary` è T.
-4. P deve coincidere con T. In caso contrario si emette E2002.
-   Non è ammessa alcuna conversione implicita da P a T.
-5. Il backend converte left e right in P (§14.2.2), esegue l'operazione
-   in P e memorizza il risultato in T.
+   inclusi i codici `E2011`, `E2013` e `E2016`.
+3. Il tipo di `Expr::Binary` è `T`.
+4. `P` deve coincidere con `T`. In caso contrario si emette `E2002`.
+   Non è ammessa alcuna conversione implicita da `P` a `T`.
+5. Il backend converte `right` in `P` (§14.2.2), esegue l'operazione
+   in `P` e memorizza il risultato in `T`.
 
 ### 14.4.1 Semantica operativa della promozione negli operatori
 
@@ -1594,40 +1595,40 @@ FunctionSymbol {
 
 I codici di errore semantici generati dal type checker sono i seguenti:
 
-| Codice  | Condizione                                                                   |
-| ------- | ---------------------------------------------------------------------------- |
-| `E1003` | Target di assegnazione non valido (non `Variable` né `ArrayAccess`)          |
-| `E1005` | Operatore binario non riconosciuto (generato nel parser)                     |
-| `E2002` | Tipo non assegnabile al tipo annotato o al tipo del target                   |
-| `E2003` | Funzione non-void senza percorso di ritorno completo                         |
-| `E2004` | Condizione non booleana in `if`, `while`, o `for`                            |
-| `E2005` | `return` fuori da qualsiasi funzione                                         |
-| `E2006` | `return` con valore in funzione void                                         |
-| `E2007` | Tipo del valore di ritorno incompatibile con il tipo di ritorno dichiarato   |
-| `E2008` | `return` senza valore in funzione non-void                                   |
-| `E2009` | `break` fuori da un loop                                                     |
-| `E2010` | `continue` fuori da un loop                                                  |
-| `E2011` | Operatore bitwise/shift con operandi non interi                              |
-| `E2012` | Operatore logico (`&&`, `\|\|`) con operandi non booleani                    |
-| `E2013` | Operatore aritmetico con operandi non numerici/incompatibili                 |
-| `E2014` | Operatore di confronto con tipi incompatibili                                |
-| `E2016` | Operazione aritmetica su tipo non numerico                                   |
-| `E2017` | Operazione logica su tipo non booleano                                       |
-| `E2018` | Operatore unario (`-`, `~`, `++`, `--`) con operando non numerico/non intero |
-| `E2019` | Operatore `!` con operando non booleano                                      |
-| `E2020` | Array literal vuoto                                                          |
-| `E2021` | Array literal con elementi di tipo misto                                     |
-| `E2022` | Uso di un nome di funzione come variabile                                    |
-| `E2023` | Variabile non dichiarata                                                     |
-| `E2024` | Assegnazione/mutazione di variabile immutabile                               |
-| `E2025` | Assegnazione a variabile non dichiarata (in `Expr::Assign`)                  |
-| `E2026` | Callee non è un nome di funzione                                             |
-| `E2027` | Funzione non dichiarata                                                      |
-| `E2028` | Numero di argomenti errato nella chiamata                                    |
-| `E2029` | Tipo di argomento incompatibile con il tipo del parametro                    |
-| `E2030` | Indice di array non intero                                                   |
-| `E2031` | Indicizzazione di tipo non array/vector                                      |
-| `E2032` | Identificatore già dichiarato nello scope corrente                           |
+| Codice  | Condizione                                                                                                                     |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `E1003` | Target di assegnazione non valido (non `Variable` né `ArrayAccess`)                                                            |
+| `E1005` | Operatore binario non riconosciuto (generato nel parser)                                                                       |
+| `E2002` | Tipo non assegnabile al tipo annotato o al tipo del target; tipo promosso di un operatore composto diverso dal tipo del target |
+| `E2003` | Funzione non-void senza percorso di ritorno completo                                                                           |
+| `E2004` | Condizione non booleana in `if`, `while`, o `for`                                                                              |
+| `E2005` | `return` fuori da qualsiasi funzione                                                                                           |
+| `E2006` | `return` con valore in funzione void                                                                                           |
+| `E2007` | Tipo del valore di ritorno incompatibile con il tipo di ritorno dichiarato                                                     |
+| `E2008` | `return` senza valore in funzione non-void                                                                                     |
+| `E2009` | `break` fuori da un loop                                                                                                       |
+| `E2010` | `continue` fuori da un loop                                                                                                    |
+| `E2011` | Operatore bitwise/shift con operandi non interi                                                                                |
+| `E2012` | Operatore logico (`&&`, `\|\|`) con operandi non booleani                                                                      |
+| `E2013` | Operatore aritmetico con operandi non numerici/incompatibili                                                                   |
+| `E2014` | Operatore di confronto con tipi incompatibili                                                                                  |
+| `E2016` | Operazione aritmetica su tipo non numerico                                                                                     |
+| `E2017` | Operazione logica su tipo non booleano                                                                                         |
+| `E2018` | Operatore unario (`-`, `~`, `++`, `--`) con operando non numerico/non intero                                                   |
+| `E2019` | Operatore `!` con operando non booleano                                                                                        |
+| `E2020` | Array literal vuoto                                                                                                            |
+| `E2021` | Array literal con elementi di tipo misto                                                                                       |
+| `E2022` | Uso di un nome di funzione come variabile                                                                                      |
+| `E2023` | Variabile non dichiarata                                                                                                       |
+| `E2024` | Assegnazione/mutazione di variabile immutabile                                                                                 |
+| `E2025` | Assegnazione a variabile non dichiarata (in `Expr::Assign`)                                                                    |
+| `E2026` | Callee non è un nome di funzione                                                                                               |
+| `E2027` | Funzione non dichiarata                                                                                                        |
+| `E2028` | Numero di argomenti errato nella chiamata                                                                                      |
+| `E2029` | Tipo di argomento incompatibile con il tipo del parametro                                                                      |
+| `E2030` | Indice di array non intero                                                                                                     |
+| `E2031` | Indicizzazione di tipo non array/vector                                                                                        |
+| `E2032` | Identificatore già dichiarato nello scope corrente                                                                             |
 
 ---
 
