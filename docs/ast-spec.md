@@ -1,7 +1,7 @@
 # Specifica Tecnica: Full Typed AST del linguaggio Descar
 
-**Versione:** 1.0  
-**Data:** 2026-09-28  
+**Versione:** 1.0
+**Data:** 2026-09-28
 **Stato:** Normativa
 
 ---
@@ -1364,13 +1364,15 @@ Un'istanza dell'AST è **semanticamente valida** se e solo se soddisfa **tutte**
 11. Ogni operatore binario richiede i tipi degli operandi come specificato in §14.4.
 12. Ogni operatore unario richiede il tipo dell'operando come specificato in §14.5.
 12.1. Per ogni `Expr::Unary { op, side, ... }`, `side` ha la semantica definita da `UnaryOpSide`: `Prefix` indica che l'operatore precede l'operando, mentre `Postfix` indica che lo segue. La coppia `(op, side)` deve inoltre essere una delle combinazioni semantiche ammesse definite in §7.2. Sono valide esclusivamente le seguenti combinazioni:
-   - `(Negate, Prefix)`
-   - `(Not, Prefix)`
-   - `(BitwiseNot, Prefix)`
-   - `(Increment, Prefix)`
-   - `(Increment, Postfix)`
-   - `(Decrement, Prefix)`
-   - `(Decrement, Postfix)`
+
+    - `(Negate, Prefix)`
+    - `(Not, Prefix)`
+    - `(BitwiseNot, Prefix)`
+    - `(Increment, Prefix)`
+    - `(Increment, Postfix)`
+    - `(Decrement, Prefix)`
+    - `(Decrement, Postfix)`
+
    Le combinazioni non elencate, incluse `(Negate, Postfix)`, `(Not, Postfix)` e `(BitwiseNot, Postfix)`, rendono l'AST semanticamente invalido.
 13. Ogni argomento di una chiamata di funzione deve avere tipo assegnabile al tipo del parametro corrispondente.
 14. Un `return` con valore deve avere tipo assegnabile al tipo di ritorno della funzione.
@@ -1413,20 +1415,20 @@ pub struct Precedence {
 
 La tabella normativa deve corrispondere alla funzione `Precedence::binding_power`:
 
-| Binding power (left, right) | Token | Categoria |
-| --- | --- | --- |
-| (2, 1) | `=`, `+=`, `-=`, `&=`, `|=`, `%=`, `^=`, `*=`, `/=`, `<<=`, `>>=` | assegnazione / assegnazione composta |
-| (4, 3) | `||` | logico |
-| (6, 5) | `&&` | logico |
-| (8, 7) | `==`, `!=` | uguaglianza |
-| (10, 9) | `<`, `<=`, `>`, `>=` | confronto |
-| (12, 11) | `|` | bitwise OR |
-| (14, 13) | `^` | bitwise XOR |
-| (16, 15) | `&` | bitwise AND |
-| (18, 17) | `<<`, `>>` | shift |
-| (20, 19) | `+`, `-` | aritmetico |
-| (22, 21) | `*`, `/`, `%` | aritmetico |
-| (27, 26) | `(`, `[`, `.`, `++`, `--` | postfix / accesso |
+| Binding power (left, right) | Token                                                              | Categoria                            |
+| --------------------------- | ------------------------------------------------------------------ | ------------------------------------ |
+| (2, 1)                      | `=`, `+=`, `-=`, `&=`, `\|=`, `%=`, `^=`, `*=`, `/=`, `<<=`, `>>=` | assegnazione / assegnazione composta |
+| (4, 3)                      | `\|\|`                                                             | logico                               |
+| (6, 5)                      | `&&`                                                               | logico                               |
+| (8, 7)                      | `==`, `!=`                                                         | uguaglianza                          |
+| (10, 9)                     | `<`, `<=`, `>`, `>=`                                               | confronto                            |
+| (12, 11)                    | `\|`                                                               | bitwise OR                           |
+| (14, 13)                    | `^`                                                                | bitwise XOR                          |
+| (16, 15)                    | `&`                                                                | bitwise AND                          |
+| (18, 17)                    | `<<`, `>>`                                                         | shift                                |
+| (20, 19)                    | `+`, `-`                                                           | aritmetico                           |
+| (22, 21)                    | `*`, `/`, `%`                                                      | aritmetico                           |
+| (27, 26)                    | `(`, `[`, `.`, `++`, `--`                                          | postfix / accesso                    |
 
 La voce con binding power `(27, 26)` comprende token che non sono tutti operatori binari. La coppia documenta comunque la precedenza restituita da `Precedence::binding_power` per chiamata, accesso, membro e incremento/decremento postfix.
 
@@ -1489,7 +1491,7 @@ La precedenza relativa resta determinata dal valore di `left_bp`: un operatore c
 
 ### 16.4 Mapping degli operatori di assegnazione
 
-Il token `=` appartiene alla classe di binding power `(2,1)), ma non viene rappresentato come `BinaryOp`. Il parser lo converte in `Expr::Assign`.
+Il token `=` appartiene alla classe di binding power `(2, 1)`, ma non viene rappresentato come `BinaryOp`. Il parser lo converte direttamente in `Expr::Assign`.
 
 Gli operatori composti `+=`, `-=`, `&=`, `|=`, `%=`, `^=`, `*=`, `/=`, `<<=`, `>>=` vengono invece rappresentati come `Expr::Binary` con la corrispondente variante `BinaryOp`.
 
@@ -1582,40 +1584,40 @@ FunctionSymbol {
 
 I codici di errore semantici generati dal type checker sono i seguenti:
 
-| Codice | Condizione |
-| --- | --- |
-| `E1003` | Target di assegnazione non valido (non `Variable` né `ArrayAccess`) |
-| `E1005` | Operatore binario non riconosciuto (generato nel parser) |
-| `E2002` | Tipo non assegnabile al tipo annotato o al tipo del target |
-| `E2003` | Funzione non-void senza percorso di ritorno completo |
-| `E2004` | Condizione non booleana in `if`, `while`, o `for` |
-| `E2005` | `return` fuori da qualsiasi funzione |
-| `E2006` | `return` con valore in funzione void |
-| `E2007` | Tipo del valore di ritorno incompatibile con il tipo di ritorno dichiarato |
-| `E2008` | `return` senza valore in funzione non-void |
-| `E2009` | `break` fuori da un loop |
-| `E2010` | `continue` fuori da un loop |
-| `E2011` | Operatore bitwise/shift con operandi non interi |
-| `E2012` | Operatore logico (`&&`, `\|\|`) con operandi non booleani |
-| `E2013` | Operatore aritmetico con operandi non numerici/incompatibili |
-| `E2014` | Operatore di confronto con tipi incompatibili |
-| `E2016` | Operazione aritmetica su tipo non numerico |
-| `E2017` | Operazione logica su tipo non booleano |
+| Codice  | Condizione                                                                   |
+| ------- | ---------------------------------------------------------------------------- |
+| `E1003` | Target di assegnazione non valido (non `Variable` né `ArrayAccess`)          |
+| `E1005` | Operatore binario non riconosciuto (generato nel parser)                     |
+| `E2002` | Tipo non assegnabile al tipo annotato o al tipo del target                   |
+| `E2003` | Funzione non-void senza percorso di ritorno completo                         |
+| `E2004` | Condizione non booleana in `if`, `while`, o `for`                            |
+| `E2005` | `return` fuori da qualsiasi funzione                                         |
+| `E2006` | `return` con valore in funzione void                                         |
+| `E2007` | Tipo del valore di ritorno incompatibile con il tipo di ritorno dichiarato   |
+| `E2008` | `return` senza valore in funzione non-void                                   |
+| `E2009` | `break` fuori da un loop                                                     |
+| `E2010` | `continue` fuori da un loop                                                  |
+| `E2011` | Operatore bitwise/shift con operandi non interi                              |
+| `E2012` | Operatore logico (`&&`, `\|\|`) con operandi non booleani                    |
+| `E2013` | Operatore aritmetico con operandi non numerici/incompatibili                 |
+| `E2014` | Operatore di confronto con tipi incompatibili                                |
+| `E2016` | Operazione aritmetica su tipo non numerico                                   |
+| `E2017` | Operazione logica su tipo non booleano                                       |
 | `E2018` | Operatore unario (`-`, `~`, `++`, `--`) con operando non numerico/non intero |
-| `E2019` | Operatore `!` con operando non booleano |
-| `E2020` | Array literal vuoto |
-| `E2021` | Array literal con elementi di tipo misto |
-| `E2022` | Uso di un nome di funzione come variabile |
-| `E2023` | Variabile non dichiarata |
-| `E2024` | Assegnazione/mutazione di variabile immutabile |
-| `E2025` | Assegnazione a variabile non dichiarata (in `Expr::Assign`) |
-| `E2026` | Callee non è un nome di funzione |
-| `E2027` | Funzione non dichiarata |
-| `E2028` | Numero di argomenti errato nella chiamata |
-| `E2029` | Tipo di argomento incompatibile con il tipo del parametro |
-| `E2030` | Indice di array non intero |
-| `E2031` | Indicizzazione di tipo non array/vector |
-| `E2032` | Identificatore già dichiarato nello scope corrente |
+| `E2019` | Operatore `!` con operando non booleano                                      |
+| `E2020` | Array literal vuoto                                                          |
+| `E2021` | Array literal con elementi di tipo misto                                     |
+| `E2022` | Uso di un nome di funzione come variabile                                    |
+| `E2023` | Variabile non dichiarata                                                     |
+| `E2024` | Assegnazione/mutazione di variabile immutabile                               |
+| `E2025` | Assegnazione a variabile non dichiarata (in `Expr::Assign`)                  |
+| `E2026` | Callee non è un nome di funzione                                             |
+| `E2027` | Funzione non dichiarata                                                      |
+| `E2028` | Numero di argomenti errato nella chiamata                                    |
+| `E2029` | Tipo di argomento incompatibile con il tipo del parametro                    |
+| `E2030` | Indice di array non intero                                                   |
+| `E2031` | Indicizzazione di tipo non array/vector                                      |
+| `E2032` | Identificatore già dichiarato nello scope corrente                           |
 
 ---
 
@@ -1662,13 +1664,13 @@ La regola del §20.3 che vieta la promozione **diretta** tra le due catene signe
 
 Di conseguenza:
 
-| Espressione | Tipo promosso | Motivazione |
-| --- | --- | --- |
-| `I64 + F32` | `F32` | `I64` viene convertito implicitamente in `F32` per l'operatore |
-| `U64 + F32` | `F32` | `U64` viene convertito implicitamente in `F32` per l'operatore |
-| assegnamento `I64 -> F32` | non assegnabile | la conversione non appartiene a `is_assignable` |
-| assegnamento `U64 -> F32` | non assegnabile | la conversione non appartiene a `is_assignable` |
-| `I32 + U32` | errore `E2013` | nessuna promozione diretta tra catene signed/unsigned |
+| Espressione               | Tipo promosso   | Motivazione                                                       |
+| ------------------------- | --------------- | ----------------------------------------------------------------- |
+| `I64 + F32`               | `F32`           | `I64` viene convertito implicitamente in `F32` per l'operatore    |
+| `U64 + F32`               | `F32`           | `U64` viene convertito implicitamente in `F32` per l'operatore    |
+| Assegnamento `I64 -> F32` | non assegnabile | La conversione non è prevista da `is_assignable`                  |
+| Assegnamento `U64 -> F32` | non assegnabile | La conversione non è prevista da `is_assignable`                  |
+| `I32 + U32`               | errore `E2013`  | Non esiste una promozione diretta tra le catene signed e unsigned |
 
 La frase del §20.3 relativa a `I32 + U32` va quindi interpretata come una regola sulla coppia di **interi signed/unsigned**, non come un divieto generale di conversione da intero a floating-point durante gli operatori.
 
