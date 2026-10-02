@@ -1228,10 +1228,20 @@ La seconda riga di ciascuna coppia non modifica il risultato della prima.
 - Il tipo risultante è il tipo promosso degli operandi interi.
 - Se non interi, errore `E2011`.
 
-**Operatori composti** (tutti i `*Equal`):
+**Operatori composti** (tutte le varianti `*Equal`)
 
-- Richiedono che `left` sia una variabile mutabile (o array access su variabile mutabile).
-- L'immutabilità dell'obiettivo produce errore `E2024` **prima** di qualsiasi verifica di tipo.
+1. left deve essere una variabile mutabile, oppure un accesso ad array
+   su variabile mutabile. L'immutabilità produce E2024 prima di
+   qualsiasi verifica di tipo.
+2. Sia T il tipo di left. La validità degli operandi e il tipo promosso P
+   sono determinati con le regole dell'operatore base corrispondente
+   (`AddEqual` come `Add`, `ShiftLeftEqual` come `ShiftLeft`, e così via),
+   inclusi i codici E2011, E2013 e E2016.
+3. Il tipo di `Expr::Binary` è T.
+4. P deve coincidere con T. In caso contrario si emette E2002.
+   Non è ammessa alcuna conversione implicita da P a T.
+5. Il backend converte left e right in P (§14.2.2), esegue l'operazione
+   in P e memorizza il risultato in T.
 
 ### 14.4.1 Semantica operativa della promozione negli operatori
 
