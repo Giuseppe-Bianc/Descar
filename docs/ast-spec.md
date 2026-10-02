@@ -1,7 +1,7 @@
 # Specifica Tecnica: Full Typed AST del linguaggio Descar
 
-**Versione:** 1.0
-**Data:** 2026-09-28
+**Versione:** 1.1
+**Data:** 2026-10-03
 **Stato:** Normativa
 
 ---
@@ -50,9 +50,10 @@ Le varianti di enum sono indicate come `Variante { campo: Tipo }`.
 
 ### 1.2 Terminologia
 
-- **Nodo**: un'istanza di un tipo enum o struct dell'AST.
+- **Nodo**: un'istanza di `Expr` o `Stmt`. Questi sono gli unici due tipi considerati nodi dell'AST.
+- **Tipo di supporto**: un enum o struct usato come campo o metadato di un nodo, ma che non costituisce autonomamente un nodo dell'AST. Nello stato corrente rientrano in questa categoria `VarBinding`, `Type`, `ElseBranch`, `BinaryOp`, `UnaryOp`, `UnaryOpSide`, `LiteralValue`, `Number` e `Parameter`.
 - **Variante**: uno dei casi distinti di un tipo enum.
-- **Span**: un intervallo di posizioni nel sorgente, associato a ogni nodo.
+- **Span**: un intervallo di posizioni nel sorgente. Ogni nodo `Expr` e `Stmt` possiede un `span: SourceSpan`. Un tipo di supporto può avere uno span proprio, come `Parameter`, oppure non averlo, come `VarBinding`.
 - **Tipo Descar**: un'istanza dell'enum `Type`, rappresentante il tipo statico di un'espressione.
 - **Tipo concreto**: un `Type` che non è `Void` né `NullPtr`.
 - **Tipo numerico**: uno tra `I8`, `I16`, `I32`, `I64`, `U8`, `U16`, `U32`, `U64`, `F32`, `F64`.
@@ -73,14 +74,14 @@ Le varianti di enum sono indicate come `Variante { campo: Tipo }`.
 
 ## 2. Architettura generale dell'AST
 
-L'AST è composto da due categorie principali di nodi:
+L'AST espone due categorie principali di nodi:
 
 | Categoria | Tipo Rust | Descrizione |
 | --- | --- | --- |
 | Espressione | `Expr` | Costrutto che produce un valore tipato |
 | Istruzione | `Stmt` | Costrutto che produce effetti o struttura il flusso |
 
-Tutti i nodi `Expr` e `Stmt` portano un campo `span: SourceSpan` che identifica la loro estensione nel sorgente. Per `Stmt::Expression`, lo span è delegato all'`Expr` interna.
+Solo `Expr` e `Stmt` sono nodi AST. Gli altri tipi definiti nel modulo `syntax::ast` sono tipi di supporto usati come campi dei nodi. Tutte le varianti di `Expr` e `Stmt` portano un campo `span: SourceSpan` che identifica la loro estensione nel sorgente. Per `Stmt::Expression`, lo span è delegato all'`Expr` interna. `Parameter` possiede anch'esso uno span proprio, ma rimane un tipo di supporto e non una terza categoria di nodo.
 
 La radice di un programma Descar è una lista `Vec<Stmt>`. Non esiste un nodo radice esplicito di tipo `Program`; la lista stessa costituisce la radice.
 
@@ -116,7 +117,9 @@ Vec<Stmt>  (radice del programma)
 
 ## 3. Infrastruttura di localizzazione
 
-Ogni nodo dell'AST porta informazioni di posizione sorgente tramite i seguenti tipi.
+Ogni nodo `Expr` o `Stmt` porta informazioni di posizione sorgente tramite un campo `span: SourceSpan`. Questa regola non si estende automaticamente ai tipi di supporto del modulo AST. In particolare, `VarBinding`, `Type`, `ElseBranch`, `BinaryOp`, `UnaryOp`, `UnaryOpSide`, `LiteralValue` e `Number` non possiedono un campo `span`. `Parameter` possiede invece un proprio `span: SourceSpan` perché la sua posizione viene usata direttamente durante la registrazione dei parametri nella symbol table.
+
+Per `Stmt::VarDeclaration`, la posizione disponibile per la dichiarazione e per i suoi singoli `VarBinding` è quindi lo `span` della dichiarazione che li contiene. Il modello AST corrente non rappresenta la posizione dell'identificatore del binding come campo separato.
 
 ### 3.1 `SourceLocation`
 
@@ -638,6 +641,8 @@ struct VarBinding {
 ```
 
 **Semantica:** un `VarBinding` è un elemento di `Stmt::VarDeclaration`. Più binding nella stessa dichiarazione condividono lo stesso tipo annotato e lo stesso flag di mutabilità.
+
+**Localizzazione:** `VarBinding` non possiede un campo `span`. Il parser conserva il nome come `String` e costruisce ogni binding con il solo `name` e l'eventuale `initializer`; lo `span` viene salvato una sola volta su `Stmt::VarDeclaration`. Se `initializer` è presente, la relativa `Expr` conserva il proprio span. La posizione del nome del binding, invece, non è rappresentabile nell'AST corrente.
 
 **Vincoli:**
 
@@ -1541,6 +1546,16 @@ enum ScopeKind {
 
 ### 17.3 `Symbol`
 
+`VariableSymbol.defined_at` è metadato della symbol table e non implica che ogni tipo AST che contribuisce alla dichiarazione abbia un proprio `span`.
+
+Le regole correnti sono:
+
+- per una variabile dichiarata in `Stmt::VarDeclaration`, `defined_at` è una copia di `Stmt::VarDeclaration.span`;
+- per un parametro di funzione, `defined_at` è una copia di `Parameter.span`;
+- per una funzione, `FunctionSymbol.defined_at` è una copia dello `span` della relativa `Stmt::Function` o `Stmt::MainFunction`.
+
+Di conseguenza una `VariableSymbol` ottenuta da un `VarBinding` è sempre localizzabile almeno a livello della dichiarazione che contiene il binding. Non è possibile ricostruire dal solo AST la posizione puntuale del singolo identificatore quando più binding condividono la stessa `Stmt::VarDeclaration`.
+
 ```rust
 enum Symbol {
     Variable(VariableSymbol),
@@ -1652,6 +1667,7 @@ Indipendentemente dalla semantica, un'istanza dell'AST è **strutturalmente vali
 14. `Stmt::VarDeclaration.type_annotation` non è `Type::Void` né `Type::NullPtr`.
 15. `Number::Scientific32(base, _)` e `Number::Scientific64(base, _)`: non ci sono vincoli strutturali sul valore dell'esponente.
 16. `SourceSpan.start.offset <= SourceSpan.end.offset` (span well-formed).
+17. Ogni variante `Expr` e `Stmt` possiede il proprio `span: SourceSpan`; `Parameter` possiede il proprio `span: SourceSpan`. I tipi di supporto che non dichiarano un campo `span`, inclusi `VarBinding`, `Type`, `ElseBranch`, `BinaryOp`, `UnaryOp`, `UnaryOpSide`, `LiteralValue` e `Number`, non sono soggetti a un requisito di localizzazione autonoma.
 
 ---
 
@@ -1727,6 +1743,16 @@ Due istanze di `Type` sono uguali (nel senso di `PartialEq`) se e solo se sono l
 
 Il type checker **non si ferma** al primo errore: raccoglie tutti gli errori in `Vec<CompileError>` e li restituisce tutti al termine di `check()`. Quando la verifica di un sotto-nodo fallisce (ritorna `None`), il type checker continua l'analisi degli altri sotto-nodi (es. continua a visitare gli argomenti di una chiamata anche se la funzione non esiste).
 
+### 20.14 Localizzazione delle diagnostiche per binding multipli
+
+Quando una singola `Stmt::VarDeclaration` contiene più `VarBinding`, il parser associa lo stesso `SourceSpan` all'intera dichiarazione e non conserva uno span separato per ciascun nome. Di conseguenza:
+
+- `VariableSymbol.defined_at` usa lo `span` della `Stmt::VarDeclaration` che contiene il binding;
+- `E2032`, quando rileva una seconda dichiarazione nello stesso scope, riceve come `span` lo stesso `SourceSpan` della `Stmt::VarDeclaration` corrente;
+- il riferimento alla dichiarazione precedente contenuto nel campo `help` usa `VariableSymbol.defined_at`, quindi per un binding di variabile punta anch'esso allo span della dichiarazione che lo contiene.
+
+Questa è una limitazione intenzionale del modello AST corrente: `E2032` sui binding multipli è localizzato a livello della dichiarazione, non del singolo identificatore. Per ottenere una diagnostica puntuale sul secondo nome sarebbe necessario aggiungere una posizione al binding e propagare quella posizione dal parser alla symbol table.
+
 ---
 
-*Fine della specifica tecnica dell'AST Descar — versione 1.0*
+*Fine della specifica tecnica dell'AST Descar, versione 1.1*
