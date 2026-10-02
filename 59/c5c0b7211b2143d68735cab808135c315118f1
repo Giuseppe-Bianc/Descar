@@ -1,0 +1,14 @@
+docs/ast-spec.md
+  h_361662506da91f 1367,1375,1419-1421,1425,1494,1588,1667-1673
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "59c5c0b7211b2143d68735cab808135c315118f1",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
