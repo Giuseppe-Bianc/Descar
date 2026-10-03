@@ -53,7 +53,7 @@ Le varianti di enum sono indicate come `Variante { campo: Tipo }`.
 - **Nodo**: un'istanza di `Expr` o `Stmt`. Questi sono gli unici due tipi considerati nodi dell'AST.
 - **Tipo di supporto**: un enum o struct usato come campo o metadato di un nodo, ma che non costituisce autonomamente un nodo dell'AST. Nello stato corrente rientrano in questa categoria `VarBinding`, `Type`, `ElseBranch`, `BinaryOp`, `UnaryOp`, `UnaryOpSide`, `LiteralValue`, `Number` e `Parameter`.
 - **Variante**: uno dei casi distinti di un tipo enum.
-- **Span**: un intervallo di posizioni nel sorgente. Ogni nodo `Expr` e `Stmt` possiede un `span: SourceSpan`. Un tipo di supporto può avere uno span proprio, come `Parameter`, oppure non averlo, come `VarBinding`.
+- **Span**: un intervallo di posizioni nel sorgente. Ogni nodo `Expr` e `Stmt` espone un `span: SourceSpan` tramite la propria rappresentazione AST; `Stmt::Expression` delega lo span al proprio `Expr` interno e quindi non possiede un campo `span`. Un tipo di supporto può avere uno span proprio, come `Parameter`, oppure non averlo, come `VarBinding`.
 - **Tipo Descar**: un'istanza dell'enum `Type`, rappresentante il tipo statico di un'espressione.
 - **Tipo concreto**: un `Type` che non è `Void` né `NullPtr`.
 - **Tipo numerico**: uno tra `I8`, `I16`, `I32`, `I64`, `U8`, `U16`, `U32`, `U64`, `F32`, `F64`.
@@ -81,7 +81,7 @@ L'AST espone due categorie principali di nodi:
 | Espressione | `Expr` | Costrutto che produce un valore tipato |
 | Istruzione | `Stmt` | Costrutto che produce effetti o struttura il flusso |
 
-Solo `Expr` e `Stmt` sono nodi AST. Gli altri tipi definiti nel modulo `syntax::ast` sono tipi di supporto usati come campi dei nodi. Tutte le varianti di `Expr` e `Stmt` portano un campo `span: SourceSpan` che identifica la loro estensione nel sorgente. Per `Stmt::Expression`, lo span è delegato all'`Expr` interna. `Parameter` possiede anch'esso uno span proprio, ma rimane un tipo di supporto e non una terza categoria di nodo.
+Solo `Expr` e `Stmt` sono nodi AST. Gli altri tipi definiti nel modulo `syntax::ast` sono tipi di supporto usati come campi dei nodi. Ogni `Expr` e `Stmt` espone uno `span: SourceSpan` che identifica la sua estensione nel sorgente. `Stmt::Expression` non possiede un campo `span`: il metodo `Stmt::span()` delega allo span dell'`Expr` interna. `Parameter` possiede anch'esso uno span proprio, ma rimane un tipo di supporto e non una terza categoria di nodo.
 
 La radice di un programma Descar è una lista `Vec<Stmt>`. Non esiste un nodo radice esplicito di tipo `Program`; la lista stessa costituisce la radice.
 
@@ -117,7 +117,7 @@ Vec<Stmt>  (radice del programma)
 
 ## 3. Infrastruttura di localizzazione
 
-Ogni nodo `Expr` o `Stmt` porta informazioni di posizione sorgente tramite un campo `span: SourceSpan`. Questa regola non si estende automaticamente ai tipi di supporto del modulo AST. In particolare, `VarBinding`, `Type`, `ElseBranch`, `BinaryOp`, `UnaryOp`, `UnaryOpSide`, `LiteralValue` e `Number` non possiedono un campo `span`. `Parameter` possiede invece un proprio `span: SourceSpan` perché la sua posizione viene usata direttamente durante la registrazione dei parametri nella symbol table.
+Ogni nodo `Expr` o `Stmt` espone informazioni di posizione sorgente tramite `span: SourceSpan`. Questa regola non si estende automaticamente ai tipi di supporto del modulo AST. In particolare, `VarBinding`, `Type`, `ElseBranch`, `BinaryOp`, `UnaryOp`, `UnaryOpSide`, `LiteralValue` e `Number` non possiedono un campo `span`. `Parameter` possiede invece un proprio `span: SourceSpan` perché la sua posizione viene usata direttamente durante la registrazione dei parametri nella symbol table. `Stmt::Expression` costituisce l'eccezione alla proprietà diretta del campo: il suo span è esposto tramite delega all'`Expr` interna.
 
 Per `Stmt::VarDeclaration`, la posizione disponibile per la dichiarazione e per i suoi singoli `VarBinding` è quindi lo `span` della dichiarazione che li contiene. Il modello AST corrente non rappresenta la posizione dell'identificatore del binding come campo separato.
 
@@ -673,7 +673,7 @@ enum ElseBranch {
 
 ## 12. Espressioni (`Expr`)
 
-Ogni variante di `Expr` porta un campo `span: SourceSpan`. Il metodo `span()` è implementato per tutte le varianti.
+Ogni `Expr` espone un `span: SourceSpan`. Il metodo `span()` è implementato per tutte le varianti; ogni variante concreta di `Expr` memorizza il proprio campo `span`.
 
 ### 12.1 `Expr::Binary`
 
@@ -844,7 +844,7 @@ ArrayAccess {
 
 ## 13. Istruzioni (`Stmt`)
 
-Ogni variante di `Stmt` porta un campo `span: SourceSpan` (eccezione: `Stmt::Expression` delega lo span all'`Expr` interna tramite il metodo `span()`).
+Ogni `Stmt` espone uno `span: SourceSpan`. Tutte le varianti tranne `Stmt::Expression` memorizzano un campo `span`; `Stmt::Expression` delega invece lo span all'`Expr` interna tramite il metodo `span()`.
 
 ### 13.1 `Stmt::Expression`
 
