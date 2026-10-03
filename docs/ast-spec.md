@@ -564,7 +564,7 @@ enum Type {
     // Tipi composti
     Array {
         element_type: Box<Type>,  // tipo degli elementi, non Void, non NullPtr
-        size: Box<Expr>,          // espressione di dimensione, valutabile a u64 > 0
+        size: Box<Expr>,          // espressione che rappresenta la capacità dell'array
     },
 
     Vector {
@@ -582,7 +582,10 @@ enum Type {
 - **`Custom { name }`**: `name` deve essere non vuoto. Il type checker non valida se il tipo custom è effettivamente dichiarato (versione attuale; `TypeAlias` nella symbol table è previsto per uso futuro).
 - **`Array { element_type, size }`**:
     - `element_type` non deve essere `Void` né `NullPtr`.
-    - `size` deve essere un'espressione valutabile come intero positivo (`u64 > 0`) a compile time. Il type checker accetta solo `Expr::Literal { value: LiteralValue::Numeric(...) }` con valore non negativo come dimensione valida. Espressioni non valutabili staticamente sono ammesse strutturalmente ma causano `None` nella valutazione della dimensione.
+    - `size` è un'espressione `Expr` che rappresenta la capacità dell'array.
+    - Il campo `size` non è soggetto a un vincolo strutturale che richieda un literal numerico o una valutazione immediata a compile time.
+    - L'AST può quindi rappresentare una capacità tramite un literal numerico oppure tramite un'altra variante di `Expr`, inclusi `Variable`, `Grouping`, `Binary`, `Unary`, `Call` o `ArrayAccess`.
+    - Le condizioni semantiche per cui l'espressione della capacità è accettabile non sono definite dalla struttura AST e sono specificate nelle regole del sistema di tipizzazione.
 - **`Vector { element_type }`**: `element_type` non deve essere `Void` né `NullPtr`.
 - **`Void`**: usato esclusivamente come tipo di ritorno di funzioni (incluso `main`). Non può apparire come tipo di una variabile, parametro, o elemento di array/vector.
 - **`NullPtr`**: tipo inferito dal letterale `nullptr`. Può essere assegnato a `Array { ... }`, `Vector { ... }`, o `Custom { ... }` (vedi §14.3).
@@ -1668,6 +1671,7 @@ Indipendentemente dalla semantica, un'istanza dell'AST è **strutturalmente vali
 15. `Number::Scientific32(base, _)` e `Number::Scientific64(base, _)`: non ci sono vincoli strutturali sul valore dell'esponente.
 16. `SourceSpan.start.offset <= SourceSpan.end.offset` (span well-formed).
 17. Ogni variante `Expr` e `Stmt` possiede il proprio `span: SourceSpan`; `Parameter` possiede il proprio `span: SourceSpan`. I tipi di supporto che non dichiarano un campo `span`, inclusi `VarBinding`, `Type`, `ElseBranch`, `BinaryOp`, `UnaryOp`, `UnaryOpSide`, `LiteralValue` e `Number`, non sono soggetti a un requisito di localizzazione autonoma.
+18. `Type::Array.size` è strutturalmente valido per qualsiasi valore di `Expr` rappresentabile dall'AST. Il vincolo riguarda esclusivamente la struttura del campo `size`, non la validità semantica della capacità.
 
 ---
 
@@ -1715,9 +1719,55 @@ Un nome può essere ridichiarato in uno scope interno a quello in cui è stato d
 
 `Stmt::For { condition: None, ... }` è valido; rappresenta un loop infinito (`for(;;)`). Non produce errori semantici relativi al tipo della condizione.
 
-### 20.7 Dimensioni di array non valutabili staticamente
+### 20.7 Espressioni usate come dimensione degli array
 
-`Type::Array { size: expr }` dove `expr` non è un letterale intero positivo: la dimensione è trattata come `None` da `get_size`. Due array con dimensioni non valutabili vengono confrontati strutturalmente (`expr1 == expr2`). L'assegnabilità tra due array con dimensioni non valutabili restituisce `false` se `get_size` restituisce `None` per entrambi.
+`Type::Array.size` è rappresentato nell'AST come `Box<Expr>`. La documentazione
+di `ast_type.rs` prevede esplicitamente che il campo possa contenere un literal
+numerico oppure un'espressione non immediatamente valutata.
+
+Il `Display` di `Type` applica le seguenti regole:
+
+- quando `size` è `Expr::Literal { value: LiteralValue::Numeric(number), .. }`,
+  viene mostrato `number.to_string()`;
+- per ogni altra forma di `Expr`, viene mostrato `?`.
+
+Esempi:
+
+```text
+Type::Array { element_type: I32, size: Literal(Numeric(...)) }
+    -> "[i32; 4]"
+
+Type::Array { element_type: I32, size: Variable("n") }
+    -> "[i32; ?]"
+
+Type::Array { element_type: I32, size: Call(...) }
+    -> "[i32; ?]"
+```
+
+Una dimensione non valutata è quindi una forma prevista dalla rappresentazione
+AST e non costituisce, per la sola struttura dell'AST, un errore.
+
+La funzione `get_size`, dove presente nel type checker, non è parte del modello
+strutturale di `Type::Array`. Le condizioni semantiche che stabiliscono quali
+forme di `Expr` siano ammissibili come capacità devono essere definite nelle
+regole semantiche del type checker.
+
+Ai fini del confronto dei tipi, il comportamento delle funzioni semantiche
+che incontrano una dimensione non valutabile resta quello definito dal type
+checker corrente:
+
+- `is_same_type` confronta strutturalmente le espressioni di dimensione quando
+  entrambe non sono valutabili;
+- `is_same_type` restituisce `false` quando una dimensione è valutabile e
+  l'altra non lo è;
+- `is_assignable` tra due `Type::Array` richiede che entrambe le dimensioni
+  siano valutabili e abbiano lo stesso valore;
+- una dimensione non valutabile non viene resa semanticamente valida da questi
+  comportamenti di confronto.
+
+Di conseguenza, questa sezione non impone alcun requisito AST secondo cui la
+dimensione debba essere un intero positivo, né stabilisce un nuovo codice di
+errore per le dimensioni non valutabili.
 
 ### 20.8 Confronto tra `Char` e `String`
 
