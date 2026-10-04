@@ -2,12 +2,17 @@
   "version": "1.1.0",
   "integration_state_schema": 1,
   "installed_integrations": [
-    "claude"
+    "claude",
+    "kiro-cli"
   ],
   "integration_settings": {
     "claude": {
       "script": "py",
       "invoke_separator": "-"
+    },
+    "kiro-cli": {
+      "script": "py",
+      "invoke_separator": "."
     }
   },
   "integration": "claude",
