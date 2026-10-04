@@ -49,7 +49,7 @@ A type-checker or semantic analysis pass retrieves the declared type of any vari
 
 ### User Story 3 - Structural Integrity and Source Provenance (Priority: P2)
 
-Every AST node carries a source span (`SourceSpan`) that unambiguously locates it in the original source text. Structural relationships between nodes are explicit (e.g., the else branch of an `if` is a distinct `ElseBranch` variant, not a raw `Option<Box<Stmt>>`), and every node can be traversed without implicit interpretation.
+Every AST node carries a `SourceSpan` that locates it in the original source text. For nodes with a direct textual origin (a source token or token range), the span reproduces the verbatim source fragment. For synthesised nodes created by the parser to fill implicit defaults (e.g., `Type::Void` for a function with no declared return type), the span is a zero-width anchor at the last consumed token — valid for positional diagnostics but not expected to reproduce a source fragment. Structural relationships between nodes are explicit (e.g., the else branch of an `if` is a distinct `ElseBranch` variant, not a raw `Option<Box<Stmt>>`), and every node can be traversed without implicit interpretation.
 
 **Why this priority**: Error reporting, diagnostic highlighting, and AST pretty-printing all require precise source positions. Ambiguous structural relationships create silent information loss.
 
@@ -99,7 +99,7 @@ A semantic analysis pass or IR generator receives the AST and can, without modif
 - **FR-001**: The AST MUST define a distinct node variant for each of the following expression kinds: binary operation, unary operation, grouping (parenthesised expression), literal (numeric, string, character, boolean, nullptr), array literal, variable reference, assignment, function/method call, and array index access.
 - **FR-002**: The AST MUST define a distinct node variant for each of the following statement kinds: expression statement, variable declaration (with mutability flag), function declaration, main function declaration, if/else-if/else, while loop, for loop (three-clause), block, return, break, and continue.
 - **FR-003**: The AST MUST define a type model covering all primitive scalar types (`i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`, `string`, `bool`), the fixed-size array type, the dynamic vector type, `void`, `nullptr`, and user-defined (custom) named types.
-- **FR-004**: Every expression node and every statement node MUST carry a `SourceSpan` value that maps the node back to the exact source range it occupies. The `Stmt::Expression` variant MUST carry its own explicit `span: SourceSpan` field (covering the full statement extent including any trailing terminator), consistent with all other `Stmt` variants; it MUST NOT rely solely on delegating to the inner `Expr`'s span.
+- **FR-004**: Every expression node and every statement node MUST carry a `SourceSpan` value. For nodes with a direct textual origin the span maps the node back to the exact source range it occupies. For synthesised nodes (nodes created by the parser to represent implicit defaults with no corresponding source token) the span MUST be a zero-width `SourceSpan` anchored at the position of the last consumed token before the synthesis point. The `Stmt::Expression` variant MUST carry its own explicit `span: SourceSpan` field (covering the full statement extent including any trailing terminator), consistent with all other `Stmt` variants; it MUST NOT rely solely on delegating to the inner `Expr`'s span.
 - **FR-005**: The `Stmt::VarDeclaration` node MUST carry a `bindings` collection (ordered), a single shared `type_annotation`, and an `is_mutable` flag that distinguishes `var` from `const` declarations.
 - **FR-006**: The `Stmt::Function` node MUST carry the function name, an ordered list of `Parameter` nodes (each with name and type annotation), the declared return type (defaulting to `Type::Void` when omitted), and the body as a `Stmt::Block`.
 - **FR-007**: The `ElseBranch` model MUST distinguish three cases: no else clause (`None`), a plain else block (`Block`), and an else-if continuation (`ElseIf`) — so that chained conditionals are structurally explicit.
@@ -118,7 +118,7 @@ A semantic analysis pass or IR generator receives the AST and can, without modif
 ### Key Entities
 
 - **`Expr`**: The sum type of all expression node variants; carries a `SourceSpan` on each variant and exposes `span()`.
-- **`Stmt`**: The sum type of all statement node variants; carries a `SourceSpan` on most variants and exposes `span()`.
+- **`Stmt`**: The sum type of all statement node variants; carries a `SourceSpan` on **every** variant and exposes `span()`. No variant is exempt — this is consistent with FR-004 and the clarification that `Stmt::Expression` carries its own explicit `span` field.
 - **`Type`**: The sum type of all type annotation variants (primitives, array, vector, void, nullptr, custom).
 - **`BinaryOp`**: Closed enumeration of all binary operators.
 - **`UnaryOp`**: Closed enumeration of all unary operators.
@@ -142,6 +142,14 @@ A semantic analysis pass or IR generator receives the AST and can, without modif
 - Q: For the purpose of SC-006, which changes to `Expr` or `Stmt` enums should be treated as breaking and require explicit documentation and a migration path? → A: Renaming, removing, or changing the type of an existing field/variant is breaking; adding new optional fields or new variants (marked `#[non_exhaustive]`) is non-breaking. Breaking changes MUST be documented in a `MIGRATION.md` note.
 - Q: Should `TypedExpr` and `TypedStmt` be defined in the existing `syntax::ast` module or in a new dedicated sub-module within `descar-core`? → A: New `syntax::typed_ast` sub-module within `descar-core` — keeps untyped AST (`syntax::ast`) and typed AST (`syntax::typed_ast`) in clearly separated modules.
 
+### Contradiction Resolution 2026-10-04 (P-001)
+
+- Issue: Key Entity `Stmt` described spans as present "on most variants", contradicting FR-004 ("every statement node MUST carry a `SourceSpan`") and User Story 3. → Resolution: FR-004 is authoritative. The Key Entity `Stmt` description corrected to state that **every** variant carries a `SourceSpan`. No variant is exempt. Consistent with Q2 clarification that `Stmt::Expression` carries its own explicit `span` field.
+
+### Contradiction Resolution 2026-10-04 (P-002)
+
+- Issue: SC-004 required that "every AST node's `span()` reproduces the verbatim source fragment that produced the node", but synthesised nodes (e.g., `Type::Void` inserted by the parser when a function omits its return type) have no corresponding source token — making the verbatim-reproduction clause impossible to satisfy for those nodes. → Resolution: SC-004 is now scoped to nodes with a direct textual origin. Synthesised nodes are explicitly exempt from the verbatim-reproduction clause and MUST carry a zero-width `SourceSpan` anchored at the last consumed token before the synthesis point. FR-004, User Story 3, and the `Type::Void` Assumption updated accordingly.
+
 ---
 
 ## Success Criteria *(mandatory)*
@@ -151,7 +159,7 @@ A semantic analysis pass or IR generator receives the AST and can, without modif
 - **SC-001**: Given any syntactically valid `.dr` source file, the parsed AST contains no "unrecognised" or generic catch-all node for any construct defined by the grammar; coverage is 100% of grammar productions relevant to subsequent compiler phases.
 - **SC-002**: Every type annotation position in the AST (variable declaration, parameter, return type, array size) is represented by a concrete `Type` variant — no position silently defaults to `Type::Void` or `Type::Custom` for a construct that has a specific type keyword.
 - **SC-003**: All example `.dr` files in `dr_files/` are parseable to an AST that passes a structural completeness check (every node variant, span, and child field is non-null/non-empty where the grammar mandates presence).
-- **SC-004**: A round-trip property holds: for every AST node, the `span()` method returns a source range that, when extracted from the original source text, reproduces the verbatim source fragment that produced the node.
+- **SC-004**: A round-trip property holds for nodes with a direct textual origin: for every AST node that corresponds to one or more source tokens, the `span()` method returns a source range that, when extracted from the original source text, reproduces the verbatim source fragment that produced the node. Synthesised nodes — nodes created by the parser to fill in implicit defaults with no corresponding source token (e.g., a `Type::Void` return type for a function that omits the return annotation) — are explicitly exempt from the verbatim-reproduction clause. Synthesised nodes MUST carry a zero-width `SourceSpan` anchored at the position of the last consumed source token before the synthesis point (e.g., the closing `)` of the parameter list for an implicit `Type::Void`). This anchor span is valid for position-based diagnostics but does not reproduce a source fragment.
 - **SC-005**: The resolved-type annotation mechanism on `Expr` nodes is exercised by the existing type-checker tests: after the type checker runs, typed expressions carry their resolved type and the tests continue to pass with no regression.
 - **SC-006**: All existing tests in `crates/descar-core/tests/` pass without modification after the AST changes are applied. A "breaking change" is defined as: renaming, removing, or changing the type of an existing public `Expr` or `Stmt` field or variant. Adding new optional fields or new enum variants (marked `#[non_exhaustive]` where appropriate) is non-breaking and does not require a migration path. Any breaking change introduced by this feature MUST be explicitly documented in a `MIGRATION.md` note within the feature directory.
 
@@ -162,7 +170,7 @@ A semantic analysis pass or IR generator receives the AST and can, without modif
 - The grammar of the Descar language is fully captured by the current `JsavParser` and the existing token set in `TokenKind`; no grammar extensions (structs, enums, generics beyond `vector<T>`, lambdas, traits, modules) are in scope for this feature.
 - The existing `SourceSpan` and `SourceLocation` types are sufficient to represent all required source ranges; no new location infrastructure is needed.
 - The `Number` type in `crates/descar-core/src/tokens/number.rs` is the canonical representation for all numeric literal values and is shared between the lexer and the AST's `LiteralValue::Numeric` variant.
-- The `Type::Void` variant serves as the default return type for functions that do not declare one; this default is applied by the parser, not the type checker.
+- The `Type::Void` variant serves as the default return type for functions that do not declare one; this default is applied by the parser, not the type checker. The synthesised `Type::Void` node carries a zero-width `SourceSpan` anchored at the last consumed token before synthesis (e.g., the closing `)` of the parameter list), consistent with the synthesised-node span policy in FR-004 and SC-004.
 - The resolved-type annotation on `Expr` nodes (FR-014) is implemented as a `TypedExpr` wrapper struct rather than an embedded field on each `Expr` variant. The `Expr` enum itself is not changed, preserving all existing parsing and printing code that constructs or matches on `Expr` variants without type information.
 - The `vector<T>` type notation is the only generic/parameterised type constructor in scope; no other parameterised type syntax exists in the grammar.
 - All existing public APIs (parser output, printer input, type-checker input) remain stable; the typed AST is additive and backward-compatible where possible, or migration is explicit and documented.
