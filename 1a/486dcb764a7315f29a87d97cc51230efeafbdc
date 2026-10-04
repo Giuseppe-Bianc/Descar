@@ -1,0 +1,14 @@
+.specify/extensions/git/git-config.yml
+  h_361662506da91f 25,54,57,60,63,66,69,72,75,78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1a486dcb764a7315f29a87d97cc51230efeafbdc",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
