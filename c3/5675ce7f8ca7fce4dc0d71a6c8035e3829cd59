@@ -1,0 +1,25 @@
+.specify/memory/constitution.md
+  h_361662506da91f 3-26,32,34,36-37,39,41-44,46-47,49-50,52-53,55,57-58,60-139,143-147,151,153-262,264-449,453-460,462
+  s_9662e4a2de857b::t_f855db89e18f90 59,152,263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c35675ce7f8ca7fce4dc0d71a6c8035e3829cd59",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_9662e4a2de857b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "08fd61f7-3923-47e7-b2eb-3afb1ff4b9fc",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
