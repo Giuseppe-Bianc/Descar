@@ -117,18 +117,18 @@ A semantic analysis pass or IR generator receives the AST and can, without modif
 
 ### Key Entities
 
-- **`Expr`**: The sum type of all expression node variants; carries a `SourceSpan` on each variant and exposes `span()`.
-- **`Stmt`**: The sum type of all statement node variants; carries a `SourceSpan` on **every** variant and exposes `span()`. No variant is exempt — this is consistent with FR-004 and the clarification that `Stmt::Expression` carries its own explicit `span` field.
-- **`Type`**: The sum type of all type annotation variants (primitives, array, vector, void, nullptr, custom).
-- **`BinaryOp`**: Closed enumeration of all binary operators.
-- **`UnaryOp`**: Closed enumeration of all unary operators.
-- **`UnaryOpSide`**: Two-variant enumeration distinguishing prefix from postfix application.
-- **`LiteralValue`**: Sum type of literal value kinds (numeric, string, char, bool, nullptr).
-- **`Parameter`**: Named tuple of (name, type_annotation, span) for function parameters.
-- **`VarBinding`**: Named tuple of (name, optional initializer) for multi-binding declarations.
-- **`ElseBranch`**: Three-variant enumeration for the else clause of an if statement.
-- **`TypedExpr`**: Wrapper struct (in `syntax::typed_ast`) pairing an `Expr` with an `Option<Type>` resolved-type field; populated by the type-checker pass. `None` means the type of that specific expression could not be resolved.
-- **`TypedStmt`**: Wrapper struct (in `syntax::typed_ast`) pairing a `Stmt` with any typed sub-expression context; mirrors `TypedExpr` at the statement level for phases that operate on a fully annotated tree.
+- **`Expr`**: The sum type of all expression node variants. Each variant carries a `SourceSpan`. The type exposes `span()`.
+- **`Stmt`**: The sum type of all statement node variants. Every variant carries a `SourceSpan`. No variant is exempt. This satisfies FR-004 and the clarification that `Stmt::Expression` has its own explicit `span` field.
+- **`Type`**: The sum type of all type annotation variants. The variants are primitives, array, vector, void, nullptr, and custom.
+- **`BinaryOp`**: A closed enumeration of all binary operators.
+- **`UnaryOp`**: A closed enumeration of all unary operators.
+- **`UnaryOpSide`**: A two-variant enumeration. It identifies prefix and postfix application.
+- **`LiteralValue`**: The sum type of all literal value kinds. The kinds are numeric, string, char, bool, and nullptr.
+- **`Parameter`**: A named tuple with `name`, `type_annotation`, and `span` for function parameters.
+- **`VarBinding`**: A named tuple with `name` and an optional initializer for multi-binding declarations.
+- **`ElseBranch`**: A three-variant enumeration for the else clause of an if statement.
+- **`TypedExpr`**: A wrapper struct in `syntax::typed_ast`. It contains an `Expr` and an `Option<Type>` resolved-type field. The type-checker pass populates this field. `None` means that the type of the specific expression cannot be resolved.
+- **`TypedStmt`**: A wrapper struct in `syntax::typed_ast`. It contains a `Stmt` and any typed sub-expression context. It mirrors `TypedExpr` at the statement level for phases that operate on a fully annotated tree.
 
 ---
 
