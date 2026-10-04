@@ -22,10 +22,10 @@ A compiler developer traverses a parsed Descar program and finds a distinct, ide
 
 **Acceptance Scenarios**:
 
-1. **Given** a `.dr` source file containing every statement kind, **When** the parser produces an AST, **Then** each statement maps to a uniquely named node variant with no two structurally distinct constructs sharing the same variant.
-2. **Given** an expression using all binary operators (arithmetic, comparison, logical, bitwise, shift, compound assignment), **When** the expression is parsed, **Then** each operator is carried as a distinct `BinaryOp` enum variant inside an `Expr::Binary` node, with left and right operands preserved.
-3. **Given** a function declaration with parameters and a typed return annotation, **When** parsed, **Then** the `Stmt::Function` node contains the function name, a complete ordered list of `Parameter` nodes (each with name and type), the declared return type, and the body block.
-4. **Given** a `for` loop with an initializer, condition, and increment clause, **When** parsed, **Then** the `Stmt::For` node preserves all three optional clauses independently and the body.
+1. **Given** a `.dr` source file that contains all statement kinds, **When** the parser creates an AST, **Then** each statement maps to a node variant with a unique name. No two different constructs use the same variant.
+2. **Given** an expression that uses all binary operators, including arithmetic, comparison, logical, bitwise, shift, and compound assignment operators, **When** the parser parses the expression, **Then** each operator is stored as a separate `BinaryOp` enum variant inside an `Expr::Binary` node. The node preserves the left operand and the right operand.
+3. **Given** a function declaration with parameters and a typed return annotation, **When** the parser parses the declaration, **Then** the `Stmt::Function` node contains the function name, the complete ordered list of `Parameter` nodes, the declared return type, and the body block. Each `Parameter` node contains the parameter name and type.
+4. **Given** a `for` loop with an initializer, condition, and increment clause, **When** the parser parses the loop, **Then** the `Stmt::For` node preserves the initializer, condition, and increment clauses as separate optional fields, and it preserves the body.
 
 ---
 
@@ -40,10 +40,10 @@ A type-checker or semantic analysis pass retrieves the declared type of any vari
 **Acceptance Scenarios**:
 
 1. **Given** a variable declaration `var x: i32 = 0`, **When** the AST node is inspected, **Then** the `type_annotation` field contains `Type::I32`, and the `is_mutable` flag is `true`.
-2. **Given** a constant declaration `const y: bool = true`, **When** inspected, **Then** `type_annotation` is `Type::Bool` and `is_mutable` is `false`.
-3. **Given** an array type annotation `i32[10]`, **When** inspected, **Then** the `Type::Array` node contains `element_type: Type::I32` and a `size` expression evaluating to the literal `10`.
-4. **Given** a function parameter `n: f64`, **When** inspected, **Then** the `Parameter` node holds `name = "n"` and `type_annotation = Type::F64`.
-5. **Given** a function with no explicit return type annotation, **When** parsed, **Then** the `return_type` field defaults to `Type::Void`.
+2. **Given** a constant declaration `const y: bool = true`, **When** the AST node is inspected, **Then** the `type_annotation` field contains `Type::Bool`, and the `is_mutable` flag is `false`.
+3. **Given** an array type annotation `i32[10]`, **When** the AST node is inspected, **Then** the `Type::Array` node contains `element_type: Type::I32` and a `size` expression that evaluates to the literal `10`.
+4. **Given** a function parameter `n: f64`, **When** the AST node is inspected, **Then** the `Parameter` node contains `name = "n"` and `type_annotation = Type::F64`.
+5. **Given** a function with no return type annotation, **When** the function is parsed, **Then** the `return_type` field has the default value `Type::Void`.
 
 ---
 
@@ -57,9 +57,9 @@ Every AST node carries a `SourceSpan` that locates it in the original source tex
 
 **Acceptance Scenarios**:
 
-1. **Given** a statement at line 5 columns 3–20 in the source, **When** the corresponding AST node's `span()` is inspected, **Then** the returned `SourceSpan` correctly identifies that source range.
-2. **Given** an `if` statement with an `else if` continuation, **When** the AST is inspected, **Then** the `else_branch` field is `ElseBranch::ElseIf(...)` containing the nested `Stmt::If` node, not `ElseBranch::Block` or `ElseBranch::None`.
-3. **Given** a block with multiple statements, **When** the `Stmt::Block` node is traversed, **Then** each child statement is accessible by index in the `statements` vector in source order.
+1. **Given** a statement at line 5, columns 3–20 in the source, **When** the AST node `span()` is checked, **Then** the returned `SourceSpan` identifies this source range correctly.
+2. **Given** an `if` statement with an `else if` continuation, **When** the AST is checked, **Then** the `else_branch` field is `ElseBranch::ElseIf(...)` and contains the nested `Stmt::If` node. It is not `ElseBranch::Block` or `ElseBranch::None`.
+3. **Given** a block with multiple statements, **When** the `Stmt::Block` node is traversed, **Then** each child statement is available by index in the `statements` vector in source order.
 
 ---
 
@@ -73,9 +73,9 @@ A semantic analysis pass or IR generator receives the AST and can, without modif
 
 **Acceptance Scenarios**:
 
-1. **Given** a typed expression `1 + 2`, **When** the type checker produces a `TypedExpr` tree, **Then** the `TypedExpr` wrapping the binary node carries `resolved_type: Some(Type::I32)` (or the promoted numeric type).
-2. **Given** a `TypedExpr` wrapping a `Expr::Variable` node for a declared `var x: f64`, **When** the type checker has run, **Then** `resolved_type` is `Some(Type::F64)`.
-3. **Given** an expression node whose type cannot be resolved (e.g., it references an undeclared variable), **When** inspected post-checking, **Then** `resolved_type` is `None` for that specific expression, while other expressions in the same program whose types are determinable still carry `Some(T)` — errors are local and do not suppress annotation of unaffected nodes.
+1. **Given** a typed expression `1 + 2`, **When** the type checker creates a `TypedExpr` tree, **Then** the `TypedExpr` that wraps the binary node has `resolved_type: Some(Type::I32)` (or the promoted numeric type).
+2. **Given** a `TypedExpr` that wraps an `Expr::Variable` node for a declared `var x: f64`, **When** the type checker completes, **Then** `resolved_type` is `Some(Type::F64)`.
+3. **Given** an expression node with an unknown type, for example, it uses an undeclared variable, **When** the type checker completes, **Then** `resolved_type` is `None` for that expression, while other expressions in the same program with known types still have `Some(T)`. Errors in one expression do not prevent type annotation for other expressions.
 
 ---
 
