@@ -142,14 +142,6 @@ A semantic analysis pass or IR generator receives the AST and can, without modif
 - Q: For the purpose of SC-006, which changes to `Expr` or `Stmt` enums should be treated as breaking and require explicit documentation and a migration path? → A: Renaming, removing, or changing the type of an existing field/variant is breaking; adding new optional fields or new variants (marked `#[non_exhaustive]`) is non-breaking. Breaking changes MUST be documented in a `MIGRATION.md` note.
 - Q: Should `TypedExpr` and `TypedStmt` be defined in the existing `syntax::ast` module or in a new dedicated sub-module within `descar-core`? → A: New `syntax::typed_ast` sub-module within `descar-core` — keeps untyped AST (`syntax::ast`) and typed AST (`syntax::typed_ast`) in clearly separated modules.
 
-### Contradiction Resolution 2026-10-04 (P-001)
-
-- Issue: Key Entity `Stmt` described spans as present "on most variants", contradicting FR-004 ("every statement node MUST carry a `SourceSpan`") and User Story 3. → Resolution: FR-004 is authoritative. The Key Entity `Stmt` description corrected to state that **every** variant carries a `SourceSpan`. No variant is exempt. Consistent with Q2 clarification that `Stmt::Expression` carries its own explicit `span` field.
-
-### Contradiction Resolution 2026-10-04 (P-002)
-
-- Issue: SC-004 required that "every AST node's `span()` reproduces the verbatim source fragment that produced the node", but synthesised nodes (e.g., `Type::Void` inserted by the parser when a function omits its return type) have no corresponding source token — making the verbatim-reproduction clause impossible to satisfy for those nodes. → Resolution: SC-004 is now scoped to nodes with a direct textual origin. Synthesised nodes are explicitly exempt from the verbatim-reproduction clause and MUST carry a zero-width `SourceSpan` anchored at the last consumed token before the synthesis point. FR-004, User Story 3, and the `Type::Void` Assumption updated accordingly.
-
 ---
 
 ## Success Criteria *(mandatory)*
