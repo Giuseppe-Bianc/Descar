@@ -62,8 +62,9 @@ Each AST node has a `SourceSpan`. The span gives the position of the node in the
 **Acceptance Scenarios**:
 
 1. **Given** a statement at line 5, columns 3 to 20 in the source, **When** you check the `span()` of the AST node, **Then** the returned `SourceSpan` identifies this source range correctly.
-2. **Given** an `if` statement with an `else if` continuation, **When** you check the AST, **Then** the `else_branch` field is `ElseBranch::ElseIf(...)` and contains the nested `Stmt::If` node. It is not `ElseBranch::Block` and it is not `ElseBranch::None`.
+2. **Given** an `if` statement with an `else if` continuation, **When** you check the AST, **Then** the `else_branch` field is `ElseBranch::ElseIf(...)`. The payload of `ElseIf` is the nested `Stmt::If` node. The field is not `ElseBranch::Block` and it is not `ElseBranch::None`.
 3. **Given** a block with several statements, **When** you read the `Stmt::Block` node, **Then** each child statement is available by index in the `statements` vector, in source order.
+4. **Given** the source `if (x > 0) { return x; } else return 0;`, **When** the parser parses the statement, **Then** the parser reports the error E1004. The `else_branch` field is `ElseBranch::None`. The AST does not store the statement `return 0;`.
 
 ---
 
@@ -100,6 +101,8 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - `1 + 2` in the typed tree: The tree has a `TypedExpr` with `kind` equal to `TypedExprKind::Binary`. This node owns two `TypedExpr` operands with `kind` equal to `TypedExprKind::Literal`. Each of the three nodes has its own `resolved_type`.
 - A grouping `(a + b)` in the typed tree: The tree has a `TypedExpr` with `kind` equal to `TypedExprKind::Grouping`. This node owns the `TypedExpr` for `a + b`. The grouping node and the inner node have independent `resolved_type` values.
 - An `else if` chain in the typed tree: A `TypedElseBranch::ElseIf` holds a `TypedStmt::If`. That `TypedStmt::If` holds its own `TypedElseBranch`. The structure is the same as in `ElseBranch`.
+- An `else` that is followed by a statement that is not an `if` and not a block: The parser reports the error E1004 (FR-007). The `else_branch` field is `ElseBranch::None`. The AST does not store the statement.
+- An `ElseBranch` that code makes by hand with a payload of another kind, for example an `ElseIf` with a `Stmt::Break`: The type of the payload is `Box<Stmt>`, so the AST type permits this value. The parser does not make it. Code that reads the value accepts the payload as a `Stmt` (FR-007). The build functions and the `erase` functions keep the payload kind (FR-021).
 
 ---
 
@@ -125,6 +128,12 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - **FR-005**: The `Stmt::VarDeclaration` node must contain an ordered `bindings` collection, one shared `type_annotation`, and an `is_mutable` flag. The `is_mutable` flag shows if the declaration uses `var` or `const`.
 - **FR-006**: The `Stmt::Function` node must contain the function name, an ordered list of `Parameter` nodes, a declared return type, and the body as a `Stmt::Block`. Each `Parameter` node must contain a name and a type annotation. If the source has no return type, the node must use `Type::Void`.
 - **FR-007**: The `ElseBranch` model must show three cases: no else clause (`None`), a plain else block (`Block`), and an else-if continuation (`ElseIf`). The model must show chained conditionals explicitly.
+    - The payload of `Block` and the payload of `ElseIf` have the type `Box<Stmt>`.
+    - The payload of `ElseIf` must be a `Stmt::If` node. The payload of `Block` must be a `Stmt::Block` node.
+    - After `else`, the parser must make `ElseIf` if the next statement is an `if`. It must make `Block` if the next statement is a block.
+    - If the next statement is not an `if` and not a block, the parser must report the error E1004 (invalid else branch). The parser must then make `ElseBranch::None`. It must not store the statement.
+    - The type `ElseBranch` does not prevent a payload of another kind. Existing tests make `ElseIf` and `Block` values with a `Stmt::Break` payload. A new payload type stops the compilation of these tests (SC-006). For this reason, the payload type stays `Box<Stmt>`.
+    - Code that reads an `ElseBranch` must accept any `Stmt` as the payload of `Block` or `ElseIf`. The code must not fail if the payload has another kind.
 - **FR-008**: The AST must represent binary operators as a closed enumeration. The enumeration covers all arithmetic, comparison, logical, bitwise, shift, and compound-assignment operators in the grammar. Each operator maps to exactly one variant.
 - **FR-009**: The AST must represent unary operators as a closed enumeration. The enumeration must contain negation (`-`), logical NOT (`!`), bitwise complement (`~`), increment (`++`), and decrement (`--`). Each operator must have a `UnaryOpSide` value. The `UnaryOpSide` value is `Prefix` or `Postfix`. It shows the side of the operand where the operator is applied.
 - **FR-010**: The `Type::Array` variant must contain the element type and the size. The size is an expression node, not a raw integer. This lets the AST represent array types with a size that is a compile-time constant expression. The untyped tree and the typed tree both store the size expression as a plain `Expr` (FR-022).
@@ -176,7 +185,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - A field of type `VarBinding` becomes `TypedVarBinding`.
     - Each other field keeps its type. These fields are `is_mutable`, names, `Parameter`, `Type`, and `SourceSpan`.
 
-  `TypedElseBranch` must have the same three cases as `ElseBranch` (FR-007). Its `Block` payload and its `ElseIf` payload follow the same rules.
+  `TypedElseBranch` must have the same three cases as `ElseBranch` (FR-007). Its `Block` payload and its `ElseIf` payload have the type `Box<TypedStmt>`. For parser output, the `ElseIf` payload is a `TypedStmt::If` and the `Block` payload is a `TypedStmt::Block`.
 
   `TypedVarBinding` must pair the name with an `Option<TypedExpr>` initializer, in the same way as `VarBinding`.
 
@@ -191,6 +200,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - For each `Expr` value `e`, `TypedExpr::from_expr(&e).erase()` must be structurally equal to `e`, node by node, with spans.
     - The same rule applies to `Stmt`.
     - The build functions and the `erase` functions must each process each node once.
+    - The build functions and the `erase` functions must keep the kind of each `ElseBranch` payload. They must not check it and they must not change it (FR-007).
 - **FR-022**: `TypedExpr` and `TypedStmt` must satisfy FR-004, FR-012, and FR-013.
     - `TypedExpr` and each `TypedStmt` variant must have a `span()` accessor.
     - The span of a typed node must be equal to the span of the untyped node that it comes from.
@@ -215,11 +225,11 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - **`LiteralValue`**: The sum type of all literal value kinds. The kinds are numeric, string, char, bool, and nullptr.
 - **`Parameter`**: A named tuple with `name`, `type_annotation`, and `span` for function parameters. The typed tree and the untyped tree share this type.
 - **`VarBinding`**: A named tuple with `name` and an `Option<Expr>` initializer, for multi-binding declarations. In a syntactically valid program, the initializer is `Some` (FR-017).
-- **`ElseBranch`**: An enumeration with three variants, for the else clause of an if statement.
+- **`ElseBranch`**: An enumeration with three variants, for the else clause of an if statement. The `Block` payload and the `ElseIf` payload have the type `Box<Stmt>`. In parser output, the `ElseIf` payload is a `Stmt::If` and the `Block` payload is a `Stmt::Block` (FR-007).
 - **`TypedExpr`**: A struct in `syntax::typed_ast`. It has the fields `kind: TypedExprKind`, `span: SourceSpan`, and `resolved_type: Option<Type>`. It does not contain an `Expr`. Its children are `TypedExpr` nodes. The type-checking pass sets `resolved_type`. `None` means that the type of the specific expression cannot be resolved, or that no type-checking pass has processed the tree.
 - **`TypedExprKind`**: An enum in `syntax::typed_ast`. It has one variant for each `Expr` variant. Fields of type `Expr` become `TypedExpr` (FR-019).
 - **`TypedStmt`**: An enum in `syntax::typed_ast`. It has one variant for each `Stmt` variant. Fields of type `Expr`, `Stmt`, `ElseBranch`, and `VarBinding` become their typed counterparts (FR-020). It has no `resolved_type` of its own.
-- **`TypedElseBranch`**: An enumeration with three variants, in the same way as `ElseBranch`. Its payloads hold typed statements.
+- **`TypedElseBranch`**: An enumeration with three variants, in the same way as `ElseBranch`. Its payloads have the type `Box<TypedStmt>` (FR-020).
 - **`TypedVarBinding`**: A named tuple with `name` and an optional `TypedExpr` initializer. It corresponds to `VarBinding`.
 
 ---
@@ -243,6 +253,10 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - Q: FR-017 said that each `VarBinding` has an initializer. Key Entities said that the initializer is optional. Which statement is correct? A: The two statements apply to different cases. The type of the initializer is `Option<Expr>`. The initializer is `Some` in a syntactically valid program, because the grammar requires one initializer for each name. The initializer is `None` only after the parser recovers from an initializer-count error (E2001), or when code makes the AST by hand.
 - Q: Why does the spec keep `Option<Expr>` and not `Expr`? A: The existing code and the existing tests use a `VarBinding` with `None` as the initializer. A change to `Expr` is a breaking change under SC-006, and the existing tests would not compile.
 - Q: What does the parser do when the number of names is not equal to the number of initializers? A: The parser reports the error E2001. It makes one `VarBinding` for each name. The n-th name takes the n-th initializer. A name that has no n-th initializer has `None`. The parser does not store the extra initializers.
+- Q: What is the type of the `ElseBranch::ElseIf` payload? The spec said that the payload contains a `Stmt::If`, but it did not name the type. A: The type is `Box<Stmt>`, the same as in the existing code. The rule that the payload is a `Stmt::If` applies to parser output (FR-007).
+- Q: Why does the spec not use a payload type that can only hold an `if`? A: Existing tests make `ElseIf` and `Block` values with a `Stmt::Break` payload. A new payload type stops the compilation of these tests (SC-006). The spec keeps `Box<Stmt>` and puts the rule on the parser and on the code that reads the value.
+- Q: What does the parser do when the statement after `else` is not an `if` and not a block? A: The parser reports the error E1004 and makes `ElseBranch::None`. It does not store the statement. The parser already does this.
+- Q: What must code that reads an `ElseBranch` do with a payload of another kind? A: It must accept any `Stmt`. The type checker and the printer already do this. The build functions and the `erase` functions of the typed tree keep the payload kind and do not check it (FR-021).
 
 ---
 
@@ -268,6 +282,13 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - `erase()` on the typed tree returns a tree that is structurally equal to the parsed program, with spans.
     - The number of `TypedExpr` nodes is equal to the number of `Expr` nodes.
     - The number of `TypedStmt` nodes is equal to the number of `Stmt` nodes.
+- **SC-008**: For each `.dr` file in `dr_files/`, check each `ElseBranch` value in the parsed program and in the typed tree.
+    - Each `ElseBranch::ElseIf` has a `Stmt::If` payload. Each `ElseBranch::Block` has a `Stmt::Block` payload.
+    - Each `TypedElseBranch::ElseIf` has a `TypedStmt::If` payload. Each `TypedElseBranch::Block` has a `TypedStmt::Block` payload.
+
+  A test makes a `Stmt::If` by hand. Its `ElseBranch::ElseIf` has a `Stmt::Break` payload.
+    - `TypedStmt::from_stmt` and `erase()` keep the payload kind.
+    - The result of `erase()` is structurally equal to the input, with spans.
 
 ---
 
