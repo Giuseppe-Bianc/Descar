@@ -91,6 +91,8 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
 - Multiple bindings (`var a, b: i32 = 1, 2`): Each `VarBinding` is a separate entry with its own initializer. In a syntactically valid program, each initializer is `Some` (FR-017). All entries share the same declared type annotation. In the typed tree, the `TypedStmt::VarDeclaration` node has one `TypedVarBinding` for each binding. Each initializer is a `TypedExpr` with its own `resolved_type`.
 - A declaration with a different number of names and initializers (`var a, b: i32 = 1`): The parser reports the error E2001 (FR-017). The AST has one `VarBinding` for each name. The `VarBinding` for `b` has `None` as its initializer. The `TypedVarBinding` for `b` also has `None`. In `var a: i32 = 1, 2`, the AST does not store the initializer `2`.
+- A declaration with no initializer (`var a: i32;` or `const c: i32;`): The grammar does not permit it. The declaration has one name and zero initializers. The parser reports the error E2001 (FR-017). It also reports the errors for the missing `=` and the missing expression. The AST has one `VarBinding` with `None` as its initializer.
+- A declaration with no name (`var : i32 = 1`): The parser reports the error E1008 (FR-017). The parser does not make a `Stmt::VarDeclaration`.
 - A function with no parameters: The `parameters` field is an empty `Vec<Parameter>`. The field is not absent.
 - `nullptr`: The AST represents `nullptr` as `Expr::Literal { value: LiteralValue::NullPtr, .. }`. The corresponding type is `Type::NullPtr`.
 - An array type with a non-literal size expression: The `Type::Array { size, .. }` node holds the complete expression tree, not only an integer constant. This expression is a plain `Expr` in the untyped tree and in the typed tree. It has no `resolved_type` (FR-022).
@@ -155,10 +157,12 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - **FR-016**: Numeric literals with a non-decimal base (binary `#b`, octal `#o`, hexadecimal `#x`) must use the same `LiteralValue::Numeric(Number)` variant as decimal literals. The lexer must resolve the base.
 - **FR-017**: The AST must represent a multi-binding variable declaration (`var a, b: T = e1, e2`) as one `Stmt::VarDeclaration` with several `VarBinding` entries. Each `VarBinding` must pair one name with an optional initializer. The type of the initializer is `Option<Expr>`.
     - The grammar requires one initializer for each name. In a syntactically valid program, the initializer of each `VarBinding` is `Some`.
-    - If the number of names is not equal to the number of initializers, the parser must report the error E2001 (initializer count mismatch).
+    - The grammar has no declaration without `=`. This rule is the same for `var` and for `const`. A declaration with no initializer has zero initializers, and the next rule applies.
+    - If the declaration has at least one name and the number of names is not equal to the number of initializers, the parser must report the error E2001 (initializer count mismatch).
     - After this error, the parser must still make one `Stmt::VarDeclaration`. It must make one `VarBinding` for each name, in source order.
     - The n-th name takes the n-th initializer. A name that has no n-th initializer has `None`.
     - If there are more initializers than names, the AST does not store the extra initializers.
+    - If the declaration has no name, the parser must report the error E1008 (missing variable name). The parser must not make a `Stmt::VarDeclaration`. The rules above do not apply.
     - Code that reads the AST must accept `None` as the initializer of a `VarBinding`.
 - **FR-018**: The AST model must be internally consistent. Two structurally different constructs must not use the same node variant. Each node variant must stand for one semantic concept only.
 - **FR-019**: `TypedExpr` must be a struct with exactly three public fields:
@@ -253,6 +257,8 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - Q: FR-017 said that each `VarBinding` has an initializer. Key Entities said that the initializer is optional. Which statement is correct? A: The two statements apply to different cases. The type of the initializer is `Option<Expr>`. The initializer is `Some` in a syntactically valid program, because the grammar requires one initializer for each name. The initializer is `None` only after the parser recovers from an initializer-count error (E2001), or when code makes the AST by hand.
 - Q: Why does the spec keep `Option<Expr>` and not `Expr`? A: The existing code and the existing tests use a `VarBinding` with `None` as the initializer. A change to `Expr` is a breaking change under SC-006, and the existing tests would not compile.
 - Q: What does the parser do when the number of names is not equal to the number of initializers? A: The parser reports the error E2001. It makes one `VarBinding` for each name. The n-th name takes the n-th initializer. A name that has no n-th initializer has `None`. The parser does not store the extra initializers.
+- Q: Does the grammar permit a `var` or a `const` declaration with no initializer? A: No. The parser requires `=` and one expression for each name. A declaration with no initializer has zero initializers, and the rule for E2001 applies (FR-017).
+- Q: What does the parser do when a declaration has no name? A: The parser reports the error E1008 and does not make a `Stmt::VarDeclaration`. The parser stops before it reads the initializers, so the count rule of FR-017 does not apply.
 - Q: What is the type of the `ElseBranch::ElseIf` payload? The spec said that the payload contains a `Stmt::If`, but it did not name the type. A: The type is `Box<Stmt>`, the same as in the existing code. The rule that the payload is a `Stmt::If` applies to parser output (FR-007).
 - Q: Why does the spec not use a payload type that can only hold an `if`? A: Existing tests make `ElseIf` and `Block` values with a `Stmt::Break` payload. A new payload type stops the compilation of these tests (SC-006). The spec keeps `Box<Stmt>` and puts the rule on the parser and on the code that reads the value.
 - Q: What does the parser do when the statement after `else` is not an `if` and not a block? A: The parser reports the error E1004 and makes `ElseBranch::None`. It does not store the statement. The parser already does this.
@@ -289,6 +295,15 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
   A test makes a `Stmt::If` by hand. Its `ElseBranch::ElseIf` has a `Stmt::Break` payload.
     - `TypedStmt::from_stmt` and `erase()` keep the payload kind.
     - The result of `erase()` is structurally equal to the input, with spans.
+- **SC-009**: For each `.dr` file in `dr_files/` that has no syntax error, check each `VarBinding` in the parsed program and each `TypedVarBinding` in the typed tree.
+    - Each `VarBinding` has `Some` as its initializer.
+    - Each `TypedVarBinding` has `Some` as its initializer.
+
+  A test parses each of these sources.
+    - `var a, b: i32 = 1;` gives the error E2001. The AST has `a` with `Some` and `b` with `None`.
+    - `var a: i32 = 1, 2;` gives the error E2001. The AST has one `VarBinding` with `Some`. It does not store the initializer `2`.
+    - `var a: i32;` gives the error E2001. The AST has one `VarBinding` with `None`.
+    - `var : i32 = 1;` gives the error E1008. The AST has no `Stmt::VarDeclaration`.
 
 ---
 
