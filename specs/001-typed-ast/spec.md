@@ -88,7 +88,8 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
 ### Edge Cases
 
-- Multiple bindings (`var a, b: i32 = 1, 2`): Each `VarBinding` is a separate entry with its own initializer. All entries share the same declared type annotation. In the typed tree, the `TypedStmt::VarDeclaration` node has one `TypedVarBinding` for each binding. Each initializer is a `TypedExpr` with its own `resolved_type`.
+- Multiple bindings (`var a, b: i32 = 1, 2`): Each `VarBinding` is a separate entry with its own initializer. In a syntactically valid program, each initializer is `Some` (FR-017). All entries share the same declared type annotation. In the typed tree, the `TypedStmt::VarDeclaration` node has one `TypedVarBinding` for each binding. Each initializer is a `TypedExpr` with its own `resolved_type`.
+- A declaration with a different number of names and initializers (`var a, b: i32 = 1`): The parser reports the error E2001 (FR-017). The AST has one `VarBinding` for each name. The `VarBinding` for `b` has `None` as its initializer. The `TypedVarBinding` for `b` also has `None`. In `var a: i32 = 1, 2`, the AST does not store the initializer `2`.
 - A function with no parameters: The `parameters` field is an empty `Vec<Parameter>`. The field is not absent.
 - `nullptr`: The AST represents `nullptr` as `Expr::Literal { value: LiteralValue::NullPtr, .. }`. The corresponding type is `Type::NullPtr`.
 - An array type with a non-literal size expression: The `Type::Array { size, .. }` node holds the complete expression tree, not only an integer constant. This expression is a plain `Expr` in the untyped tree and in the typed tree. It has no `resolved_type` (FR-022).
@@ -143,7 +144,13 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - `resolved_type` must be `None` on each node of a tree that no type-checking pass has processed.
 - **FR-015**: The `Stmt::For` node must store the initializer, the condition, and the increment as independent optional fields. Each field is absent (`None`) or present. The state of one field must not change the state of another field.
 - **FR-016**: Numeric literals with a non-decimal base (binary `#b`, octal `#o`, hexadecimal `#x`) must use the same `LiteralValue::Numeric(Number)` variant as decimal literals. The lexer must resolve the base.
-- **FR-017**: The AST must represent a multi-binding variable declaration (`var a, b: T = e1, e2`) as one `Stmt::VarDeclaration` with several `VarBinding` entries. Each `VarBinding` must pair one name with its initializer expression.
+- **FR-017**: The AST must represent a multi-binding variable declaration (`var a, b: T = e1, e2`) as one `Stmt::VarDeclaration` with several `VarBinding` entries. Each `VarBinding` must pair one name with an optional initializer. The type of the initializer is `Option<Expr>`.
+    - The grammar requires one initializer for each name. In a syntactically valid program, the initializer of each `VarBinding` is `Some`.
+    - If the number of names is not equal to the number of initializers, the parser must report the error E2001 (initializer count mismatch).
+    - After this error, the parser must still make one `Stmt::VarDeclaration`. It must make one `VarBinding` for each name, in source order.
+    - The n-th name takes the n-th initializer. A name that has no n-th initializer has `None`.
+    - If there are more initializers than names, the AST does not store the extra initializers.
+    - Code that reads the AST must accept `None` as the initializer of a `VarBinding`.
 - **FR-018**: The AST model must be internally consistent. Two structurally different constructs must not use the same node variant. Each node variant must stand for one semantic concept only.
 - **FR-019**: `TypedExpr` must be a struct with exactly three public fields:
     - `kind`, of type `TypedExprKind`;
@@ -207,7 +214,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - **`UnaryOpSide`**: An enumeration with two variants. It shows prefix or postfix application.
 - **`LiteralValue`**: The sum type of all literal value kinds. The kinds are numeric, string, char, bool, and nullptr.
 - **`Parameter`**: A named tuple with `name`, `type_annotation`, and `span` for function parameters. The typed tree and the untyped tree share this type.
-- **`VarBinding`**: A named tuple with `name` and an optional initializer, for multi-binding declarations.
+- **`VarBinding`**: A named tuple with `name` and an `Option<Expr>` initializer, for multi-binding declarations. In a syntactically valid program, the initializer is `Some` (FR-017).
 - **`ElseBranch`**: An enumeration with three variants, for the else clause of an if statement.
 - **`TypedExpr`**: A struct in `syntax::typed_ast`. It has the fields `kind: TypedExprKind`, `span: SourceSpan`, and `resolved_type: Option<Type>`. It does not contain an `Expr`. Its children are `TypedExpr` nodes. The type-checking pass sets `resolved_type`. `None` means that the type of the specific expression cannot be resolved, or that no type-checking pass has processed the tree.
 - **`TypedExprKind`**: An enum in `syntax::typed_ast`. It has one variant for each `Expr` variant. Fields of type `Expr` become `TypedExpr` (FR-019).
@@ -230,6 +237,12 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - Q: Which alternatives does the spec reject? A: There are four. (1) A two-member wrapper that annotates only the root expression. It does not give a type to the operands. (2) An `Expr` that is generic over an annotation parameter. It changes `Expr`. (3) A table that uses node identity, node address, or source span as key. FR-014 does not permit it. (4) A wrapper that contains an `Expr` and also holds typed children. It keeps two trees of the same program, and no rule keeps them consistent.
 - Q: How does the spec keep the typed tree and the untyped tree consistent? A: The typed tree does not contain the untyped tree. The build functions make it from the untyped tree (FR-021). The `erase()` functions rebuild the untyped tree. For each `e`, `from_expr(&e).erase()` is structurally equal to `e` (SC-007). The build functions use an exhaustive `match` with no wildcard arm. A new `Expr` or `Stmt` variant stops the compilation until the typed tree handles it.
 - Q: Does the `size` expression inside `Type::Array` get a resolved type? A: No. It is in a type position. Both trees share `Type`. The expression stays a plain `Expr` (FR-022). A checking pass that needs its type builds a `TypedExpr` for the time of the check and does not store the result.
+
+### Session 2026-10-05
+
+- Q: FR-017 said that each `VarBinding` has an initializer. Key Entities said that the initializer is optional. Which statement is correct? A: The two statements apply to different cases. The type of the initializer is `Option<Expr>`. The initializer is `Some` in a syntactically valid program, because the grammar requires one initializer for each name. The initializer is `None` only after the parser recovers from an initializer-count error (E2001), or when code makes the AST by hand.
+- Q: Why does the spec keep `Option<Expr>` and not `Expr`? A: The existing code and the existing tests use a `VarBinding` with `None` as the initializer. A change to `Expr` is a breaking change under SC-006, and the existing tests would not compile.
+- Q: What does the parser do when the number of names is not equal to the number of initializers? A: The parser reports the error E2001. It makes one `VarBinding` for each name. The n-th name takes the n-th initializer. A name that has no n-th initializer has `None`. The parser does not store the extra initializers.
 
 ---
 
