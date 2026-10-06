@@ -53,11 +53,11 @@ A type checker or a semantic analysis pass reads a declared type from the AST. T
 
 ### User Story 3 - Structural Integrity and Source Provenance (Priority: P2)
 
-Each AST node has a `SourceSpan`. The span gives the position of the node in the source text. A node with a direct text origin (a source token or a range of tokens) has a span that reproduces the exact source fragment. The parser makes some nodes to fill an implicit default. An example is `Type::Void` for a function with no declared return type. The span of such a node has zero width and is at the last consumed token. This span is correct for position-based diagnostics. It does not reproduce a source fragment. The structure of the nodes is explicit. For example, the else branch of an `if` is an `ElseBranch` variant. It is not a raw `Option<Box<Stmt>>`. A program can reach each node without a hidden rule.
+Each `Expr` node, each `Stmt` node, and each `Parameter` has a `SourceSpan`. The span gives the position of the node in the source text. A node with a direct text origin (a source token or a range of tokens) has a span that reproduces the exact source fragment. `Type`, `VarBinding`, and `ElseBranch` have no span of their own. The parser makes `Type::Void` for a function with no declared return type. This `Type::Void` has no source token and no span. The structure of the nodes is explicit. For example, the else branch of an `if` is an `ElseBranch` variant. It is not a raw `Option<Box<Stmt>>`. A program can reach each node without a hidden rule.
 
 **Why this priority**: Error reporting, diagnostic highlighting, and AST pretty-printing need precise source positions. An ambiguous structure causes a silent loss of information.
 
-**Independent Test**: Use any source file. Each AST node (expression and statement) has a `span()` method. The method returns a valid `SourceSpan` that maps to the original source text.
+**Independent Test**: Use any source file. Each `Expr` node and each `Stmt` node has a `span()` method. The method returns a valid `SourceSpan` that maps to the original source text.
 
 **Acceptance Scenarios**:
 
@@ -120,15 +120,16 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - the dynamic vector type;
     - `void` and `nullptr`;
     - user-defined custom named types.
-- **FR-004**: Each expression node and each statement node must have a `SourceSpan` value.
+- **FR-004**: Each `Expr` node, each `Stmt` node, and each `Parameter` must have a `SourceSpan` value.
+    - `Type`, `VarBinding`, `ElseBranch`, `TypedVarBinding`, and `TypedElseBranch` must not have a span field. An `Expr` or a `Stmt` inside these types has its own span.
     - A node with a direct source text origin must have a span that maps the node to the exact source range of the node.
-    - A synthesized node must have a zero-width `SourceSpan`. A synthesized node is a node that the parser makes for an implicit default, with no source token.
-    - The span of a synthesized node must be at the position of the last consumed token before the synthesis point.
+    - The parser makes `Type::Void` for a function with no declared return type. This `Type::Void` has no source token. It has no span, because `Type` has no span field.
+    - The parser makes a placeholder `Expr` when the expression after a unary operator, a binary operator, `=`, or `[` is missing or not valid. The placeholder is `Expr::Literal` with `LiteralValue::NullPtr`. It has no source token. Its span is the span of that operator token or of that `[` token.
     - The `Stmt::Expression` variant must have its own explicit `span: SourceSpan` field.
     - This span must cover the full statement, with the trailing terminator if there is one.
     - The `Stmt::Expression` variant must not use only the span of the inner `Expr`.
 - **FR-005**: The `Stmt::VarDeclaration` node must contain an ordered `bindings` collection, one shared `type_annotation`, and an `is_mutable` flag. The `is_mutable` flag shows if the declaration uses `var` or `const`.
-- **FR-006**: The `Stmt::Function` node must contain the function name, an ordered list of `Parameter` nodes, a declared return type, and the body as a `Stmt::Block`. Each `Parameter` node must contain a name and a type annotation. If the source has no return type, the node must use `Type::Void`.
+- **FR-006**: The `Stmt::Function` node must contain the function name, an ordered list of `Parameter` nodes, a declared return type, and the body as a `Stmt::Block`. Each `Parameter` node must contain a name and a type annotation. If the source has no return type, the node must use `Type::Void`. This `Type::Void` has no span (FR-004).
 - **FR-007**: The `ElseBranch` model must show three cases: no else clause (`None`), a plain else block (`Block`), and an else-if continuation (`ElseIf`). The model must show chained conditionals explicitly.
     - The payload of `Block` and the payload of `ElseIf` have the type `Box<Stmt>`.
     - The payload of `ElseIf` must be a `Stmt::If` node. The payload of `Block` must be a `Stmt::Block` node.
@@ -222,14 +223,14 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
 - **`Expr`**: The sum type of all expression node variants. Each variant has a `SourceSpan`. The type has a `span()` accessor.
 - **`Stmt`**: The sum type of all statement node variants. Each variant has a `SourceSpan`. No variant is an exception. This satisfies FR-004 and the clarification that `Stmt::Expression` has its own explicit `span` field.
-- **`Type`**: The sum type of all type annotation variants. The variants are primitives, array, vector, void, nullptr, and custom. The typed tree and the untyped tree share this type.
+- **`Type`**: The sum type of all type annotation variants. The variants are primitives, array, vector, void, nullptr, and custom. The typed tree and the untyped tree share this type. `Type` has no `SourceSpan` (FR-004).
 - **`BinaryOp`**: A closed enumeration of all binary operators.
 - **`UnaryOp`**: A closed enumeration of all unary operators.
 - **`UnaryOpSide`**: An enumeration with two variants. It shows prefix or postfix application.
 - **`LiteralValue`**: The sum type of all literal value kinds. The kinds are numeric, string, char, bool, and nullptr.
-- **`Parameter`**: A named tuple with `name`, `type_annotation`, and `span` for function parameters. The typed tree and the untyped tree share this type.
-- **`VarBinding`**: A struct with the public fields `name: String` and `initializer: Option<Expr>`, for multi-binding declarations. In a syntactically valid program, the initializer is `Some` (FR-017).
-- **`ElseBranch`**: An enumeration with three variants, for the else clause of an if statement. The `Block` payload and the `ElseIf` payload have the type `Box<Stmt>`. In parser output, the `ElseIf` payload is a `Stmt::If` and the `Block` payload is a `Stmt::Block` (FR-007).
+- **`Parameter`**: A struct with the public fields `name: String`, `type_annotation: Type`, and `span: SourceSpan`, for function parameters. The typed tree and the untyped tree share this type.
+- **`VarBinding`**: A struct with the public fields `name: String` and `initializer: Option<Expr>`, for multi-binding declarations. In a syntactically valid program, the initializer is `Some` (FR-017). `VarBinding` has no `SourceSpan` (FR-004).
+- **`ElseBranch`**: An enumeration with three variants, for the else clause of an if statement. The `Block` payload and the `ElseIf` payload have the type `Box<Stmt>`. In parser output, the `ElseIf` payload is a `Stmt::If` and the `Block` payload is a `Stmt::Block` (FR-007). `ElseBranch` has no `SourceSpan` (FR-004).
 - **`TypedExpr`**: A struct in `syntax::typed_ast`. It has the fields `kind: TypedExprKind`, `span: SourceSpan`, and `resolved_type: Option<Type>`. It does not contain an `Expr`. Its children are `TypedExpr` nodes. The type-checking pass sets `resolved_type`. `None` means that the type of the specific expression cannot be resolved, or that no type-checking pass has processed the tree.
 - **`TypedExprKind`**: An enum in `syntax::typed_ast`. It has one variant for each `Expr` variant. Fields of type `Expr` become `TypedExpr` (FR-019).
 - **`TypedStmt`**: An enum in `syntax::typed_ast`. It has one variant for each `Stmt` variant. Fields of type `Expr`, `Stmt`, `ElseBranch`, and `VarBinding` become their typed counterparts (FR-020). It has no `resolved_type` of its own.
@@ -264,6 +265,13 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - Q: What does the parser do when the statement after `else` is not an `if` and not a block? A: The parser reports the error E1004 and makes `ElseBranch::None`. It does not store the statement. The parser already does this.
 - Q: What must code that reads an `ElseBranch` do with a payload of another kind? A: It must accept any `Stmt`. The type checker and the printer already do this. The build functions and the `erase` functions of the typed tree keep the payload kind and do not check it (FR-021).
 
+### Session 2026-10-06
+
+- Q: Which types have a `SourceSpan`? US3, FR-004, and SC-004 gave three different scopes. A: `Expr`, `Stmt`, and `Parameter` have a span. `TypedExpr` and each `TypedStmt` variant have a span (FR-022). `Type`, `VarBinding`, `ElseBranch`, `TypedVarBinding`, and `TypedElseBranch` have no span of their own. This is the structure of the existing code.
+- Q: Does the `Type::Void` that the parser makes for an omitted return type have a span? A: No. `Type` is an enum, and its unit variants (for example `Type::F64`) have no span. `Stmt::Function` has one span, for the whole function. The existing tests make `Stmt::Function` values with a struct literal and print `Type` values with `Debug`. A span field in `Type` or a new span field in `Stmt::Function` stops the compilation of these tests or changes their snapshots (SC-006). For this reason the spec does not require a span for `Type::Void`.
+- Q: Does the spec still require a zero-width span at the closing `)` of the parameter list? A: No. The rule needed a place to store the span, and the AST has no such place. The earlier text applied the rule to `Type::Void` only. `SourceSpan::point` can make a zero-width span, but no node in this spec has one.
+- Q: Which span does a placeholder `Expr` have? A: The parser makes `Expr::Literal` with `LiteralValue::NullPtr` when the expression after a unary operator, a binary operator, `=`, or `[` is missing or not valid. The span is the span of that operator token or of that `[` token. The parser already does this. The span is not zero-width. It does not reproduce a source fragment of the placeholder.
+
 ---
 
 ## Success Criteria *(mandatory)*
@@ -273,14 +281,13 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - **SC-001**: For each syntactically valid `.dr` source file, the parsed AST has no unrecognized node and no generic node for a construct in the grammar. The parsed AST includes 100% of the grammar productions that matter for later compiler phases.
 - **SC-002**: Each type annotation position in the AST uses a concrete `Type` variant. The positions are variable declarations, parameters, return types, and array sizes. A construct with a specific type keyword does not use `Type::Void` or `Type::Custom` as a default.
 - **SC-003**: Each example `.dr` file in `dr_files/` parses to an AST that passes the structural completeness check. Each node variant, span, and child field that the grammar needs is present and has a value.
-- **SC-004**: A round-trip property applies to nodes with a direct text origin. Such a node corresponds to one or more source tokens. For each such node:
-    - `span()` must return a source range.
+- **SC-004**: A round-trip property applies to each `Expr` node, each `Stmt` node, and each `Parameter` with a direct text origin. Such a node corresponds to one or more source tokens. For each such node:
+    - The span of the node must be a source range. The span comes from `span()`, or from the `span` field of `Parameter`.
     - The text of the original source in that range must be exactly the source fragment that makes the node.
 
-  Synthesized nodes are not subject to the verbatim-reproduction rule. A synthesized node is a node that the parser makes for an implicit default, with no source token. An example is the `Type::Void` return type of a function with no return annotation.
-    - A synthesized node must have a zero-width `SourceSpan`.
-    - The `SourceSpan` must be at the position of the last consumed source token before the synthesis point. For example, an implicit `Type::Void` has a zero-width `SourceSpan` at the closing `)` of the parameter list.
-    - This span is valid for position-based diagnostics. It does not reproduce a source fragment.
+  A node with no direct text origin is not subject to the verbatim-reproduction rule. Such a node has no source token.
+    - The `Type::Void` return type of a function with no return annotation has no span (FR-004).
+    - The placeholder `Expr` of FR-004 has the span of the token that comes before the missing expression. This span does not reproduce a source fragment of the placeholder.
 - **SC-005**: Type-checker tests verify the resolved-type annotation on `TypedExpr` trees at each depth. After the type checker runs on a program, each resolvable `TypedExpr` node has `Some(T)`. Resolvable nodes are literals, variables, calls, binary expressions, and unary expressions. This includes operands inside other expressions. It also includes expressions in statement conditions, initializers, and return values. The existing type-checker tests pass with no regression.
 - **SC-006**: All existing tests in `crates/descar-core/tests/` pass without change after the AST changes. A breaking change is one of these: renaming, removing, or changing the type of an existing public `Expr` or `Stmt` field or variant. Adding a new optional field or a new enum variant, with `#[non_exhaustive]` where necessary, is not a breaking change. It needs no migration path. The feature directory must contain a `MIGRATION.md` note for each breaking change of this feature.
 - **SC-007**: For each `.dr` file in `dr_files/`, build the typed tree from the parsed program.
@@ -310,9 +317,9 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 ## Assumptions
 
 - `JsavParser` and the existing token set in `TokenKind` fully define the grammar of the Descar language. No grammar extension is in scope. The extensions are structs, enums, generics other than `vector<T>`, lambdas, traits, and modules.
-- The existing `SourceSpan` and `SourceLocation` types are sufficient for all required source ranges. The feature needs no new location infrastructure.
+- The existing `SourceSpan` and `SourceLocation` types are sufficient for all required source ranges. The feature needs no new location infrastructure. A `SourceSpan` has an inclusive start and an exclusive end.
 - The `Number` type in `crates/descar-core/src/tokens/number.rs` is the canonical representation of all numeric literal values. The lexer and the `LiteralValue::Numeric` variant of the AST share this type.
-- The `Type::Void` variant is the default return type for a function that does not declare one. The parser applies this default. The type checker does not. The synthesized `Type::Void` node has a zero-width `SourceSpan` at the last consumed token before the synthesis point. An example is the closing `)` of the parameter list. This agrees with the span policy for synthesized nodes in FR-004 and SC-004.
+- The `Type::Void` variant is the default return type for a function that does not declare one. The parser applies this default. The type checker does not. This `Type::Void` has no span, because `Type` has no span field. This agrees with FR-004 and SC-004.
 - The resolved-type annotation (FR-014) is a typed tree (`TypedExpr` and `TypedStmt`). The typed tree has the same structure as `Expr` and `Stmt`, node by node. The build functions make it (FR-021). The `Expr` enum does not change. All existing parsing and printing code that makes or matches `Expr` variants without type information continues to work.
 - The children of `Expr` variants are `Expr` values, directly or inside `Box`, `Vec`, or `Option`. The children of `Stmt` variants are `Expr`, `Stmt`, `ElseBranch`, or `VarBinding` values in the same containers. FR-019 and FR-020 use these shapes. If the source code holds a child in a different shape, the same rule applies to that shape. In that case, the implementation plan must record the exact typed definition before the implementation starts.
 - `LiteralValue`, `BinaryOp`, `UnaryOp`, `UnaryOpSide`, `Type`, `SourceSpan`, and identifier names implement `Clone`. The build functions and the `erase` functions need this. To add a missing `Clone` derive is not a breaking change under SC-006.
