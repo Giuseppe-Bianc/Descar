@@ -140,22 +140,24 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
 - **FR-001**: The AST must have a separate node variant for each of these expression kinds: binary operation, unary operation, grouping (parenthesized expression), literal, array literal, variable reference, assignment, function or method call, and array index access. A literal is numeric, string, character, boolean, or nullptr. The assignment variant covers only the simple assignment operator `=`. Compound-assignment operators, for example `+=` and `-=`, are `Expr::Binary` nodes with the applicable `BinaryOp` compound-assignment variant. The AST must preserve the expression structure defined by operator precedence and associativity. A grouping node must preserve explicit parentheses when they affect the source expression structure. An array index access must represent the indexed expression and its index expression as separate child nodes. A function or method call must represent the callable expression and each argument expression as separate child nodes.
 - **FR-002**: The AST SHALL have a separate node variant for each of these statement kinds: expression statement, variable declaration with a mutability flag, function declaration, main function declaration, if statement with optional else-if and else branches, while loop, three-clause for loop, block, return statement, break statement, and continue statement.
-- **FR-003**: The AST must have a type model. The type model includes these types:
+- **FR-003**: The AST must have a type model. Each type in the type model is a basic type or the result of a type constructor. The type model must contain these types:
     - all primitive scalar types (`i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`, `string`, and `bool`);
-    - the fixed-size array type;
-    - the dynamic vector type;
+    - the fixed-size array type (one element type and one constant length);
+    - the dynamic vector type (one element type);
+    - the function type (zero or more parameter types and one return type);
     - `void` and `nullptr`;
-    - user-defined custom named types.
+    - user-defined custom named types (one unique name for each type);
 - **FR-004**: Each `Expr` node, each `Stmt` node, and each `Parameter` must have a `SourceSpan` value.
     - `Type`, `VarBinding`, `ElseBranch`, `TypedVarBinding`, and `TypedElseBranch` must not have a span field. An `Expr` or a `Stmt` inside these types has its own span.
-    - A node with a direct source text origin must have a span that maps the node to the exact source range of the node.
-    - The parser makes `Type::Void` for a function with no declared return type. This `Type::Void` has no source token. It has no span, because `Type` has no span field.
-    - The parser makes a placeholder `Expr` when the expression after a unary operator, a binary operator, `=`, or `[` is missing or not valid. The placeholder is `Expr::Literal` with `LiteralValue::NullPtr`. It has no source token. Its span is the span of that operator token or of that `[` token.
+    - A node that comes directly from the source text must have a span. The span starts at the start of the first token of the node. The span ends at the end of the last token of the node.
+    - The parser makes `Type::Void` for a function that has no declared return type. This `Type::Void` has no source token. It has no span, because `Type` has no span field.
+    - The parser makes a placeholder `Expr` when the expression after a unary operator, a binary operator, `=`, or `[` is missing or is not valid. The placeholder keeps the syntax tree complete after a syntax error.
+    - The placeholder is `Expr::Literal` with `LiteralValue::NullPtr`. It has no source token. Its span is the span of the token that comes before the missing expression. This token is the unary operator, the binary operator, `=`, or `[`.
     - The `Stmt::Expression` variant must have its own explicit `span: SourceSpan` field.
-    - This span must cover the full statement, with the trailing terminator if there is one.
-    - The `Stmt::Expression` variant must not use only the span of the inner `Expr`.
-- **FR-005**: The `Stmt::VarDeclaration` node must contain an ordered `bindings` collection, one shared `type_annotation`, and an `is_mutable` flag. The `is_mutable` flag shows if the declaration uses `var` or `const`.
-- **FR-006**: The `Stmt::Function` node must contain the function name, an ordered list of `Parameter` nodes, a declared return type, and the body as a `Stmt::Block`. Each `Parameter` node must contain a name and a type annotation. If the source has no return type, the node must use `Type::Void`. This `Type::Void` has no span (FR-004).
+    - The span of a `Stmt::Expression` must cover the full statement. If the statement has a trailing terminator, the span must include the terminator.
+    - The span of a `Stmt::Expression` must not come only from the inner `Expr`.
+- **FR-005**: The `Stmt::VarDeclaration` node must contain an ordered `bindings` collection, one `type_annotation`, and an `is_mutable` flag. The `bindings` collection must keep the order of the identifiers in the source text. Each binding in the `bindings` collection has the type of the shared `type_annotation`. The `is_mutable` flag must be true when the declaration uses `var`. The `is_mutable` flag must be false when the declaration uses `const`.
+- **FR-006**: The `Stmt::Function` node must contain the function name, the formal parameters, the return type, and the body. The formal parameters must be an ordered list of `Parameter` nodes. The order of the list must be the same as the order in the source. Each `Parameter` node must contain a name and a type annotation. The body must be a `Stmt::Block`. If the source has no return type, the node must use `Type::Void`. This `Type::Void` has no span (FR-004). The node must contain enough information to build the function type `(s1, ..., sn) -> t`, where `s1` to `sn` are the parameter types and `t` is the return type. The node must not contain tokens that have no meaning in the tree, such as parentheses and commas.
 - **FR-007**: The `ElseBranch` model must show three cases: no else clause (`None`), a plain else block (`Block`), and an else-if continuation (`ElseIf`). The model must show chained conditionals explicitly.
     - The payload of `Block` and the payload of `ElseIf` have the type `Box<Stmt>`.
     - The payload of `ElseIf` must be a `Stmt::If` node. The payload of `Block` must be a `Stmt::Block` node.
