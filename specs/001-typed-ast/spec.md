@@ -20,16 +20,24 @@ A compiler developer reads a parsed Descar program. The developer finds one dist
 - Statements: expression statement, variable declaration, function declaration, main function, if/else, while, for, block, return, break, and continue.
 - Type references: all primitive types, array type, vector type, void, nullptr, and custom (user-defined) type.
 
-**Why this priority**: Without complete node coverage, the AST cannot represent an arbitrary valid program. This blocks each downstream phase: type checking, semantic analysis, IR generation, and printing.
+Each AST node represents one syntactic construct. Each node stores the information that is required to represent that construct. The AST does not use a generic node for different syntactic constructs.
 
-**Independent Test**: Parse the example file `large_toy_program.dr` or `sccp_test.dr`. The parser returns a `Vec<Stmt>`. Each statement and each sub-expression maps to a concrete, named node variant. No construct uses a generic catch-all variant.
+Binary operators are represented by a dedicated `BinaryOp` variant. Unary operators are represented by a dedicated `UnaryOp` variant. Operator precedence and associativity are preserved by the AST structure.
+
+**Why this priority*: Without complete node coverage, the AST cannot represent every valid program in the grammar. This blocks type checking, semantic analysis, intermediate representation generation, and AST printing.
+
+**Independent Test**: Parse the example file `large_toy_program.dr` or `sccp_test.dr`. The parser returns a `Vec<Stmt>`. Each statement and each sub-expression maps to a concrete, named node variant. No construct uses a generic catch-all variant. The AST preserves the source structure required by later compiler phases.
 
 **Acceptance Scenarios**:
 
-1. **Given** a `.dr` source file that contains all statement kinds, **When** the parser builds the AST,**Then** each statement maps to a node variant with a unique name. Two different constructs do not use the same variant.
-2. **Given** an expression that uses all binary operators (arithmetic, comparison, logical, bitwise, shift, and compound assignment), **When** the parser parses the expression, **Then** each operator is a separate `BinaryOp` variant inside an `Expr::Binary` node. The node keeps the left operand and the right operand.
-3. **Given** a function declaration with parameters and a typed return annotation, **When** the parser parses the declaration, **Then** the `Stmt::Function` node contains the function name, the complete ordered list of `Parameter` nodes, the declared return type, and the body block. Each `Parameter` node contains the parameter name and type.
-4. **Given** a `for` loop with an initializer, a condition, and an increment clause, **When** the parser parses the loop, **Then** the `Stmt::For` node keeps the initializer, the condition, and the increment clause as separate optional fields. The node also keeps the body.
+1. **Given** a `.dr` source file that contains all statement kinds, **When** the parser builds the AST, **Then** each statement maps to a distinct node variant with a unique name. Two different grammar constructs do not map to the same statement variant.
+2. **Given** an expression that uses all binary operators (arithmetic, comparison, logical, bitwise, shift, and compound assignment), **When** the parser parses the expression, **Then** each operator maps to a separate `BinaryOp` variant inside an `Expr::Binary` node. The node stores the left operand and the right operand. The AST preserves the operator precedence and associativity defined by the grammar.
+3. **Given** a function declaration with parameters and a typed return annotation, **When** the parser parses the declaration, **Then** the `Stmt::Function` node contains the function name, the complete ordered list of `Parameter` nodes, the declared return type, and the body block. Each `Parameter` node contains the parameter name and type. The order of the parameters is preserved.
+4. **Given** a `for` loop with an initializer, a condition, and an increment clause, **When** the parser parses the loop, **Then** the `Stmt::For` node stores the initializer, the condition, and the increment clause in separate optional fields. The node also stores the loop body. The AST preserves the order of these clauses.
+5. **Given** an expression with nested binary and unary operators, **When** the parser builds the AST, **Then** each operator is represented by the correct operator variant. The tree structure reflects the grammar precedence and associativity. Parentheses produce a grouping node when the grammar defines them as an explicit grouping construct.
+6. **Given** an array access or array literal, **When** the parser builds the AST, **Then** the array access node stores the array expression and the index expression. The array literal node stores its elements in source order. Nested array expressions are represented by nested AST nodes.
+7. **Given** a type reference for any type supported by the grammar, **When** the parser builds the AST, **Then** the type reference maps to a distinct type variant. Array, vector, void, nullptr, primitive, and custom types are represented explicitly. A custom type stores its type name.
+8\. **Given** a valid `.dr` program that contains nested statements and expressions, **When** the parser builds the AST, **Then** every child construct is represented by the AST node required by its grammar production. No valid construct is discarded, merged with an unrelated construct, or represented by a generic catch-all node.
 
 ---
 
