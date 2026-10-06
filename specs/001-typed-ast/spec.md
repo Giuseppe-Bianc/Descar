@@ -218,7 +218,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - If the declaration has no name, the parser must report the error E1008 (missing variable name). The parser must not make a `Stmt::VarDeclaration`. The rules above do not apply.
     - After E1008, the parser must skip tokens up to the next synchronization token. The parser then continues with the next statement.
     - Code that reads the AST must accept `None` as the initializer of a `VarBinding`. A later phase must not report a second error for a `None` initializer that has the error E2001.
-- **FR-018**: The AST model must be internally consistent. Two structurally different constructs must not use the same node variant. Each node variant must stand for one semantic concept only.
+- **FR-018**: Each node variant of the AST must show one construct of the source language only. Each construct must use one node variant only. Two constructs with different meaning must not use the same node variant, even if their fields are the same. For example, a unary minus and a binary minus must use different node variants. The definition of each node variant must give a label and a fixed number of child nodes. The label must identify the operation of the node. The AST must not contain nodes that exist only for the grammar, such as punctuation, keywords, and chain productions.
 - **FR-019**: `TypedExpr` must be a struct with exactly three public fields:
     - `kind`, of type `TypedExprKind`;
     - `span`, of type `SourceSpan`;
@@ -226,14 +226,18 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
   `TypedExpr` must not contain an `Expr`.
 
-  `TypedExprKind` must be an enum. It has one variant for each `Expr` variant (FR-001). Each variant has the same name as the `Expr` variant.
+  A `TypedExpr` is a node of the annotated syntax tree. The `resolved_type` field is the synthesized attribute `type` of the node. The type checker calculates it from the `kind` of the node and the `resolved_type` of each child node. For an identifier, the type checker also uses the symbol table. The symbol table is not part of the typed tree. `resolved_type` must be `None` until the type checker calculates the type of the node. After that, it must be `Some` with this type.
 
-  The fields of an `Expr` variant carry over to the `TypedExprKind` variant with these rules:
+  `TypedExprKind` must be an enum. It must have one variant for each `Expr` variant (FR-001). Each variant must have the same name as the related `Expr` variant.
+
+  The typed tree must have the same shape as the `Expr` tree. Each `Expr` node must have one related `TypedExpr` node. The typed tree must have no other node.
+
+  Each field of an `Expr` variant becomes a field of the related `TypedExprKind` variant. Use these rules:
     - A field of type `Expr` becomes `TypedExpr`. The same change applies inside `Box`, `Vec`, and `Option`.
-    - The `SourceSpan` of the variant is stored once, in `TypedExpr::span`. The variant does not repeat it.
+    - `TypedExpr::span` stores the `SourceSpan` of the variant one time. The variant must not repeat it.
     - Each other field keeps its type. These fields are operators, `LiteralValue`, identifier names, and `Type`.
 
-  A `TypedExpr` owns its child `TypedExpr` nodes. To read the resolved type of a sub-expression, go from the parent node to the child node. The typed tree has no identifier, index, or lookup structure.
+  A `TypedExpr` owns its child `TypedExpr` nodes. A child node has exactly one parent node. To get the resolved type of a sub-expression, go from the parent node to the child node and read its `resolved_type`. The typed tree has no identifier, index, or lookup structure.
 - **FR-020**: `TypedStmt` must be an enum. It has one variant for each `Stmt` variant (FR-002). Each variant has the same name as the `Stmt` variant and has a `SourceSpan` (FR-004).
 
   The fields of a `Stmt` variant carry over to the `TypedStmt` variant with these rules. Each rule also applies inside `Box`, `Vec`, and `Option`.
@@ -247,16 +251,19 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
   `TypedVarBinding` must pair the name with an `Option<TypedExpr>` initializer, in the same way as `VarBinding`.
 
-  `TypedStmt` has no `resolved_type` of its own.
+  `TypedStmt` has no `resolved_type` of its own. A statement does not have a value. In the typed tree, only a `TypedExpr` node holds a type attribute.
 - **FR-021**: The build functions `TypedExpr::from_expr(&Expr) -> TypedExpr` and `TypedStmt::from_stmt(&Stmt) -> TypedStmt` must build the typed tree from the untyped tree.
     - A build function must make a tree with the same structure as its input. It keeps the variants, their order, the values of copied fields, and the spans.
-    - A build function must set `resolved_type` to `None` on each `TypedExpr`.
+    - A build function must set `resolved_type` to `None` on each `TypedExpr`. The field `resolved_type` is the type attribute of an expression node (Aho et al., Section 5.1.1). The value `None` means that no pass has computed this attribute. A build function does not compute it.
     - A build function must not change its input.
+    - A build function must make a new node for each node of its input. The typed tree must be a tree and not a directed acyclic graph (Aho et al., Section 6.1.1). Two nodes must not share a child, even if their subtrees are equal. Each node holds its own `resolved_type`, and the type of an expression can be different at each position in the tree.
     - A build function must be an exhaustive `match` over the `Expr` variants or the `Stmt` variants. It must not have a wildcard arm. When a developer adds a variant to `Expr` or `Stmt`, the compilation of `descar-core` fails until the typed tree handles the new variant.
 
   The functions `TypedExpr::erase(&self) -> Expr` and `TypedStmt::erase(&self) -> Stmt` must rebuild the untyped tree. They do not use any `resolved_type`.
     - For each `Expr` value `e`, `TypedExpr::from_expr(&e).erase()` must be structurally equal to `e`, node by node, with spans.
     - The same rule applies to `Stmt`.
+    - Two nodes are structurally equal if they have the same variant, the same field values, the same children in the same order, and the same span. Structural equality is not type equivalence (Aho et al., Section 6.3.2).
+    - The result of `erase` must be the same for a typed tree with any `resolved_type` values. A pass that sets `resolved_type` must not change the result of `erase`.
     - The build functions and the `erase` functions must each process each node once.
     - The build functions and the `erase` functions must keep the kind of each `ElseBranch` payload. They must not check it and they must not change it (FR-007).
 - **FR-022**: `TypedExpr` and `TypedStmt` must satisfy FR-004, FR-012, and FR-013.
@@ -265,12 +272,14 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
   The type annotation positions in the typed tree are variable declarations, `Parameter`, and return types.
     - Each such position must hold the same `Type` value as the untyped tree.
-    - The two trees share `Type`. `Type` has no typed counterpart.
+    - The two trees share `Type`. `Type` has no typed counterpart. A `Type` value is a type expression (Aho et al., Section 6.3.1). It is not an expression node.
+    - No `Type` value in the typed tree can hold a `TypedExpr`.
 
   The `size` expression inside `Type::Array` (FR-010) is a plain `Expr` in both trees.
     - It has no `resolved_type`. It is in a type position and it is not an expression node of the typed tree.
-    - A type-checking pass can build a `TypedExpr` from the size expression with `TypedExpr::from_expr` for the time of the check. The pass must not store the result.
+    - A type-checking pass can build a `TypedExpr` from the size expression with `TypedExpr::from_expr` during the check. The pass must not store the result.
 - **FR-023**: `TypedExpr`, `TypedExprKind`, `TypedStmt`, `TypedElseBranch`, and `TypedVarBinding` must be in the `syntax::typed_ast` sub-module of `descar-core`. The untyped AST must stay in `syntax::ast`. The module `syntax::typed_ast` can import from `syntax::ast`. The module `syntax::ast` must not import from `syntax::typed_ast`. The two modules must stay separate.
+    - The module `syntax::ast` must not have a field for an attribute that a pass computes, such as `resolved_type`. These attributes belong only in `syntax::typed_ast`.
 
 ### Key Entities
 
