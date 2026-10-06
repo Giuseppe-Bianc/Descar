@@ -178,18 +178,32 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - **FR-012**: Each `Expr` node must have a `span()` accessor. The accessor must return a reference to the `SourceSpan` of the node. The `SourceSpan` must identify the first and the last source position of the text that the node represents. The span of a parent node must include the span of each child node.
 - **FR-013**: Each `Stmt` node must have a `span()` accessor. The accessor must return a reference to the `SourceSpan` of the node. The `SourceSpan` must identify the first and the last source position of the text that the node represents. The span of a parent node must include the span of each child node.
 - **FR-014**: The AST must have a typed tree. Each expression node in the typed tree has its own resolved-type slot, at each depth.
+    - The typed tree is an annotated syntax tree. An annotated syntax tree is a syntax tree that shows the attribute values at each node.
+    - The type attribute of an expression node is its `resolved_type` field. A type-checking pass is a semantic analysis pass that sets this field.
     - The typed tree is in the `syntax::typed_ast` module. It has `TypedExpr` and `TypedStmt` (FR-019, FR-020).
     - Semantic analysis passes must store and read resolved types only through the `resolved_type` field of `TypedExpr`.
-    - Semantic analysis passes must not use external side tables. A side table is a collection outside the typed tree that is addressed by node identifier, node address, or source span.
+    - Semantic analysis passes must not use external side tables. A side table is a collection outside the typed tree. The collection uses a node identifier, a node address, or a source span as key.
+    - A symbol table is not a side table if it uses a name and a scope as key. A symbol table must not use a node identifier, a node address, or a source span as key.
     - The core `Expr` enum must not change.
-    - The `Expr` enum must stay usable without a resolved type. Parsing and other pre-semantic phases need this.
+    - The `Expr` enum must stay usable without a resolved type. The parser and the other pre-semantic phases need this.
     - The annotation applies to each expression separately. Each `TypedExpr` node has an independent `resolved_type` value.
     - A write to `resolved_type` on one node must not change any other node.
-    - `resolved_type` must be `Some(T)` when the type of that specific expression can be determined. This is true also when other parts of the program have errors.
-    - `resolved_type` must be `None` when the type of that specific expression cannot be resolved.
+    - A resolved type is a type expression. A type expression is a basic type, a type name, or a type constructor applied to type expressions.
+    - Each variant of the `Expr` enum has one type rule. A type rule gives the resolved type of a node from the inputs of that node.
+    - The inputs of a type rule are the data of the node, the `resolved_type` of each child node, and the symbol table.
+    - The type rule of a node computes `resolved_type` as a synthesized attribute. A synthesized attribute gets its value from the node and from the child nodes of the node.
+    - A type-checking pass must resolve all child nodes of a node before it resolves that node. The order goes from the leaf nodes to the root node.
+    - If a type rule needs information from a parent node or a sibling node, the type-checking pass must give this information to the type rule as an inherited attribute.
+    - A type-checking pass must not store an inherited attribute in the typed tree. The pass sends the attribute to the child node during the traversal.
+    - A type-checking pass can use type inference. Type inference finds the type of an expression from the way the program uses that expression.
+    - If a type rule converts the type of an operand implicitly, the `resolved_type` of the operand node must not change.
+    - If a node has a type error, the type-checking pass must report the error one time. After the error, the pass must continue to the next node.
+    - A type-checking pass must not report a type error for a parent node only because a child node has a `resolved_type` of `None`.
+    - `resolved_type` must be `Some(T)` if the type of that specific expression can be determined. This is true also if other parts of the program have errors.
+    - `resolved_type` must be `None` if the type of that specific expression cannot be resolved.
     - `resolved_type` must be `None` on each node of a tree that no type-checking pass has processed.
-- **FR-015**: The `Stmt::For` node must store the initializer, the condition, and the increment as independent optional fields. Each field is absent (`None`) or present. The state of one field must not change the state of another field.
-- **FR-016**: Numeric literals with a non-decimal base (binary `#b`, octal `#o`, hexadecimal `#x`) must use the same `LiteralValue::Numeric(Number)` variant as decimal literals. The lexer must resolve the base.
+- **FR-015**: The `Stmt::For` node must store the initializer, the condition, and the increment as three independent optional fields. Each field is `None` when the source code omits the expression, and `Some` when the source code contains the expression. The state of one field must not change the state of another field. The parser must accept the production `stmt → for ( optexpr ; optexpr ; optexpr ) stmt`, where `optexpr` is empty or `expr`. The parser must accept all eight combinations of present and absent fields. The parser must require both semicolons in the `for` header for each combination. The code generator must evaluate the initializer one time, before the first test of the condition. The code generator must evaluate the condition before each iteration of the body. The code generator must evaluate the increment after each iteration of the body and before the next test of the condition. If the condition is `None`, the code generator must treat the condition as true and must not generate a test. If the initializer or the increment is `None`, the code generator must not generate code for that field. If the language has a `continue` statement, a `continue` in the body must transfer control to the increment.
+- **FR-016**: The lexer must read a numeric literal with a radix prefix (binary `#b`, octal `#o`, or hexadecimal `#x`) as one token. The lexer must select the longest lexeme that matches the pattern of the literal. The lexer must convert the digits to a value in the radix that the prefix gives. The lexer must give the token the same `LiteralValue::Numeric(Number)` variant as a decimal literal. The parser must not receive the radix. A digit that is not valid in the radix (for example `#b2`) must cause a lexical error. The lexical error must show the position of the lexeme in the source text.
 - **FR-017**: The AST must represent a multi-binding variable declaration (`var a, b: T = e1, e2`) as one `Stmt::VarDeclaration` with several `VarBinding` entries. Each `VarBinding` must pair one name with an optional initializer. The type of the initializer is `Option<Expr>`.
     - The grammar requires one initializer for each name. In a syntactically valid program, the initializer of each `VarBinding` is `Some`.
     - The grammar has no declaration without `=`. This rule is the same for `var` and for `const`. A declaration with no initializer has zero initializers. The rule for an initializer count mismatch applies.
