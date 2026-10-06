@@ -157,7 +157,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - **FR-016**: Numeric literals with a non-decimal base (binary `#b`, octal `#o`, hexadecimal `#x`) must use the same `LiteralValue::Numeric(Number)` variant as decimal literals. The lexer must resolve the base.
 - **FR-017**: The AST must represent a multi-binding variable declaration (`var a, b: T = e1, e2`) as one `Stmt::VarDeclaration` with several `VarBinding` entries. Each `VarBinding` must pair one name with an optional initializer. The type of the initializer is `Option<Expr>`.
     - The grammar requires one initializer for each name. In a syntactically valid program, the initializer of each `VarBinding` is `Some`.
-    - The grammar has no declaration without `=`. This rule is the same for `var` and for `const`. A declaration with no initializer has zero initializers, and the next rule applies.
+    - The grammar has no declaration without `=`. This rule is the same for `var` and for `const`. A declaration with no initializer has zero initializers. The rule for an initializer count mismatch applies.
     - If the declaration has at least one name and the number of names is not equal to the number of initializers, the parser must report the error E2001 (initializer count mismatch).
     - After this error, the parser must still make one `Stmt::VarDeclaration`. It must make one `VarBinding` for each name, in source order.
     - The n-th name takes the n-th initializer. A name that has no n-th initializer has `None`.
@@ -228,13 +228,13 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - **`UnaryOpSide`**: An enumeration with two variants. It shows prefix or postfix application.
 - **`LiteralValue`**: The sum type of all literal value kinds. The kinds are numeric, string, char, bool, and nullptr.
 - **`Parameter`**: A named tuple with `name`, `type_annotation`, and `span` for function parameters. The typed tree and the untyped tree share this type.
-- **`VarBinding`**: A named tuple with `name` and an `Option<Expr>` initializer, for multi-binding declarations. In a syntactically valid program, the initializer is `Some` (FR-017).
+- **`VarBinding`**: A struct with the public fields `name: String` and `initializer: Option<Expr>`, for multi-binding declarations. In a syntactically valid program, the initializer is `Some` (FR-017).
 - **`ElseBranch`**: An enumeration with three variants, for the else clause of an if statement. The `Block` payload and the `ElseIf` payload have the type `Box<Stmt>`. In parser output, the `ElseIf` payload is a `Stmt::If` and the `Block` payload is a `Stmt::Block` (FR-007).
 - **`TypedExpr`**: A struct in `syntax::typed_ast`. It has the fields `kind: TypedExprKind`, `span: SourceSpan`, and `resolved_type: Option<Type>`. It does not contain an `Expr`. Its children are `TypedExpr` nodes. The type-checking pass sets `resolved_type`. `None` means that the type of the specific expression cannot be resolved, or that no type-checking pass has processed the tree.
 - **`TypedExprKind`**: An enum in `syntax::typed_ast`. It has one variant for each `Expr` variant. Fields of type `Expr` become `TypedExpr` (FR-019).
 - **`TypedStmt`**: An enum in `syntax::typed_ast`. It has one variant for each `Stmt` variant. Fields of type `Expr`, `Stmt`, `ElseBranch`, and `VarBinding` become their typed counterparts (FR-020). It has no `resolved_type` of its own.
 - **`TypedElseBranch`**: An enumeration with three variants, in the same way as `ElseBranch`. Its payloads have the type `Box<TypedStmt>` (FR-020).
-- **`TypedVarBinding`**: A named tuple with `name` and an optional `TypedExpr` initializer. It corresponds to `VarBinding`.
+- **`TypedVarBinding`**: A struct with the public fields `name: String` and `initializer: Option<TypedExpr>`. It corresponds to `VarBinding`.
 
 ---
 
@@ -255,7 +255,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 ### Session 2026-10-05
 
 - Q: FR-017 said that each `VarBinding` has an initializer. Key Entities said that the initializer is optional. Which statement is correct? A: The two statements apply to different cases. The type of the initializer is `Option<Expr>`. The initializer is `Some` in a syntactically valid program, because the grammar requires one initializer for each name. The initializer is `None` only after the parser recovers from an initializer-count error (E2001), or when code makes the AST by hand.
-- Q: Why does the spec keep `Option<Expr>` and not `Expr`? A: The existing code and the existing tests use a `VarBinding` with `None` as the initializer. A change to `Expr` is a breaking change under SC-006, and the existing tests would not compile.
+- Q: Why does the spec keep the type `Option<Expr>` for the initializer? Why is the type not `Expr`? A: The existing code and the existing tests use a `VarBinding` with `None` as the initializer. To change the type of the `initializer` field to `Expr` is a breaking change under SC-006. The existing tests would not compile.
 - Q: What does the parser do when the number of names is not equal to the number of initializers? A: The parser reports the error E2001. It makes one `VarBinding` for each name. The n-th name takes the n-th initializer. A name that has no n-th initializer has `None`. The parser does not store the extra initializers.
 - Q: Does the grammar permit a `var` or a `const` declaration with no initializer? A: No. The parser requires `=` and one expression for each name. A declaration with no initializer has zero initializers, and the rule for E2001 applies (FR-017).
 - Q: What does the parser do when a declaration has no name? A: The parser reports the error E1008 and does not make a `Stmt::VarDeclaration`. The parser stops before it reads the initializers, so the count rule of FR-017 does not apply.
