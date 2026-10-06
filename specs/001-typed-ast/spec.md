@@ -340,37 +340,37 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
 ### Measurable Outcomes
 
-- **SC-001**: For each syntactically valid `.dr` source file, the parsed AST has no unrecognized node and no generic node for a construct in the grammar. The parsed AST includes 100% of the grammar productions that matter for later compiler phases.
-- **SC-002**: Each type annotation position in the AST uses a concrete `Type` variant. The positions are variable declarations, parameters, return types, and array sizes. A construct with a specific type keyword does not use `Type::Void` or `Type::Custom` as a default.
-- **SC-003**: Each example `.dr` file in `dr_files/` parses to an AST that passes the structural completeness check. Each node variant, span, and child field that the grammar needs is present and has a value.
-- **SC-004**: A round-trip property applies to each `Expr` node, each `Stmt` node, and each `Parameter` with a direct text origin. Such a node corresponds to one or more source tokens. For each such node:
-    - The span of the node must be a source range. The span comes from `span()`, or from the `span` field of `Parameter`.
-    - The text of the original source in that range must be exactly the source fragment that makes the node.
+- **SC-001**: For each syntactically valid `.dr` source file, the AST has no unknown node and no generic node for a construct in the grammar. A coverage test lists each grammar production. Each production has an AST node variant, or a written reason why it has none. A production that only groups tokens, for example a parenthesized expression, has no AST node variant. The test fails when a grammar production is not in the list.
+- **SC-002**: Each type annotation position in the AST uses a concrete `Type` variant. The positions are variable declarations, parameters, return types, and array sizes. When the source has a type keyword, the parser makes the `Type` variant for that keyword. The parser does not use `Type::Void` or `Type::Custom` as a default value. The only exception is the `Type::Void` return type of a function with no return annotation (FR-004).
+- **SC-003**: Each example `.dr` file in `dr_files/` parses to an AST that passes the structural completeness check. The check passes when each node variant, span, and child field that the grammar needs is present and has a value.
+- **SC-004**: A round-trip property applies to each `Expr` node, each `Stmt` node, and each `Parameter` with a direct text origin. Each of these nodes comes from one or more source tokens. For each of these nodes:
+    - The span of the node is a source range. The range starts with the first lexeme of the node and ends with the last lexeme of the node. The span comes from `span()`, or from the `span` field of `Parameter`.
+    - The text of the original source in that range is the same as the source fragment that makes the node.
 
-  A node with no direct text origin is not subject to the verbatim-reproduction rule. Such a node has no source token.
+  A node with no direct text origin is not subject to the round-trip property. This node has no source token.
     - The `Type::Void` return type of a function with no return annotation has no span (FR-004).
-    - The placeholder `Expr` of FR-004 has the span of the token that comes before the missing expression. This span does not reproduce a source fragment of the placeholder.
-- **SC-005**: Type-checker tests verify the resolved-type annotation on `TypedExpr` trees at each depth. After the type checker runs on a program, each resolvable `TypedExpr` node has `Some(T)`. Resolvable nodes are literals, variables, calls, binary expressions, and unary expressions. This includes operands inside other expressions. It also includes expressions in statement conditions, initializers, and return values. The existing type-checker tests pass with no regression.
-- **SC-006**: All existing tests in `crates/descar-core/tests/` pass without change after the AST changes. A breaking change is one of these: renaming, removing, or changing the type of an existing public `Expr` or `Stmt` field or variant. Adding a new optional field or a new enum variant, with `#[non_exhaustive]` where necessary, is not a breaking change. It needs no migration path. The feature directory must contain a `MIGRATION.md` note for each breaking change of this feature.
-- **SC-007**: For each `.dr` file in `dr_files/`, build the typed tree from the parsed program.
+    - The placeholder `Expr` of FR-004 has the span of the token that comes before the missing expression. The text in this span is the text of the previous token. It is not a source fragment of the placeholder.
+- **SC-005**: The type checker uses type synthesis. It finds the type of an expression from the types of its subexpressions. Type-checker tests examine the resolved-type annotation on `TypedExpr` trees at each depth. After the type checker runs on a program, each resolvable `TypedExpr` node has `Some(T)`. Resolvable nodes are literals, variables, calls, binary expressions, and unary expressions. This includes operands inside other expressions. It also includes expressions in statement conditions, initializers, and return values. The existing type-checker tests pass.
+- **SC-006**: All existing tests in `crates/descar-core/tests/` pass without change after the AST changes. The only exception is a test that uses an item with a breaking change that `MIGRATION.md` lists. A breaking change is one of these changes to an existing public `Expr` or `Stmt` field or variant: a new name, removal, or a new type. A new optional field or a new enum variant, with `#[non_exhaustive]` where necessary, is not a breaking change. It needs no migration path. The feature directory must contain a `MIGRATION.md` note for each breaking change of this feature.
+- **SC-007**: For each `.dr` file in `dr_files/`, build the typed tree from the parsed program. The typed tree is the AST with a type attribute on each expression node.
     - The parsed program does not change.
-    - `erase()` on the typed tree returns a tree that is structurally equal to the parsed program, with spans.
-    - The number of `TypedExpr` nodes is equal to the number of `Expr` nodes.
-    - The number of `TypedStmt` nodes is equal to the number of `Stmt` nodes.
-- **SC-008**: For each `.dr` file in `dr_files/`, check each `ElseBranch` value in the parsed program and in the typed tree.
+    - `erase()` on the typed tree returns a tree that is equal to the parsed program in structure and in spans.
+    - The number of `TypedExpr` nodes is the same as the number of `Expr` nodes.
+    - The number of `TypedStmt` nodes is the same as the number of `Stmt` nodes.
+- **SC-008**: For each `.dr` file in `dr_files/`, examine each `ElseBranch` value in the parsed program and in the typed tree.
     - Each `ElseBranch::ElseIf` has a `Stmt::If` payload. Each `ElseBranch::Block` has a `Stmt::Block` payload.
     - Each `TypedElseBranch::ElseIf` has a `TypedStmt::If` payload. Each `TypedElseBranch::Block` has a `TypedStmt::Block` payload.
 
   A test makes a `Stmt::If` by hand. Its `ElseBranch::ElseIf` has a `Stmt::Break` payload.
     - `TypedStmt::from_stmt` and `erase()` keep the payload kind.
-    - The result of `erase()` is structurally equal to the input, with spans.
-- **SC-009**: For each `.dr` file in `dr_files/` that has no syntax error, check each `VarBinding` in the parsed program and each `TypedVarBinding` in the typed tree.
+    - The result of `erase()` is the same as the input in structure and in spans.
+- **SC-009**: For each `.dr` file in `dr_files/` that has no syntax error, examine each `VarBinding` in the parsed program and each `TypedVarBinding` in the typed tree.
     - Each `VarBinding` has `Some` as its initializer.
     - Each `TypedVarBinding` has `Some` as its initializer.
 
-  A test parses each of these sources.
-    - `var a, b: i32 = 1;` gives the error E2001. The AST has `a` with `Some` and `b` with `None`.
-    - `var a: i32 = 1, 2;` gives the error E2001. The AST has one `VarBinding` with `Some`. It does not store the initializer `2`.
+  A test parses each of these sources. The parser reports the error and continues.
+    - `var a, b: i32 = 1` gives the error E2001. The AST has `a` with `Some` and `b` with `None`.
+    - `var a: i32 = 1, 2` gives the error E2001. The AST has one `VarBinding` with `Some`. It does not store the initializer `2`.
     - `var a: i32;` gives the error E2001. The AST has one `VarBinding` with `None`.
     - `var : i32 = 1;` gives the error E1008. The AST has no `Stmt::VarDeclaration`.
 
