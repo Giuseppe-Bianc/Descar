@@ -37,25 +37,32 @@ Binary operators are represented by a dedicated `BinaryOp` variant. Unary operat
 5. **Given** an expression with nested binary and unary operators, **When** the parser builds the AST, **Then** each operator is represented by the correct operator variant. The tree structure reflects the grammar precedence and associativity. Parentheses produce a grouping node when the grammar defines them as an explicit grouping construct.
 6. **Given** an array access or array literal, **When** the parser builds the AST, **Then** the array access node stores the array expression and the index expression. The array literal node stores its elements in source order. Nested array expressions are represented by nested AST nodes.
 7. **Given** a type reference for any type supported by the grammar, **When** the parser builds the AST, **Then** the type reference maps to a distinct type variant. Array, vector, void, nullptr, primitive, and custom types are represented explicitly. A custom type stores its type name.
-8\. **Given** a valid `.dr` program that contains nested statements and expressions, **When** the parser builds the AST, **Then** every child construct is represented by the AST node required by its grammar production. No valid construct is discarded, merged with an unrelated construct, or represented by a generic catch-all node.
+8. **Given** a valid `.dr` program that contains nested statements and expressions, **When** the parser builds the AST, **Then** every child construct is represented by the AST node required by its grammar production. No valid construct is discarded, merged with an unrelated construct, or represented by a generic catch-all node.
 
 ---
 
 ### User Story 2 - Uniform and Complete Type Model (Priority: P2)
 
-A type checker or a semantic analysis pass reads a declared type from the AST. The type is on a variable, a parameter, a return position, or a type annotation. The pass does not infer the type. The pass does not rebuild the type from raw tokens. Each position where the grammar permits a type annotation has a first-class `Type` value.
+A type checker or a semantic analysis pass reads a declared type from the AST. The type checker does not infer the declared type. The type checker does not parse the source tokens again. Each grammar position that permits a type annotation has one first-class `Type` value. The `Type` model represents every type that the grammar can declare. The model represents primitive types, array types, vector types, custom types, `void`, and `nullptr`. The AST stores the type structure. The AST does not store only the source spelling of a type. The semantic pass can inspect the `Type` value without reading the source text again.
 
-**Why this priority**: Downstream semantic phases (type checking, type inference, and diagnostics) need a complete and uniform type model. If the model has gaps, the type checker must parse again or guess. This brings back ambiguity.
+**Why this priority**: Downstream semantic phases need one complete type model. A type checker must use the same representation for variables, parameters, return types, and other type annotations. If the AST stores incomplete or different type information, later phases must parse source text again or infer missing information. This creates duplicated parsing logic and can create different results for the same type.
 
-**Independent Test**: Use a `.dr` source file with variables of all primitive types (`i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`, `string`, `bool`). The file also has arrays (`i32[10]`), vectors (`vector<f64>`), custom types, `void`, and `nullptr`. Each type annotation position in the AST holds the exact `Type` variant, with no ambiguity.
+**Independent Test**: Use a `.dr` source file with variables of all primitive types (`i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`, `string`, `bool`). The file also has arrays (`i32[10]`), vectors (`vector<f64>`), custom types, `void`, and `nullptr`. Use the types in variable declarations, function parameters, function return types, and type annotations. Examine the AST without reading the source tokens. Each type annotation position contains one `Type` value with the correct variant and its required data.
 
 **Acceptance Scenarios**:
 
 1. **Given** the variable declaration `var x: i32 = 0`, **When** you examine the AST node, **Then** the `type_annotation` field contains `Type::I32` and the `is_mutable` flag is `true`.
 2. **Given** the constant declaration `const y: bool = true`, **When** you examine the AST node, **Then** the `type_annotation` field contains `Type::Bool` and the `is_mutable` flag is `false`.
-3. **Given** the array type annotation `i32[10]`, **When** you examine the AST node, **Then** the `Type::Array` node contains `element_type: Type::I32` and a `size` expression that evaluates to the literal `10`.
-4. **Given** the function parameter `n: f64`, **When** you examine the AST node, **Then** the `Parameter` node contains `name = "n"` and `type_annotation = Type::F64`.
-5. **Given** a function with no return type annotation, **When** the parser parses the function, **Then** the `return_type` field has the default value `Type::Void`.
+3. **Given** the array type annotation `i32[10]`, **When** you examine the AST node, **Then** the type is `Type::Array`, the `element_type` is `Type::I32`, and the `size` field contains an expression node for the literal `10`.
+4. **Given** the vector type annotation `vector<f64>`, **When** you examine the AST node, **Then** the type is `Type::Vector` and the `element_type` is `Type::F64`.
+5. **Given** a custom type annotation `MyType`, **When** you examine the AST node, **Then** the type is `Type::Custom` and the custom type name is stored in the `Type` value.
+6. **Given** the function parameter `n: f64`, **When** you examine the AST node, **Then** the `Parameter` node contains `name = "n"` and `type_annotation = Type::F64`.
+7. **Given** a function with the return type annotation `: i32`, **When** you examine the AST node, **Then** the `return_type` field contains `Type::I32`.
+8. **Given** a function with no return type annotation, **When** the parser parses the function, **Then** the `return_type` field contains `Type::Void`.
+9. **Given** a type annotation for each primitive type (`i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`, `string`, `bool`), **When** you examine the AST node, **Then** each annotation contains its matching `Type` variant.
+10. **Given** the type annotations `void` and `nullptr`, **When** you examine the AST node, **Then** `void` is represented by `Type::Void` and `nullptr` is represented by `Type::Nullptr`.
+11. **Given** any grammar position that permits a type annotation, **When** the parser builds the AST, **Then** the position contains a first-class `Type` value and does not contain only raw type tokens or a source string.
+12. **Given** a declared type in the source, **When** a semantic analysis pass reads the AST, **Then** the pass can identify the complete declared type from the `Type` value without reparsing the source tokens.
 
 ---
 
