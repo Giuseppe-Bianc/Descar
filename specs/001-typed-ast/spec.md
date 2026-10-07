@@ -140,24 +140,36 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
 - **FR-001**: The AST must have a separate node variant for each of these expression kinds: binary operation, unary operation, grouping (parenthesized expression), literal, array literal, variable reference, assignment, function or method call, and array index access. A literal is numeric, string, character, boolean, or nullptr. The assignment variant covers only the simple assignment operator `=`. Compound-assignment operators, for example `+=` and `-=`, are `Expr::Binary` nodes with the applicable `BinaryOp` compound-assignment variant. The AST must preserve the expression structure defined by operator precedence and associativity. A grouping node must preserve explicit parentheses when they affect the source expression structure. An array index access must represent the indexed expression and its index expression as separate child nodes. A function or method call must represent the callable expression and each argument expression as separate child nodes.
 - **FR-002**: The AST SHALL have a separate node variant for each of these statement kinds: expression statement, variable declaration with a mutability flag, function declaration, main function declaration, if statement with optional else-if and else branches, while loop, three-clause for loop, block, return statement, break statement, and continue statement.
-- **FR-003**: The AST must have a type model. Each type in the type model is a basic type or the result of a type constructor. The type model must contain these types:
-    - all primitive scalar types (`i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`, `string`, and `bool`);
-    - the fixed-size array type (one element type and one constant length);
-    - the dynamic vector type (one element type);
-    - the function type (zero or more parameter types and one return type);
-    - `void` and `nullptr`;
-    - user-defined custom named types (one unique name for each type);
+- **FR-003**: The AST must have a type model. Each `Type` value is a basic type or a type constructor. The type model must contain:
+    - the primitive scalar types (`i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`, `string`, and `bool`);
+    - the fixed-size array type;
+    - the dynamic vector type;
+    - `void`;
+    - `nullptr`;
+    - user-defined custom named types.
+  
+  The `Type` definition must use these forms:
+    - `Type::Custom { name: Arc<str> }`;
+    - `Type::Array { element_type: Box<Type>, size: Box<Expr> }`;
+    - `Type::Vector { element_type: Box<Type> }`;
+    - unit variants for all primitive types, `Type::Void`, and `Type::NullPtr`.
+  
+  A function type `(s1, ..., sn) -> t` is derived from the parameter types and the return type of `Stmt::Function`. It is not a `Type` variant in this feature.
 - **FR-004**: Each `Expr` node, each `Stmt` node, and each `Parameter` must have a `SourceSpan` value.
-    - `Type`, `VarBinding`, `ElseBranch`, `TypedVarBinding`, and `TypedElseBranch` must not have a span field. An `Expr` or a `Stmt` inside these types has its own span.
+    - `Type`, `VarBinding`, `ElseBranch`, `TypedVarBinding`, and `TypedElseBranch` must not have a span field.
     - A node that comes directly from the source text must have a span. The span starts at the start of the first token of the node. The span ends at the end of the last token of the node.
-    - The parser makes `Type::Void` for a function that has no declared return type. This `Type::Void` has no source token. It has no span, because `Type` has no span field.
+    - The source span of a type annotation belongs to the node that contains the `Type` value. A `Type` value does not carry its own source span.
+    - For the return type of `Stmt::Function`, the function `span` is the source span for the complete function. The `return_type` field has no separate span.
+    - The parser makes `Type::Void` when a function has no declared return type. This value is synthesized from the absence of the return type annotation. It has no source token and no span.
+    - An explicit `void` return type and an omitted return type both produce `Type::Void`. The AST does not preserve whether the `Type::Void` value came from the source token `void` or from an omitted annotation.
+    - No zero-width `SourceSpan` is required for a synthesized `Type::Void`.
     - The parser makes a placeholder `Expr` when the expression after a unary operator, a binary operator, `=`, or `[` is missing or is not valid. The placeholder keeps the syntax tree complete after a syntax error.
     - The placeholder is `Expr::Literal` with `LiteralValue::NullPtr`. It has no source token. Its span is the span of the token that comes before the missing expression. This token is the unary operator, the binary operator, `=`, or `[`.
     - The `Stmt::Expression` variant must have its own explicit `span: SourceSpan` field.
     - The span of a `Stmt::Expression` must cover the full statement. If the statement has a trailing terminator, the span must include the terminator.
     - The span of a `Stmt::Expression` must not come only from the inner `Expr`.
 - **FR-005**: The `Stmt::VarDeclaration` node must contain an ordered `bindings` collection, one `type_annotation`, and an `is_mutable` flag. The `bindings` collection must keep the order of the identifiers in the source text. Each binding in the `bindings` collection has the type of the shared `type_annotation`. The `is_mutable` flag must be true when the declaration uses `var`. The `is_mutable` flag must be false when the declaration uses `const`.
-- **FR-006**: The `Stmt::Function` node must contain the function name, the formal parameters, the return type, and the body. The formal parameters must be an ordered list of `Parameter` nodes. The order of the list must be the same as the order in the source. Each `Parameter` node must contain a name and a type annotation. The body must be a `Stmt::Block`. If the source has no return type, the node must use `Type::Void`. This `Type::Void` has no span (FR-004). The node must contain enough information to build the function type `(s1, ..., sn) -> t`, where `s1` to `sn` are the parameter types and `t` is the return type. The node must not contain tokens that have no meaning in the tree, such as parentheses and commas.
+- **FR-006**: The `Stmt::Function` node must contain the function name, the formal parameters, the return type, and the body. The formal parameters must be an ordered list of `Parameter` nodes. The order of the list must be the same as the order in the source. Each `Parameter` node must contain a name and a type annotation. The body must be a `Stmt::Block`. If the source has no return type, the node must use `Type::Void`. An explicit `void` annotation and an omitted return type have the same `Type::Void` value. The AST does not store their source origin in the `Type` value. The `Stmt::Function.span` is the source span for the complete function. The node must contain enough information to build the function type `(s1, ..., sn) -> t`, where `s1` to `sn` are the parameter types and `t` is the return type. The node must not contain tokens that have no meaning in the tree, such as parentheses and commas.
 - **FR-007**: The `ElseBranch` model must show three cases: no else clause (`None`), a plain else block (`Block`), and an else-if continuation (`ElseIf`). The model must show chained conditionals explicitly.
     - The payload of `Block` and the payload of `ElseIf` have the type `Box<Stmt>`.
     - The payload of `ElseIf` must be a `Stmt::If` node. The payload of `Block` must be a `Stmt::Block` node.
@@ -173,8 +185,18 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - Code that reads an `ElseBranch` must accept any `Stmt` as the payload of `Block` or `ElseIf`. The code must not fail if the payload has another kind.
 - **FR-008**: The AST must represent each binary operator as one variant of a closed enumeration. The enumeration must include one variant for each arithmetic, comparison, logical, bitwise, shift, and compound-assignment operator in the grammar. Each operator must have exactly one variant. Each variant must have exactly one operator. The enumeration must not contain an unknown variant or a default variant. A binary-operator node must have one operator variant, one left operand, and one right operand. The AST must not use a string or an integer to identify an operator. The AST must not store precedence or associativity. The parser must use precedence and associativity only to decide the shape of the tree. The logical AND operator and the logical OR operator must have their own variants. These variants must be different from the bitwise AND variant and the bitwise OR variant.
 - **FR-009**: The AST must show each unary operator as a node with one operator and one operand. The AST must show the unary operators as a closed enumeration. The enumeration must contain negation (`-`), logical NOT (`!`), bitwise complement (`~`), increment (`++`), and decrement (`--`). Each unary operator node must have a `UnaryOpSide` value. The `UnaryOpSide` value is `Prefix` or `Postfix`. It shows the side of the operand where the operator is applied. Negation, logical NOT, and bitwise complement must have the `Prefix` value. Increment and decrement can have the `Prefix` value or the `Postfix` value. The operand of an increment or decrement must be an lvalue. For increment and decrement, the `Prefix` value gives the new value of the operand as the value of the expression. The `Postfix` value gives the old value of the operand as the value of the expression.
-- **FR-010**: The `Type::Array` variant must contain the element type and the size. The element type is a type expression. The size is an expression node. The size is not an integer value. The AST can then hold an array type with a size that is a compile-time constant expression. The untyped tree and the typed tree must store the size expression as a plain `Expr` (FR-022). The type checker must evaluate the size expression to an integer constant before it compares two array types. If the type checker cannot evaluate the size expression, it must report an error. Two array types are equivalent when their element types are equivalent and their sizes are equal.
-- **FR-011**: The `Type::Vector` variant must contain one element type. The element type must be a `Type` value. Two `Type::Vector` values must be equal only if their element types are equal. The source syntax of a `Type::Vector` must be different from the source syntax of a `Type::Custom` named `vector`.
+- **FR-010**: The `Type::Array` variant must contain the element type and the size. The element type is a `Type` value. The size is an `Expr` node.
+  
+  The size expression must be a compile-time constant expression that evaluates to a non-negative integer. The type checker must evaluate the size expression before it uses the array type in type equivalence or other semantic checks. If the size expression cannot be evaluated to a non-negative integer, the type checker must report an error.
+  
+  Two array types are equivalent when:
+    - their element types are equivalent; and
+    - their evaluated size values are equal.
+  
+  The source form of the size expression does not affect type equivalence after evaluation. For example, `i32[10]` and `i32[5 + 5]` are equivalent when both expressions evaluate to the integer value `10`.
+  
+  Source spans inside the size expressions do not affect type equivalence. Type equivalence compares the semantic array size value, not the source position.
+- **FR-011**: The `Type::Vector` variant must contain one element type. The element type must be a `Type` value. Two `Type::Vector` values are equivalent only if their element types are equivalent. The source syntax of a `Type::Vector` must be different from the source syntax of a `Type::Custom` named `vector`.
 - **FR-012**: Each `Expr` node must have a `span()` accessor. The accessor must return a reference to the `SourceSpan` of the node. The `SourceSpan` must identify the first and the last source position of the text that the node represents. The span of a parent node must include the span of each child node.
 - **FR-013**: Each `Stmt` node must have a `span()` accessor. The accessor must return a reference to the `SourceSpan` of the node. The `SourceSpan` must identify the first and the last source position of the text that the node represents. The span of a parent node must include the span of each child node.
 - **FR-014**: The AST must have a typed tree. Each expression node in the typed tree has its own resolved-type slot, at each depth.
@@ -227,6 +249,10 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - Code that reads the AST must distinguish a valid `Some` initializer from a recovery `None` initializer. A later semantic phase must not treat `None` as a valid declaration with no initializer.
     - The declared `type_annotation` applies to every `VarBinding` in the declaration.
 - **FR-018**: Each node variant of the AST must show one construct of the source language only. Each construct must use one node variant only. Two constructs with different meaning must not use the same node variant, even if their fields are the same. For example, a unary minus and a binary minus must use different node variants. The definition of each node variant must give a label and a fixed number of child nodes. The label must identify the operation of the node. The AST must not contain nodes that exist only for the grammar, such as punctuation, keywords, and chain productions.
+  
+  The rule applies to AST nodes. It does not require a distinct `Type` value for the absence of an optional type annotation. In particular, an omitted function return type is not a second `Type` variant. It is the absence of source syntax that the parser represents with the default value `Type::Void`.
+  
+  Explicit `void` and an omitted return type are therefore semantically equivalent in the AST. The AST does not preserve this source-level distinction.
 - **FR-019**: `TypedExpr` must be a struct with exactly three public fields:
     - `kind`, of type `TypedExprKind`;
     - `span`, of type `SourceSpan`;
@@ -299,20 +325,32 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 ### Key Entities
 
 - **`Expr`**: The sum type of all expression node variants. Each variant has a `SourceSpan`. The type has a `span()` accessor.
-- **`Stmt`**: The sum type of all statement node variants. Each variant has a `SourceSpan`. No variant is an exception. This satisfies FR-004 and the clarification that `Stmt::Expression` has its own explicit `span` field.
-- **`Type`**: The sum type of all type annotation variants. The variants are primitives, array, vector, void, nullptr, and custom. The typed tree and the untyped tree share this type. `Type` has no `SourceSpan` (FR-004).
+- **`Stmt`**: The sum type of all statement node variants. Each variant has a `SourceSpan`. No variant is an exception. This satisfies FR-004.
+- **`Type`**: The sum type of all type annotation values. `Type` has no `SourceSpan`.
+  
+  The primitive and special unit variants are `I8`, `I16`, `I32`, `I64`, `U8`, `U16`, `U32`, `U64`, `F32`, `F64`, `Char`, `String`, `Bool`, `Void`, and `NullPtr`.
+  
+  `Type::Custom` contains `name: Arc<str>`.
+  
+  `Type::Array` contains `element_type: Box<Type>` and `size: Box<Expr>`.
+  
+  `Type::Vector` contains `element_type: Box<Type>`.
+  
+  A `Type::Void` value can come from an explicit `void` annotation or from an omitted function return annotation. The `Type` value does not preserve this origin.
+  
+  Type equivalence is a semantic rule. It does not use `SourceSpan`. Two array types are equivalent when their element types are equivalent and their evaluated non-negative integer sizes are equal.
 - **`BinaryOp`**: A closed enumeration of all binary operators.
 - **`UnaryOp`**: A closed enumeration of all unary operators.
 - **`UnaryOpSide`**: An enumeration with two variants. It shows prefix or postfix application.
 - **`LiteralValue`**: The sum type of all literal value kinds. The kinds are numeric, string, char, bool, and nullptr.
 - **`Parameter`**: A struct with the public fields `name: String`, `type_annotation: Type`, and `span: SourceSpan`, for function parameters. The typed tree and the untyped tree share this type.
-- **`VarBinding`**: A struct with the public fields `name: String` and `initializer: Option<Expr>`, for multi-binding declarations. The `Option` is an AST representation choice. In a valid source program, `initializer` is always `Some`. `None` represents parser recovery after E2001 or an AST value created directly by program code. `None` does not represent an allowed declaration without an initializer. `VarBinding` has no `SourceSpan` (FR-004).
-- **`ElseBranch`**: An enumeration with three variants, for the else clause of an if statement. The `Block` payload and the `ElseIf` payload have the type `Box<Stmt>`. In parser output, the `ElseIf` payload is a `Stmt::If` and the `Block` payload is a `Stmt::Block` (FR-007). `ElseBranch` has no `SourceSpan` (FR-004).
-- **`TypedExpr`**: A struct in `syntax::typed_ast`. It has the fields `kind: TypedExprKind`, `span: SourceSpan`, and `resolved_type: Option<Type>`. It does not contain an `Expr`. Its children are `TypedExpr` nodes. The type-checking pass sets `resolved_type`. `None` means that the type of the specific expression cannot be resolved, or that no type-checking pass has processed the tree.
-- **`TypedExprKind`**: An enum in `syntax::typed_ast`. It has one variant for each `Expr` variant. Fields of type `Expr` become `TypedExpr` (FR-019).
-- **`TypedStmt`**: An enum in `syntax::typed_ast`. It has one variant for each `Stmt` variant. Fields of type `Expr`, `Stmt`, `ElseBranch`, and `VarBinding` become their typed counterparts (FR-020). It has no `resolved_type` of its own.
-- **`TypedElseBranch`**: An enumeration with three variants, in the same way as `ElseBranch`. Its payloads have the type `Box<TypedStmt>` (FR-020).
-- **`TypedVarBinding`**: A struct with the public fields `name: String` and `initializer: Option<TypedExpr>`. It corresponds to `VarBinding`. In a valid source program, `initializer` is always `Some`. A `None` value occurs only when the typed tree represents a recovered `VarBinding` or when program code creates the value directly.
+- **`VarBinding`**: A struct with the public fields `name: String` and `initializer: Option<Expr>`, for multi-binding declarations. `VarBinding` has no `SourceSpan`.
+- **`ElseBranch`**: An enumeration with three variants, for the else clause of an if statement. `ElseBranch` has no `SourceSpan`.
+- **`TypedExpr`**: A struct in `syntax::typed_ast`. It has the fields `kind: TypedExprKind`, `span: SourceSpan`, and `resolved_type: Option<Type>`.
+- **`TypedExprKind`**: An enum in `syntax::typed_ast`. It has one variant for each `Expr` variant.
+- **`TypedStmt`**: An enum in `syntax::typed_ast`. It has one variant for each `Stmt` variant.
+- **`TypedElseBranch`**: An enumeration with three variants, in the same way as `ElseBranch`.
+- **`TypedVarBinding`**: A struct with the public fields `name: String` and `initializer: Option<TypedExpr>`.
 
 ---
 
@@ -356,6 +394,24 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - Q: Which function sets `resolved_type`? A: The new function `TypeChecker::check_typed` (FR-024). The function `check` keeps its signature and its results (Assumptions, SC-006).
 - Q: How does the spec keep `check` and `check_typed` consistent? A: The type rule of each `Expr` variant is the same in both functions. For each program, both functions report the same errors in the same order (FR-024, SC-005). Only the place of the result is different. `check` uses the type during the traversal and does not keep it. `check_typed` also stores the type in the node (Aho et al., Section 6.5.1).
 
+### Session 2026-10-07-A01
+
+- Q: Where does the span of the synthesized `Type::Void` live?
+  
+  A: It does not live in `Type`. `Type` has no `SourceSpan`. The parser creates `Type::Void` when a function has no return annotation. This value has no source token and no span. The enclosing `Stmt::Function.span` covers the complete function. No zero-width span is required for `Type::Void`.
+
+- Q: How does the AST distinguish explicit `void` from an omitted return type?
+  
+  A: It does not distinguish them. Both forms produce `return_type = Type::Void`. The `Type` value does not preserve source origin. The omission is not a type variant and is not a separate AST node.
+
+- Q: Are `i32[10]` and `i32[5 + 5]` equivalent types?
+  
+  A: Yes, when both size expressions are valid compile-time constant expressions and both evaluate to the same non-negative integer. Array type equivalence compares the evaluated size values. It does not compare the source spans or source spelling of the size expressions.
+
+- Q: Does `Type` equality use source spans?
+  
+  A: No. `Type` has no source span. Type equivalence does not use source positions. In particular, two equal array sizes at different source positions can still produce equivalent array types.
+
 ---
 
 ## Success Criteria *(mandatory)*
@@ -363,14 +419,21 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 ### Measurable Outcomes
 
 - **SC-001**: For each syntactically valid `.dr` source file, the AST has no unknown node and no generic node for a construct in the grammar. A coverage test lists each grammar production. Each production has an AST node variant, or a written reason why it has none. A production that only groups tokens, for example a parenthesized expression, has no AST node variant. The test fails when a grammar production is not in the list.
-- **SC-002**: Each type annotation position in the AST uses a concrete `Type` variant. The positions are variable declarations, parameters, return types, and array sizes. When the source has a type keyword, the parser makes the `Type` variant for that keyword. The parser does not use `Type::Void` or `Type::Custom` as a default value. The only exception is the `Type::Void` return type of a function with no return annotation (FR-004).
+- **SC-002**: Each type annotation position in the AST uses a concrete `Type` value. The positions are variable declarations, parameters, return types, and array sizes. When the source has a type keyword, the parser makes the corresponding `Type` value. The parser does not use `Type::Custom` as a default value.
+  
+  A function with an explicit `void` return annotation has `return_type = Type::Void`.
+  
+  A function with no return annotation also has `return_type = Type::Void`.
+  
+  These two forms are semantically equivalent in the AST. The AST does not preserve their source-level distinction.
 - **SC-003**: Each example `.dr` file in `dr_files/` parses to an AST that passes the structural completeness check. The check passes when each node variant, span, and child field that the grammar needs is present and has a value.
 - **SC-004**: A round-trip property applies to each `Expr` node, each `Stmt` node, and each `Parameter` with a direct text origin. Each of these nodes comes from one or more source tokens. For each of these nodes:
     - The span of the node is a source range. The range starts with the first lexeme of the node and ends with the last lexeme of the node. The span comes from `span()`, or from the `span` field of `Parameter`.
     - The text of the original source in that range is the same as the source fragment that makes the node.
-
-  A node with no direct text origin is not subject to the round-trip property. This node has no source token.
-    - The `Type::Void` return type of a function with no return annotation has no span (FR-004).
+  
+  A node with no direct text origin is not subject to the round-trip property.
+    - The `Type::Void` return type of a function with no return annotation has no source token and no span.
+    - No zero-width span is required for the synthesized `Type::Void`.
     - The placeholder `Expr` of FR-004 has the span of the token that comes before the missing expression. The text in this span is the text of the previous token. It is not a source fragment of the placeholder.
 - **SC-005**: The type checker uses type synthesis. It finds the type of an expression from the types of its subexpressions. The existing type-checker tests are in `type_checker_tests.rs` and `type_checker_snapshot_tests.rs`. They call `TypeChecker::check` and they examine its errors. They do not use a resolved type, because no resolved-type annotation exists before this feature. These tests pass without change (SC-006).
     - New tests examine the resolved-type annotation on `TypedExpr` trees at each depth. They are in new test files in `crates/descar-core/tests/`. They call `TypeChecker::check_typed` (FR-024).
@@ -407,12 +470,14 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - `JsavParser` and the existing token set in `TokenKind` fully define the grammar of the Descar language. No grammar extension is in scope. The extensions are structs, enums, generics other than `vector<T>`, lambdas, traits, and modules.
 - The existing `SourceSpan` and `SourceLocation` types are sufficient for all required source ranges. The feature needs no new location infrastructure. A `SourceSpan` has an inclusive start and an exclusive end.
 - The `Number` type in `crates/descar-core/src/tokens/number.rs` is the canonical representation of all numeric literal values. The lexer and the `LiteralValue::Numeric` variant of the AST share this type.
-- The `Type::Void` variant is the default return type for a function that does not declare one. The parser applies this default. The type checker does not. This `Type::Void` has no span, because `Type` has no span field. This agrees with FR-004 and SC-004.
+- `Type` has no `SourceSpan`. The parser represents an omitted function return annotation with `Type::Void`. This synthesized value has no source token and no span. The enclosing `Stmt::Function.span` contains the source range for the function.
+- Explicit `void` and an omitted return annotation both produce `Type::Void`. The AST does not preserve the source origin of the value.
+- `Type::Array` stores its size as `Box<Expr>`. Type equivalence evaluates the size expression to a non-negative integer and compares the resulting value. Source spans do not affect type equivalence.
 - The resolved-type annotation (FR-014) is a typed tree (`TypedExpr` and `TypedStmt`). The typed tree has the same structure as `Expr` and `Stmt`, node by node. The build functions make it (FR-021). The `Expr` enum does not change. All existing parsing and printing code that makes or matches `Expr` variants without type information continues to work.
 - The existing `TypeChecker` has no resolved-type annotation. `TypeChecker::check` returns a `Vec<CompileError>` and stores no type on a node. Its internal visit functions return an `Option<Type>` for each expression, and `check` does not keep it. No code and no test before this feature uses `resolved_type`, `TypedExpr`, or `TypedStmt`. The existing type-checker tests call `new`, `default`, `check`, `is_same_type`, and `get_size`. The table `TYPE_PROMOTION_CACHE` uses a pair of types as key. It is not a side table (FR-014).
 - The children of `Expr` variants are `Expr` values, directly or inside `Box`, `Vec`, or `Option`. The children of `Stmt` variants are `Expr`, `Stmt`, `ElseBranch`, or `VarBinding` values in the same containers. FR-019 and FR-020 use these shapes. If the source code holds a child in a different shape, the same rule applies to that shape. In that case, the implementation plan must record the exact typed definition before the implementation starts.
 - `LiteralValue`, `BinaryOp`, `UnaryOp`, `UnaryOpSide`, `Type`, `SourceSpan`, and identifier names implement `Clone`. The build functions and the `erase` functions need this. To add a missing `Clone` derive is not a breaking change under SC-006.
 - After the build function runs and before type checking, each `resolved_type` is `None`. The model has no separate value for "not yet checked". To tell the two states apart, check if the type-checking pass has processed the tree.
 - The `vector<T>` notation is the only generic type constructor in scope. The grammar has no other parameterized type syntax.
-- All existing public APIs (parser output, printer input, and type-checker input) stay stable. The typed AST is additive and backward-compatible where possible. Where it is not, the migration is explicit and documented.
+- All existing public APIs stay stable unless a migration is explicitly documented.
 - The `specs/` directory did not exist before. This is the first feature specification in the project.
