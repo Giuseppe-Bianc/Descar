@@ -280,6 +280,13 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - A type-checking pass can build a `TypedExpr` from the size expression with `TypedExpr::from_expr` during the check. The pass must not store the result.
 - **FR-023**: `TypedExpr`, `TypedExprKind`, `TypedStmt`, `TypedElseBranch`, and `TypedVarBinding` must be in the `syntax::typed_ast` sub-module of `descar-core`. The untyped AST must stay in `syntax::ast`. The module `syntax::typed_ast` can import from `syntax::ast`. The module `syntax::ast` must not import from `syntax::typed_ast`. The two modules must stay separate.
     - The module `syntax::ast` must not have a field for an attribute that a pass computes, such as `resolved_type`. These attributes belong only in `syntax::typed_ast`.
+- **FR-024**: The `TypeChecker` must keep the function `check(&mut self, statements: &[Stmt]) -> Vec<CompileError>`. The function must keep its signature and its results (SC-006).
+    - The `TypeChecker` must have the new function `check_typed(&mut self, statements: &mut [TypedStmt]) -> Vec<CompileError>`.
+    - The function `check_typed` must set `resolved_type` on each `TypedExpr` node of the typed tree. It must follow the rules of FR-014.
+    - The function `check_typed` must change only `resolved_type`. It must not change the structure of the typed tree.
+    - The type rule of each `Expr` variant in `check_typed` must be the same as the type rule in `check`. The `resolved_type` of a node is `Some(T)` where `check` finds the type T for the related `Expr` node. The `resolved_type` of a node is `None` where `check` finds no type for the related `Expr` node.
+    - For each program, `check_typed` must report the same errors as `check`, in the same order.
+    - Before this feature, no code and no test uses a resolved type (Assumptions). The function `check_typed` is the first function that sets `resolved_type`.
 
 ### Key Entities
 
@@ -334,6 +341,13 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - Q: Does the spec still require a zero-width span at the closing `)` of the parameter list? A: No. The rule needed a place to store the span, and the AST has no such place. The earlier text applied the rule to `Type::Void` only. `SourceSpan::point` can make a zero-width span, but no node in this spec has one.
 - Q: Which span does a placeholder `Expr` have? A: The parser makes `Expr::Literal` with `LiteralValue::NullPtr` when the expression after a unary operator, a binary operator, `=`, or `[` is missing or not valid. The span is the span of that operator token or of that `[` token. The parser already does this. The span is not zero-width. It does not reproduce a source fragment of the placeholder.
 
+### Session 2026-10-07
+
+- Q: Does a mechanism that stores a resolved type exist before this feature? A: No. `TypeChecker::check` returns a `Vec<CompileError>` and stores no type on a node. The visit functions of the type checker return an `Option<Type>` for each expression, and `check` does not keep it. No code and no test uses `resolved_type`, `TypedExpr`, or `TypedStmt`. FR-014 adds the first mechanism. It does not replace an existing mechanism.
+- Q: SC-005 said that existing tests verify the annotation. Which tests verify it? A: New tests verify it. The existing tests in `type_checker_tests.rs` and `type_checker_snapshot_tests.rs` examine errors only. They call `check`, `is_same_type`, and `get_size`. They pass without change (SC-006). The new tests are in new files, so they do not change an existing test.
+- Q: Which function sets `resolved_type`? A: The new function `TypeChecker::check_typed` (FR-024). The function `check` keeps its signature and its results (Assumptions, SC-006).
+- Q: How does the spec keep `check` and `check_typed` consistent? A: The type rule of each `Expr` variant is the same in both functions. For each program, both functions report the same errors in the same order (FR-024, SC-005). Only the place of the result is different. `check` uses the type during the traversal and does not keep it. `check_typed` also stores the type in the node (Aho et al., Section 6.5.1).
+
 ---
 
 ## Success Criteria *(mandatory)*
@@ -350,7 +364,10 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
   A node with no direct text origin is not subject to the round-trip property. This node has no source token.
     - The `Type::Void` return type of a function with no return annotation has no span (FR-004).
     - The placeholder `Expr` of FR-004 has the span of the token that comes before the missing expression. The text in this span is the text of the previous token. It is not a source fragment of the placeholder.
-- **SC-005**: The type checker uses type synthesis. It finds the type of an expression from the types of its subexpressions. Type-checker tests examine the resolved-type annotation on `TypedExpr` trees at each depth. After the type checker runs on a program, each resolvable `TypedExpr` node has `Some(T)`. Resolvable nodes are literals, variables, calls, binary expressions, and unary expressions. This includes operands inside other expressions. It also includes expressions in statement conditions, initializers, and return values. The existing type-checker tests pass.
+- **SC-005**: The type checker uses type synthesis. It finds the type of an expression from the types of its subexpressions. The existing type-checker tests are in `type_checker_tests.rs` and `type_checker_snapshot_tests.rs`. They call `TypeChecker::check` and they examine its errors. They do not use a resolved type, because no resolved-type annotation exists before this feature. These tests pass without change (SC-006).
+    - New tests examine the resolved-type annotation on `TypedExpr` trees at each depth. They are in new test files in `crates/descar-core/tests/`. They call `TypeChecker::check_typed` (FR-024).
+    - After `check_typed` runs on a program, each resolvable `TypedExpr` node has `Some(T)`. Resolvable nodes are literals, variables, calls, binary expressions, and unary expressions. This includes operands inside other expressions. It also includes expressions in statement conditions, initializers, and return values.
+    - For each program that an existing type-checker test gives to `check`, `check_typed` reports the same errors as `check` (FR-024).
 - **SC-006**: All existing tests in `crates/descar-core/tests/` pass without change after the AST changes. The only exception is a test that uses an item with a breaking change that `MIGRATION.md` lists. A breaking change is one of these changes to an existing public `Expr` or `Stmt` field or variant: a new name, removal, or a new type. A new optional field or a new enum variant, with `#[non_exhaustive]` where necessary, is not a breaking change. It needs no migration path. The feature directory must contain a `MIGRATION.md` note for each breaking change of this feature.
 - **SC-007**: For each `.dr` file in `dr_files/`, build the typed tree from the parsed program. The typed tree is the AST with a type attribute on each expression node.
     - The parsed program does not change.
@@ -383,6 +400,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - The `Number` type in `crates/descar-core/src/tokens/number.rs` is the canonical representation of all numeric literal values. The lexer and the `LiteralValue::Numeric` variant of the AST share this type.
 - The `Type::Void` variant is the default return type for a function that does not declare one. The parser applies this default. The type checker does not. This `Type::Void` has no span, because `Type` has no span field. This agrees with FR-004 and SC-004.
 - The resolved-type annotation (FR-014) is a typed tree (`TypedExpr` and `TypedStmt`). The typed tree has the same structure as `Expr` and `Stmt`, node by node. The build functions make it (FR-021). The `Expr` enum does not change. All existing parsing and printing code that makes or matches `Expr` variants without type information continues to work.
+- The existing `TypeChecker` has no resolved-type annotation. `TypeChecker::check` returns a `Vec<CompileError>` and stores no type on a node. Its internal visit functions return an `Option<Type>` for each expression, and `check` does not keep it. No code and no test before this feature uses `resolved_type`, `TypedExpr`, or `TypedStmt`. The existing type-checker tests call `new`, `default`, `check`, `is_same_type`, and `get_size`. The table `TYPE_PROMOTION_CACHE` uses a pair of types as key. It is not a side table (FR-014).
 - The children of `Expr` variants are `Expr` values, directly or inside `Box`, `Vec`, or `Option`. The children of `Stmt` variants are `Expr`, `Stmt`, `ElseBranch`, or `VarBinding` values in the same containers. FR-019 and FR-020 use these shapes. If the source code holds a child in a different shape, the same rule applies to that shape. In that case, the implementation plan must record the exact typed definition before the implementation starts.
 - `LiteralValue`, `BinaryOp`, `UnaryOp`, `UnaryOpSide`, `Type`, `SourceSpan`, and identifier names implement `Clone`. The build functions and the `erase` functions need this. To add a missing `Clone` derive is not a breaking change under SC-006.
 - After the build function runs and before type checking, each `resolved_type` is `None`. The model has no separate value for "not yet checked". To tell the two states apart, check if the type-checking pass has processed the tree.
