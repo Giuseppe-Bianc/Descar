@@ -226,7 +226,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
   `TypedExpr` must not contain an `Expr`.
 
-  A `TypedExpr` is a node of the annotated syntax tree. The `resolved_type` field is the synthesized attribute `type` of the node. The type checker calculates it from the `kind` of the node and the `resolved_type` of each child node. For an identifier, the type checker also uses the symbol table. The symbol table is not part of the typed tree. `resolved_type` must be `None` until the type checker calculates the type of the node. After that, it must be `Some` with this type.
+  A `TypedExpr` is a node of the annotated syntax tree. The `resolved_type` field is the synthesized attribute `type` of the node. The type checker calculates it from the `kind` of the node and the `resolved_type` of each child node. For an identifier, the type checker also uses the symbol table. The symbol table is not part of the typed tree. `resolved_type` must be `None` until the type checker calculates the type of the node. After the type checker calculates a type for the node, `resolved_type` must be `Some` with this type. If the type checker cannot calculate a type for the node, `resolved_type` must stay `None` (FR-014).
 
   `TypedExprKind` must be an enum. It must have one variant for each `Expr` variant (FR-001). Each variant must have the same name as the related `Expr` variant.
 
