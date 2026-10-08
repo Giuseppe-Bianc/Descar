@@ -32,12 +32,19 @@ Binary operators are represented by a dedicated `BinaryOp` variant. Unary operat
 
 1. **Given** a `.dr` source file that contains all statement kinds, **When** the parser builds the AST, **Then** each statement maps to a distinct node variant with a unique name. Two different grammar constructs do not map to the same statement variant.
 2. **Given** an expression that uses all binary operators (arithmetic, comparison, logical, bitwise, shift, and compound assignment), **When** the parser parses the expression, **Then** each operator maps to a separate `BinaryOp` variant inside an `Expr::Binary` node. The node stores the left operand and the right operand. The AST preserves the operator precedence and associativity defined by the grammar.
-3. **Given** a function declaration with parameters and a typed return annotation, **When** the parser parses the declaration, **Then** the `Stmt::Function` node contains the function name, the complete ordered list of `Parameter` nodes, the declared return type, and the body block. Each `Parameter` node contains the parameter name and type. The order of the parameters is preserved.
-4. **Given** a `for` loop with an initializer, a condition, and an increment clause, **When** the parser parses the loop, **Then** the `Stmt::For` node stores the initializer, the condition, and the increment clause in separate optional fields. The node also stores the loop body. The AST preserves the order of these clauses.
-5. **Given** an expression with nested binary and unary operators, **When** the parser builds the AST, **Then** each operator is represented by the correct operator variant. The tree structure reflects the grammar precedence and associativity. Parentheses produce a grouping node when the grammar defines them as an explicit grouping construct.
+3. **Given** a function declaration with parameters and a typed return annotation, **When** the parser parses the declaration, **Then** the `Stmt::Function` node contains the function name, the complete ordered list of `Parameter` nodes, the declared return type, and the body block. Each `Parameter` node contains the parameter name and type. The order of the parameters is preserved. If the function name is `main` and the ordinary function declaration syntax is used, the node is still `Stmt::Function`.
+4. **Given** a `for` loop with an initializer, a condition, and an increment clause, **When** the parser parses the loop, **Then** the `Stmt::For` node stores the initializer, the condition, and the increment clause in separate optional fields. The initializer is either a variable declaration or an expression statement. The condition and increment are expressions. The node also stores the loop body. The AST preserves the order of these clauses.
+5. **Given** an expression with nested binary and unary operators, **When** the parser builds the AST, **Then** each operator is represented by the correct operator variant. The tree structure reflects the grammar precedence and associativity. Parentheses produce a grouping node.
 6. **Given** an array access or array literal, **When** the parser builds the AST, **Then** the array access node stores the array expression and the index expression. The array literal node stores its elements in source order. Nested array expressions are represented by nested AST nodes.
 7. **Given** a type reference for any type supported by the grammar, **When** the parser builds the AST, **Then** the type reference maps to a distinct type variant. Array, vector, void, nullptr, primitive, and custom types are represented explicitly. A custom type stores its type name.
 8. **Given** a valid `.dr` program that contains nested statements and expressions, **When** the parser builds the AST, **Then** every child construct is represented by the AST node required by its grammar production. No valid construct is discarded, merged with an unrelated construct, or represented by a generic catch-all node.
+9. **Given** the dedicated `main { ... }` syntax, **When** the parser builds the AST, **Then** the statement is represented by `Stmt::MainFunction`. The node contains the main body and its source span. It does not contain a function name, parameter list, or return type.
+10. **Given** an ordinary function declaration whose name is `main`, **When** the parser builds the AST, **Then** the statement is represented by `Stmt::Function`. The function name is stored as `"main"`. It is not represented by `Stmt::MainFunction`.
+11. **Given** a return statement with or without an expression, **When** the parser builds the AST, **Then** `Stmt::Return` contains an optional return value. `None` represents a return statement without a value.
+12. **Given** a break or continue statement, **When** the parser builds the AST, **Then** the parser creates `Stmt::Break` or `Stmt::Continue`. Each node stores its source span.
+13. **Given** a call expression, **When** the parser builds the AST, **Then** `Expr::Call` contains the callee expression and an ordered list of argument expressions. The callee is not restricted to an identifier.
+14. **Given** an assignment expression, **When** the parser builds the AST, **Then** `Expr::Assign` contains a target expression and a value expression. A valid target is an `Expr::Variable` or an `Expr::ArrayAccess`.
+15. **Given** a parenthesized expression, **When** the parser builds the AST, **Then** `Expr::Grouping` contains the inner expression and its complete source span.
 
 ---
 
@@ -120,15 +127,22 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - A declaration has no initializer (`var a: i32;` or `const c: i32;`): The grammar does not define this as a valid declaration. A declaration without `=` has zero initializers. The parser reports the errors required for the invalid syntax and applies the initializer-count rule in FR-017. The AST can contain one `VarBinding` with `None` as a recovery value. No valid program can contain such a `VarBinding`.
 - A declaration has no name (`var : i32 = 1`): The parser reports error E1008 (FR-017). The parser does not create a `Stmt::VarDeclaration`.
 - A function has no parameters: The `parameters` field contains an empty `Vec<Parameter>`. The field is present.
+- A function declaration has the name `main`: The ordinary function declaration is represented by `Stmt::Function`. The name field contains `"main"`. It is not represented by `Stmt::MainFunction`.
+- The dedicated `main { ... }` construct: The AST represents it as `Stmt::MainFunction`. It contains `body` and `span`. It has no name, parameters, or return type field.
 - `nullptr`: The AST represents `nullptr` as `Expr::Literal { value: LiteralValue::NullPtr, .. }`. The corresponding type is `Type::NullPtr`.
 - An array type has a non-literal size expression: The `Type::Array { size, .. }` node contains the complete expression tree. It does not contain only an integer constant. The expression is a plain `Expr` in both the untyped tree and the typed tree. The expression has no `resolved_type` (FR-022).
 - A numeric literal uses a non-decimal base, such as binary `#b...`, octal `#o...`, or hexadecimal `#x...`: The AST represents the literal as `LiteralValue::Numeric(Number)`. This variant is also used for decimal literals. The lexer resolves the numeric base.
 - A `for` loop has no initializer, condition, or increment: The `initializer`, `condition`, and `increment` fields are each `None`. Each field is independent of the other fields. The loop body is present.
+- A `for` loop has an initializer: The initializer is represented by `Some(Box<Stmt>)`. The contained statement is either `Stmt::VarDeclaration` or `Stmt::Expression`. A function declaration, main function, block, if, while, return, break, or continue is not a valid `for` initializer.
 - An expression statement has no trailing semicolon: The `Stmt::Expression` node contains the expression. The lexer and parser handle the missing semicolon. The AST does not store a separate representation of the missing semicolon. The `Stmt::Expression` variant has its own `span` field. The span covers the complete statement. It includes the trailing semicolon when the semicolon is present. All other `Stmt` variants follow the same rule.
 - `vector<T>` and a user-defined type named `vector`: In a type position, the parser creates `Type::Vector` when `vector` is followed by `<T>`. In all other cases, the identifier resolves to `Type::Custom`.
 - `1 + 2` in the typed tree: The tree contains a `TypedExpr` with `kind` set to `TypedExprKind::Binary`. This node owns two `TypedExpr` operands. Both operands have `kind` set to `TypedExprKind::Literal`. Each of the three nodes has its own `resolved_type`.
 - A grouping `(a + b)` in the typed tree: The tree contains a `TypedExpr` with `kind` set to `TypedExprKind::Grouping`. This node owns the `TypedExpr` for `a + b`. The grouping node and the inner node have independent `resolved_type` values.
-- An `else if` chain in the typed tree: A `TypedElseBranch::ElseIf` contains a `TypedStmt::If`. This `TypedStmt::If` contains its own `TypedElseBranch`. The structure is recursive and follows the same representation used by `ElseBranch`.
+- An assignment target: A valid `Expr::Assign.target` is an `Expr::Variable` or an `Expr::ArrayAccess`. A literal, grouping, call, binary expression, or unary expression is not a valid assignment target.
+- A call with an expression as callee: The `Expr::Call.callee` field contains the complete callee expression. The AST does not require a separate callee name field.
+- A return without a value: `Stmt::Return.value` is `None`.
+- A break statement: `Stmt::Break` contains only its source span.
+- A continue statement: `Stmt::Continue` contains only its source span.
 - An `else` is followed by a statement that is not an `if` and not a block: The parser reports error E1004 (FR-007). The `else_branch` field is `ElseBranch::None`. The AST does not store the statement.
 - Code creates an `ElseBranch` with a payload of another kind, for example an `ElseIf` with a `Stmt::Break`: The payload type is `Box<Stmt>`. The AST type therefore permits this value. The parser does not create this value. Code that reads the value treats the payload as a `Stmt` (FR-007). The build functions and the `erase` functions preserve the payload kind (FR-021).
 
@@ -138,8 +152,58 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
 ### Functional Requirements
 
-- **FR-001**: The AST must have a separate node variant for each of these expression kinds: binary operation, unary operation, grouping (parenthesized expression), literal, array literal, variable reference, assignment, function or method call, and array index access. A literal is numeric, string, character, boolean, or nullptr. The assignment variant covers only the simple assignment operator `=`. Compound-assignment operators, for example `+=` and `-=`, are `Expr::Binary` nodes with the applicable `BinaryOp` compound-assignment variant. The AST must preserve the expression structure defined by operator precedence and associativity. A grouping node must preserve explicit parentheses when they affect the source expression structure. An array index access must represent the indexed expression and its index expression as separate child nodes. A function or method call must represent the callable expression and each argument expression as separate child nodes.
+- **FR-001**: The AST must have a separate node variant for each of these expression kinds: binary operation, unary operation, grouping (parenthesized expression), literal, array literal, variable reference, assignment, function or method call, and array index access.
+
+  The fields of each expression variant must be:
+
+    - `Expr::Binary`: `left: Box<Expr>`, `op: BinaryOp`, `right: Box<Expr>`, and `span: SourceSpan`.
+    - `Expr::Unary`: `op: UnaryOp`, `side: UnaryOpSide`, `expr: Box<Expr>`, and `span: SourceSpan`.
+    - `Expr::Grouping`: `expr: Box<Expr>` and `span: SourceSpan`.
+    - `Expr::Literal`: `value: LiteralValue` and `span: SourceSpan`.
+    - `Expr::ArrayLiteral`: `elements: Vec<Expr>` and `span: SourceSpan`.
+    - `Expr::Variable`: `name: String` and `span: SourceSpan`.
+    - `Expr::Assign`: `target: Box<Expr>`, `value: Box<Expr>`, and `span: SourceSpan`.
+    - `Expr::Call`: `callee: Box<Expr>`, `arguments: Vec<Expr>`, and `span: SourceSpan`.
+    - `Expr::ArrayAccess`: `array: Box<Expr>`, `index: Box<Expr>`, and `span: SourceSpan`.
+
+  A literal is numeric, string, character, boolean, or nullptr. The assignment variant covers only the simple assignment operator `=`. Compound-assignment operators, for example `+=` and `-=`, are `Expr::Binary` nodes with the applicable `BinaryOp` compound-assignment variant.
+
+  `Expr::Grouping` represents explicit parentheses. The inner expression is stored in `expr`. The node span covers the complete parenthesized expression.
+
+  `Expr::Call` stores the callee as an `Expr`. The callee is not stored as a separate name field. A call can therefore contain any expression allowed by the grammar as its callee.
+
+  `Expr::ArrayAccess` stores the expression being indexed and the index expression as separate children.
+
+  `Expr::ArrayLiteral` stores zero or more element expressions in source order.
+
+  `Expr::Assign` stores the assignment target and the assigned value. For valid parser output, the target must be `Expr::Variable` or `Expr::ArrayAccess`.
+
+  The AST must preserve the expression structure defined by operator precedence and associativity.
+
 - **FR-002**: The AST SHALL have a separate node variant for each of these statement kinds: expression statement, variable declaration with a mutability flag, function declaration, main function declaration, if statement with optional else-if and else branches, while loop, three-clause for loop, block, return statement, break statement, and continue statement.
+
+  The fields of each statement variant must be:
+
+    - `Stmt::Expression`: `expr: Box<Expr>` and `span: SourceSpan`.
+    - `Stmt::VarDeclaration`: `bindings: Vec<VarBinding>`, `type_annotation: Type`, `is_mutable: bool`, and `span: SourceSpan`.
+    - `Stmt::Function`: `name: String`, `parameters: Vec<Parameter>`, `return_type: Type`, `body: Box<Stmt>`, and `span: SourceSpan`.
+    - `Stmt::MainFunction`: `body: Box<Stmt>` and `span: SourceSpan`.
+    - `Stmt::If`: `condition: Box<Expr>`, `then_branch: Box<Stmt>`, `else_branch: ElseBranch`, and `span: SourceSpan`.
+    - `Stmt::While`: `condition: Box<Expr>`, `body: Box<Stmt>`, and `span: SourceSpan`.
+    - `Stmt::For`: `initializer: Option<Box<Stmt>>`, `condition: Option<Expr>`, `increment: Option<Expr>`, `body: Box<Stmt>`, and `span: SourceSpan`.
+    - `Stmt::Block`: `statements: Vec<Stmt>` and `span: SourceSpan`.
+    - `Stmt::Return`: `value: Option<Expr>` and `span: SourceSpan`.
+    - `Stmt::Break`: `span: SourceSpan`.
+    - `Stmt::Continue`: `span: SourceSpan`.
+
+  `Stmt::Function` represents the ordinary function declaration syntax. Its `name` field may contain `"main"`.
+
+  `Stmt::MainFunction` represents the dedicated `main` function syntax. It has no name, parameter list, or return type field. Its body must be a `Stmt::Block`.
+
+  A function declaration with the ordinary function syntax and the name `main` is always `Stmt::Function`. It is never converted to `Stmt::MainFunction`.
+
+  The AST must not use one generic statement variant for these constructs.
+
 - **FR-003**: The AST must have a type model. Each `Type` value is a basic type or a type constructor. The type model must contain:
     - the primitive scalar types (`i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`, `string`, and `bool`);
     - the fixed-size array type;
@@ -155,6 +219,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - unit variants for all primitive types, `Type::Void`, and `Type::NullPtr`.
   
   A function type `(s1, ..., sn) -> t` is derived from the parameter types and the return type of `Stmt::Function`. It is not a `Type` variant in this feature.
+
 - **FR-004**: Each `Expr` node, each `Stmt` node, and each `Parameter` must have a `SourceSpan` value.
     - `Type`, `VarBinding`, `ElseBranch`, `TypedVarBinding`, and `TypedElseBranch` must not have a span field.
     - A node that comes directly from the source text must have a span. The span starts at the start of the first token of the node. The span ends at the end of the last token of the node.
@@ -168,8 +233,33 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - The `Stmt::Expression` variant must have its own explicit `span: SourceSpan` field.
     - The span of a `Stmt::Expression` must cover the full statement. If the statement has a trailing terminator, the span must include the terminator.
     - The span of a `Stmt::Expression` must not come only from the inner `Expr`.
+
 - **FR-005**: The `Stmt::VarDeclaration` node must contain an ordered `bindings` collection, one `type_annotation`, and an `is_mutable` flag. The `bindings` collection must keep the order of the identifiers in the source text. Each binding in the `bindings` collection has the type of the shared `type_annotation`. The `is_mutable` flag must be true when the declaration uses `var`. The `is_mutable` flag must be false when the declaration uses `const`.
-- **FR-006**: The `Stmt::Function` node must contain the function name, the formal parameters, the return type, and the body. The formal parameters must be an ordered list of `Parameter` nodes. The order of the list must be the same as the order in the source. Each `Parameter` node must contain a name and a type annotation. The body must be a `Stmt::Block`. If the source has no return type, the node must use `Type::Void`. An explicit `void` annotation and an omitted return type have the same `Type::Void` value. The AST does not store their source origin in the `Type` value. The `Stmt::Function.span` is the source span for the complete function. The node must contain enough information to build the function type `(s1, ..., sn) -> t`, where `s1` to `sn` are the parameter types and `t` is the return type. The node must not contain tokens that have no meaning in the tree, such as parentheses and commas.
+
+- **FR-006**: The `Stmt::Function` node must contain the function name, the formal parameters, the return type, and the body.
+
+  The fields must have these types:
+
+    - `name: String`;
+    - `parameters: Vec<Parameter>`;
+    - `return_type: Type`;
+    - `body: Box<Stmt>`;
+    - `span: SourceSpan`.
+
+  The formal parameters must be an ordered list of `Parameter` nodes. The order of the list must be the same as the order in the source. Each `Parameter` node must contain a name, a type annotation, and a source span. The body must be a `Stmt::Block`.
+
+  If the source has no return type, the node must use `Type::Void`. An explicit `void` annotation and an omitted return type have the same `Type::Void` value. The AST does not store their source origin in the `Type` value.
+
+  The `Stmt::Function.span` is the source span for the complete function.
+
+  The node must contain enough information to build the function type `(s1, ..., sn) -> t`, where `s1` to `sn` are the parameter types and `t` is the return type.
+
+  A function written with the ordinary function declaration syntax and named `main` is represented by `Stmt::Function`. The name is stored in `name`. It is not represented by `Stmt::MainFunction`.
+
+  `Stmt::MainFunction` is a different node. It represents the dedicated `main` function syntax. It contains `body` and `span` only.
+
+  The node must not contain tokens that have no meaning in the tree, such as parentheses and commas.
+
 - **FR-007**: The `ElseBranch` model must show three cases: no else clause (`None`), a plain else block (`Block`), and an else-if continuation (`ElseIf`). The model must show chained conditionals explicitly.
     - The payload of `Block` and the payload of `ElseIf` have the type `Box<Stmt>`.
     - The payload of `ElseIf` must be a `Stmt::If` node. The payload of `Block` must be a `Stmt::Block` node.
@@ -183,8 +273,11 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - If the next statement is not an `if` and not a block, the parser must report the error E1004 (invalid else branch). The error report must give the position of the token that follows `else`. The parser must then make `ElseBranch::None`. It must not store the statement. The parser must continue so that it can find later errors.
     - The type `ElseBranch` does not prevent a payload of another kind. Existing tests make `ElseIf` and `Block` values with a `Stmt::Break` payload. A different payload type causes a compilation error in these tests (SC-006). For this reason, the payload type stays `Box<Stmt>`.
     - Code that reads an `ElseBranch` must accept any `Stmt` as the payload of `Block` or `ElseIf`. The code must not fail if the payload has another kind.
+
 - **FR-008**: The AST must represent each binary operator as one variant of a closed enumeration. The enumeration must include one variant for each arithmetic, comparison, logical, bitwise, shift, and compound-assignment operator in the grammar. Each operator must have exactly one variant. Each variant must have exactly one operator. The enumeration must not contain an unknown variant or a default variant. A binary-operator node must have one operator variant, one left operand, and one right operand. The AST must not use a string or an integer to identify an operator. The AST must not store precedence or associativity. The parser must use precedence and associativity only to decide the shape of the tree. The logical AND operator and the logical OR operator must have their own variants. These variants must be different from the bitwise AND variant and the bitwise OR variant.
+
 - **FR-009**: The AST must show each unary operator as a node with one operator and one operand. The AST must show the unary operators as a closed enumeration. The enumeration must contain negation (`-`), logical NOT (`!`), bitwise complement (`~`), increment (`++`), and decrement (`--`). Each unary operator node must have a `UnaryOpSide` value. The `UnaryOpSide` value is `Prefix` or `Postfix`. It shows the side of the operand where the operator is applied. Negation, logical NOT, and bitwise complement must have the `Prefix` value. Increment and decrement can have the `Prefix` value or the `Postfix` value. The operand of an increment or decrement must be an lvalue. For increment and decrement, the `Prefix` value gives the new value of the operand as the value of the expression. The `Postfix` value gives the old value of the operand as the value of the expression.
+
 - **FR-010**: The `Type::Array` variant must contain the element type and the size. The element type is a `Type` value. The size is an `Expr` node.
   
   The size expression must be a compile-time constant expression that evaluates to a non-negative integer. The type checker must evaluate the size expression before it uses the array type in type equivalence or other semantic checks. If the size expression cannot be evaluated to a non-negative integer, the type checker must report an error.
@@ -196,9 +289,13 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
   The source form of the size expression does not affect type equivalence after evaluation. For example, `i32[10]` and `i32[5 + 5]` are equivalent when both expressions evaluate to the integer value `10`.
   
   Source spans inside the size expressions do not affect type equivalence. Type equivalence compares the semantic array size value, not the source position.
+
 - **FR-011**: The `Type::Vector` variant must contain one element type. The element type must be a `Type` value. Two `Type::Vector` values are equivalent only if their element types are equivalent. The source syntax of a `Type::Vector` must be different from the source syntax of a `Type::Custom` named `vector`.
+
 - **FR-012**: Each `Expr` node must have a `span()` accessor. The accessor must return a reference to the `SourceSpan` of the node. The `SourceSpan` must identify the first and the last source position of the text that the node represents. The span of a parent node must include the span of each child node.
+
 - **FR-013**: Each `Stmt` node must have a `span()` accessor. The accessor must return a reference to the `SourceSpan` of the node. The `SourceSpan` must identify the first and the last source position of the text that the node represents. The span of a parent node must include the span of each child node.
+
 - **FR-014**: The AST must have a typed tree. Each expression node in the typed tree has its own resolved-type slot, at each depth.
     - The typed tree is an annotated syntax tree. An annotated syntax tree is a syntax tree that shows the attribute values at each node.
     - The type attribute of an expression node is its `resolved_type` field. A type-checking pass is a semantic analysis pass that sets this field.
@@ -224,8 +321,33 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - `resolved_type` must be `Some(T)` if the type of that specific expression can be determined. This is true also if other parts of the program have errors.
     - `resolved_type` must be `None` if the type of that specific expression cannot be resolved.
     - `resolved_type` must be `None` on each node of a tree that no type-checking pass has processed.
-- **FR-015**: The `Stmt::For` node must store the initializer, the condition, and the increment as three independent optional fields. Each field is `None` when the source code omits the expression, and `Some` when the source code contains the expression. The state of one field must not change the state of another field. The parser must accept the production `stmt → for ( optexpr ; optexpr ; optexpr ) stmt`, where `optexpr` is empty or `expr`. The parser must accept all eight combinations of present and absent fields. The parser must require both semicolons in the `for` header for each combination. The code generator must evaluate the initializer one time, before the first test of the condition. The code generator must evaluate the condition before each iteration of the body. The code generator must evaluate the increment after each iteration of the body and before the next test of the condition. If the condition is `None`, the code generator must treat the condition as true and must not generate a test. If the initializer or the increment is `None`, the code generator must not generate code for that field. If the language has a `continue` statement, a `continue` in the body must transfer control to the increment.
+
+- **FR-015**: The `Stmt::For` node must store the initializer, the condition, and the increment as three independent optional fields.
+
+  The fields must have these types:
+
+    - `initializer: Option<Box<Stmt>>`;
+    - `condition: Option<Expr>`;
+    - `increment: Option<Expr>`;
+    - `body: Box<Stmt>`;
+    - `span: SourceSpan`.
+
+  The initializer is a statement position with a restricted set of valid variants. When the initializer is present, it must be either `Stmt::VarDeclaration` or `Stmt::Expression`. It must not be a function declaration, main function declaration, if statement, while loop, for loop, block, return statement, break statement, or continue statement.
+
+  The condition is an optional expression. The increment is an optional expression. Each field is `None` when the source code omits the corresponding clause and `Some` when the source code contains the corresponding clause. The state of one field must not change the state of another field.
+
+  The parser must accept the production `stmt -> for ( for_initializer ; optexpr ; optexpr ) stmt`, where `for_initializer` is empty, a variable declaration, or an expression statement, and where each `optexpr` is empty or `expr`.
+
+  The parser must accept all valid combinations of an absent or present initializer, condition, and increment. The parser must require both semicolons in the `for` header for each combination.
+
+  The AST does not store the two semicolons. They are syntax delimiters and are not AST nodes.
+
+  The code generator must evaluate the initializer one time, before the first test of the condition. The code generator must evaluate the condition before each iteration of the body. The code generator must evaluate the increment after each iteration of the body and before the next test of the condition.
+
+  If the condition is `None`, the code generator must treat the condition as true and must not generate a test. If the initializer or the increment is `None`, the code generator must not generate code for that field. If the language has a `continue` statement, a `continue` in the body must transfer control to the increment.
+
 - **FR-016**: The lexer must read a numeric literal with a radix prefix (binary `#b`, octal `#o`, or hexadecimal `#x`) as one token. The lexer must select the longest lexeme that matches the pattern of the literal. The lexer must convert the digits to a value in the radix that the prefix gives. The lexer must give the token the same `LiteralValue::Numeric(Number)` variant as a decimal literal. The parser must not receive the radix. A digit that is not valid in the radix (for example `#b2`) must cause a lexical error. The lexical error must show the position of the lexeme in the source text.
+
 - **FR-017**: The AST must represent a multi-binding variable declaration (`var a, b: T = e1, e2`) as one `Stmt::VarDeclaration` with several `VarBinding` entries. Each `VarBinding` must pair one name with an `Option<Expr>` initializer. The type of the `initializer` field is `Option<Expr>`.
     - The `Option<Expr>` type describes the AST representation. It does not make the initializer optional in the language grammar.
     - A declaration is valid only when it has at least one name and the number of initializers is equal to the number of names.
@@ -249,11 +371,30 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - After E1008, the parser must skip tokens up to the next synchronization token. The parser then continues with the next statement.
     - Code that reads the AST must distinguish a valid `Some` initializer from a recovery `None` initializer. A later semantic phase must not treat `None` as a valid declaration with no initializer.
     - The declared `type_annotation` applies to every `VarBinding` in the declaration.
-- **FR-018**: Each node variant of the AST must show one construct of the source language only. Each construct must use one node variant only. Two constructs with different meaning must not use the same node variant, even if their fields are the same. For example, a unary minus and a binary minus must use different node variants. The definition of each node variant must give a label and a fixed number of child nodes. The label must identify the operation of the node. The AST must not contain nodes that exist only for the grammar, such as punctuation, keywords, and chain productions.
-  
+
+- **FR-018**: Each node variant of the AST must show one construct of the source language only. Each construct must use one node variant only. Two constructs with different meaning must not use the same node variant, even if their fields are the same.
+
+  Each node variant definition must give a label and a fixed field schema. A field with type `Vec<T>` may contain zero or more children. A field with type `Option<T>` may contain zero or one child. The field type and its cardinality are part of the node definition.
+
+  The following distinctions are mandatory:
+
+    - `Stmt::Function` and `Stmt::MainFunction` are different node variants.
+    - An ordinary function declaration named `main` is `Stmt::Function`.
+    - The dedicated `main` function syntax is `Stmt::MainFunction`.
+    - `Expr::Call.callee` is an expression, not a function name.
+    - `Expr::Assign.target` is an expression. Valid parser output restricts it to `Expr::Variable` and `Expr::ArrayAccess`.
+    - `Stmt::Return.value` is optional.
+    - `Stmt::Break` and `Stmt::Continue` have no child expressions.
+    - `Stmt::For.initializer` is an optional statement. Valid parser output restricts it to `Stmt::VarDeclaration` and `Stmt::Expression`.
+    - `Expr::Grouping` is a distinct node for explicit parenthesized expressions.
+    - `Expr::ArrayAccess` and `Expr::ArrayLiteral` are distinct nodes.
+
+  The AST must not contain nodes that exist only for the grammar, such as punctuation, keywords, and chain productions.
+
   The rule applies to AST nodes. It does not require a distinct `Type` value for the absence of an optional type annotation. In particular, an omitted function return type is not a second `Type` variant. It is the absence of source syntax that the parser represents with the default value `Type::Void`.
-  
+
   Explicit `void` and an omitted return type are therefore semantically equivalent in the AST. The AST does not preserve this source-level distinction.
+
 - **FR-019**: `TypedExpr` must be a struct with exactly three public fields:
     - `kind`, of type `TypedExprKind`;
     - `span`, of type `SourceSpan`;
@@ -273,6 +414,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - Each other field keeps its type. These fields are operators, `LiteralValue`, identifier names, and `Type`.
 
   A `TypedExpr` owns its child `TypedExpr` nodes. A child node has exactly one parent node. To get the resolved type of a sub-expression, go from the parent node to the child node and read its `resolved_type`. The typed tree has no identifier, index, or lookup structure.
+
 - **FR-020**: `TypedStmt` must be an enum. It has one variant for each `Stmt` variant (FR-002). Each variant has the same name as the `Stmt` variant and has a `SourceSpan` (FR-004).
 
   The fields of a `Stmt` variant carry over to the `TypedStmt` variant with these rules. Each rule also applies inside `Box`, `Vec`, and `Option`.
@@ -287,6 +429,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
   `TypedVarBinding` must pair the name with an `Option<TypedExpr>` initializer, in the same way as `VarBinding`.
 
   `TypedStmt` has no `resolved_type` of its own. A statement does not have a value. In the typed tree, only a `TypedExpr` node holds a type attribute.
+
 - **FR-021**: The build functions `TypedExpr::from_expr(&Expr) -> TypedExpr` and `TypedStmt::from_stmt(&Stmt) -> TypedStmt` must build the typed tree from the untyped tree.
     - A build function must make a tree with the same structure as its input. It keeps the variants, their order, the values of copied fields, and the spans.
     - A build function must set `resolved_type` to `None` on each `TypedExpr`. The field `resolved_type` is the type attribute of an expression node (Aho et al., Section 5.1.1). The value `None` means that no pass has computed this attribute. A build function does not compute it.
@@ -301,6 +444,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - The result of `erase` must be the same for a typed tree with any `resolved_type` values. A pass that sets `resolved_type` must not change the result of `erase`.
     - The build functions and the `erase` functions must each process each node once.
     - The build functions and the `erase` functions must keep the kind of each `ElseBranch` payload. They must not check it and they must not change it (FR-007).
+
 - **FR-022**: `TypedExpr` and `TypedStmt` must satisfy FR-004, FR-012, and FR-013.
     - `TypedExpr` and each `TypedStmt` variant must have a `span()` accessor.
     - The span of a typed node must be equal to the span of the untyped node that it comes from.
@@ -313,8 +457,10 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
   The `size` expression inside `Type::Array` (FR-010) is a plain `Expr` in both trees.
     - It has no `resolved_type`. It is in a type position and it is not an expression node of the typed tree.
     - A type-checking pass can build a `TypedExpr` from the size expression with `TypedExpr::from_expr` during the check. The pass must not store the result.
+
 - **FR-023**: `TypedExpr`, `TypedExprKind`, `TypedStmt`, `TypedElseBranch`, and `TypedVarBinding` must be in the `syntax::typed_ast` sub-module of `descar-core`. The untyped AST must stay in `syntax::ast`. The module `syntax::typed_ast` can import from `syntax::ast`. The module `syntax::ast` must not import from `syntax::typed_ast`. The two modules must stay separate.
     - The module `syntax::ast` must not have a field for an attribute that a pass computes, such as `resolved_type`. These attributes belong only in `syntax::typed_ast`.
+
 - **FR-024**: The `TypeChecker` must keep the function `check(&mut self, statements: &[Stmt]) -> Vec<CompileError>`. The function must keep its signature and its results (SC-006).
     - The `TypeChecker` must have the new function `check_typed(&mut self, statements: &mut [TypedStmt]) -> Vec<CompileError>`.
     - The function `check_typed` must set `resolved_type` on each `TypedExpr` node of the typed tree. It must follow the rules of FR-014.
@@ -326,7 +472,41 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 ### Key Entities
 
 - **`Expr`**: The sum type of all expression node variants. Each variant has a `SourceSpan`. The type has a `span()` accessor.
+
+  The expression variants and their fields are:
+
+    - `Binary`: `left`, `op`, `right`, `span`.
+    - `Unary`: `op`, `side`, `expr`, `span`.
+    - `Grouping`: `expr`, `span`.
+    - `Literal`: `value`, `span`.
+    - `ArrayLiteral`: `elements`, `span`.
+    - `Variable`: `name`, `span`.
+    - `Assign`: `target`, `value`, `span`.
+    - `Call`: `callee`, `arguments`, `span`.
+    - `ArrayAccess`: `array`, `index`, `span`.
+
 - **`Stmt`**: The sum type of all statement node variants. Each variant has a `SourceSpan`. No variant is an exception. This satisfies FR-004.
+
+  The statement variants and their fields are:
+
+    - `Expression`: `expr`, `span`.
+    - `VarDeclaration`: `bindings`, `type_annotation`, `is_mutable`, `span`.
+    - `Function`: `name`, `parameters`, `return_type`, `body`, `span`.
+    - `MainFunction`: `body`, `span`.
+    - `If`: `condition`, `then_branch`, `else_branch`, `span`.
+    - `While`: `condition`, `body`, `span`.
+    - `For`: `initializer`, `condition`, `increment`, `body`, `span`.
+    - `Block`: `statements`, `span`.
+    - `Return`: `value`, `span`.
+    - `Break`: `span`.
+    - `Continue`: `span`.
+
+  `Stmt::Function` may have `name = "main"` when the ordinary function declaration syntax is used.
+
+  `Stmt::MainFunction` represents the dedicated `main` function syntax. It has no name, parameters, or return type.
+
+  `Stmt::For.initializer` is `Option<Box<Stmt>>`. Parser output uses only `Stmt::VarDeclaration` and `Stmt::Expression` in this field.
+
 - **`Type`**: The sum type of all type annotation values. `Type` has no `SourceSpan`.
   
   The primitive and special unit variants are `I8`, `I16`, `I32`, `I64`, `U8`, `U16`, `U32`, `U64`, `F32`, `F64`, `Char`, `String`, `Bool`, `Void`, and `NullPtr`.
@@ -340,17 +520,29 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
   A `Type::Void` value can come from an explicit `void` annotation or from an omitted function return annotation. The `Type` value does not preserve this origin.
   
   Type equivalence is a semantic rule. It does not use `SourceSpan`. Two array types are equivalent when their element types are equivalent and their evaluated non-negative integer sizes are equal.
+
 - **`BinaryOp`**: A closed enumeration of all binary operators.
+
 - **`UnaryOp`**: A closed enumeration of all unary operators.
+
 - **`UnaryOpSide`**: An enumeration with two variants. It shows prefix or postfix application.
+
 - **`LiteralValue`**: The sum type of all literal value kinds. The kinds are numeric, string, char, bool, and nullptr.
+
 - **`Parameter`**: A struct with the public fields `name: String`, `type_annotation: Type`, and `span: SourceSpan`, for function parameters. The typed tree and the untyped tree share this type.
+
 - **`VarBinding`**: A struct with the public fields `name: String` and `initializer: Option<Expr>`, for multi-binding declarations. `VarBinding` has no `SourceSpan`. The `Option<Expr>` field is part of the AST representation. It does not mean that the language permits a missing initializer. In a valid parsed declaration, `initializer` is always `Some(Expr)`. `None` is allowed only for parser recovery after E2001 or for an AST value constructed directly by program code. The n-th binding corresponds to the n-th name and the n-th initializer. A declaration is valid only when the number of names is equal to the number of initializers.
+
 - **`ElseBranch`**: An enumeration with three variants, for the else clause of an if statement. `ElseBranch` has no `SourceSpan`.
+
 - **`TypedExpr`**: A struct in `syntax::typed_ast`. It has the fields `kind: TypedExprKind`, `span: SourceSpan`, and `resolved_type: Option<Type>`.
+
 - **`TypedExprKind`**: An enum in `syntax::typed_ast`. It has one variant for each `Expr` variant.
+
 - **`TypedStmt`**: An enum in `syntax::typed_ast`. It has one variant for each `Stmt` variant.
+
 - **`TypedElseBranch`**: An enumeration with three variants, in the same way as `ElseBranch`.
+
 - **`TypedVarBinding`**: A struct with the public fields `name: String` and `initializer: Option<TypedExpr>`.
 
 ---
@@ -419,7 +611,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
 ### Measurable Outcomes
 
-- **SC-001**: For each syntactically valid `.dr` source file, the AST has no unknown node and no generic node for a construct in the grammar. A coverage test lists each grammar production. Each production has an AST node variant, or a written reason why it has none. A production that only groups tokens, for example a parenthesized expression, has no AST node variant. The test fails when a grammar production is not in the list.
+- **SC-001**: For each syntactically valid `.dr` source file, the AST has no unknown node and no generic node for a construct in the grammar. A coverage test lists each grammar production. Each production has an AST node variant, or a written reason why it has none. A production that only groups tokens, for example a parenthesized expression, has an AST node variant when the parentheses are an explicit AST construct. The test fails when a grammar production that produces a semantic AST construct is not in the list.
 - **SC-002**: Each type annotation position in the AST uses a concrete `Type` value. The positions are variable declarations, parameters, return types, and array sizes. When the source has a type keyword, the parser makes the corresponding `Type` value. The parser does not use `Type::Custom` as a default value.
   
   A function with an explicit `void` return annotation has `return_type = Type::Void`.
@@ -438,7 +630,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - The placeholder `Expr` of FR-004 has the span of the token that comes before the missing expression. The text in this span is the text of the previous token. It is not a source fragment of the placeholder.
 - **SC-005**: The type checker uses type synthesis. It finds the type of an expression from the types of its subexpressions. The existing type-checker tests are in `type_checker_tests.rs` and `type_checker_snapshot_tests.rs`. They call `TypeChecker::check` and they examine its errors. They do not use a resolved type, because no resolved-type annotation exists before this feature. These tests pass without change (SC-006).
     - New tests examine the resolved-type annotation on `TypedExpr` trees at each depth. They are in new test files in `crates/descar-core/tests/`. They call `TypeChecker::check_typed` (FR-024).
-    - After `check_typed` runs on a program, each resolvable `TypedExpr` node has `Some(T)`. Resolvable nodes are literals, variables, calls, binary expressions, and unary expressions. This includes operands inside other expressions. It also includes expressions in statement conditions, initializers, and return values.
+    - After `check_typed` runs on a program, each resolvable `TypedExpr` node has `Some(T)`. Resolvable nodes are literals, variables, calls, binary expressions, and unary expressions. This includes operands inside other expressions. It also includes conditions, initializers, assignment targets, and return values inside statements.
     - For each program that an existing type-checker test gives to `check`, `check_typed` reports the same errors as `check` (FR-024).
 - **SC-006**: All existing tests in `crates/descar-core/tests/` pass without change after the AST changes. The only exception is a test that uses an item with a breaking change that `MIGRATION.md` lists. A breaking change is one of these changes to an existing public `Expr` or `Stmt` field or variant: a new name, removal, or a new type. A new optional field or a new enum variant, with `#[non_exhaustive]` where necessary, is not a breaking change. It needs no migration path. The feature directory must contain a `MIGRATION.md` note for each breaking change of this feature.
 - **SC-007**: For each `.dr` file in `dr_files/`, build the typed tree from the parsed program. The typed tree is the AST with a type attribute on each expression node.
@@ -480,5 +672,12 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - `LiteralValue`, `BinaryOp`, `UnaryOp`, `UnaryOpSide`, `Type`, `SourceSpan`, and identifier names implement `Clone`. The build functions and the `erase` functions need this. To add a missing `Clone` derive is not a breaking change under SC-006.
 - After the build function runs and before type checking, each `resolved_type` is `None`. The model has no separate value for "not yet checked". To tell the two states apart, check if the type-checking pass has processed the tree.
 - The `vector<T>` notation is the only generic type constructor in scope. The grammar has no other parameterized type syntax.
+- `Stmt::Function` and `Stmt::MainFunction` are separate AST variants. The dedicated `main` syntax is represented by `Stmt::MainFunction`. An ordinary function declaration with `name = "main"` is represented by `Stmt::Function`.
+- `Stmt::For.initializer` is `Option<Box<Stmt>>`. For parser output, a present initializer is either `Stmt::VarDeclaration` or `Stmt::Expression`. `Stmt::For.condition` and `Stmt::For.increment` are `Option<Expr>`.
+- `Expr::Call.callee` is `Box<Expr>`. The AST does not require the callee to be an identifier.
+- `Expr::Assign.target` is `Box<Expr>`. Valid parser output restricts the target to `Expr::Variable` and `Expr::ArrayAccess`.
+- `Stmt::Return.value` is `Option<Expr>`. `None` represents a return statement without a value.
+- `Stmt::Break` and `Stmt::Continue` contain only their `SourceSpan`.
+- `Expr::Grouping` contains the parenthesized expression. Explicit grouping is therefore available to later compiler phases.
 - All existing public APIs stay stable unless a migration is explicitly documented.
 - The `specs/` directory did not exist before. This is the first feature specification in the project.
