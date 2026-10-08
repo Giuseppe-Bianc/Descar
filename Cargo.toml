@@ -6,9 +6,6 @@ members = [
     "crates/descar",
 ]
 
-[workspace.package]
-rust-version = "1.98.1"
-
 [workspace.dependencies]
 insta = { version = "1.48.0", features = ["yaml", "redactions", "filters"] }
 clap = { version = "4.6.6", features = ["cargo", "derive"] }
