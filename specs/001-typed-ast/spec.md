@@ -138,6 +138,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - `vector<T>` and a user-defined type named `vector`: In a type position, the parser creates `Type::Vector` when `vector` is followed by `<T>`. In all other cases, the identifier resolves to `Type::Custom`.
 - `1 + 2` in the typed tree: The tree contains a `TypedExpr` with `kind` set to `TypedExprKind::Binary`. This node owns two `TypedExpr` operands. Both operands have `kind` set to `TypedExprKind::Literal`. Each of the three nodes has its own `resolved_type`.
 - A grouping `(a + b)` in the typed tree: The tree contains a `TypedExpr` with `kind` set to `TypedExprKind::Grouping`. This node owns the `TypedExpr` for `a + b`. The grouping node and the inner node have independent `resolved_type` values.
+- An `else if` chain in the typed tree: A `TypedElseBranch::ElseIf` contains a `TypedStmt::If`. This `TypedStmt::If` contains its own `TypedElseBranch`. The structure is recursive and follows the same representation used by `ElseBranch`.
 - An assignment target: A valid `Expr::Assign.target` is an `Expr::Variable` or an `Expr::ArrayAccess`. A literal, grouping, call, binary expression, or unary expression is not a valid assignment target.
 - A call with an expression as callee: The `Expr::Call.callee` field contains the complete callee expression. The AST does not require a separate callee name field.
 - A return without a value: `Stmt::Return.value` is `None`.
