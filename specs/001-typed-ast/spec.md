@@ -349,10 +349,12 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
 - **FR-016**: The lexer must read a numeric literal with a radix prefix (binary `#b`, octal `#o`, or hexadecimal `#x`) as one token. The lexer must select the longest lexeme that matches the pattern of the literal. The lexer must convert the digits to a value in the radix that the prefix gives. The lexer must give the token the same `LiteralValue::Numeric(Number)` variant as a decimal literal. The parser must not receive the radix. A digit that is not valid in the radix (for example `#b2`) must cause a lexical error. The lexical error must show the position of the lexeme in the source text.
 
-- **FR-017**: The AST must represent a multi-binding variable declaration (`var a, b: T = e1, e2`) as one `Stmt::VarDeclaration` with several `VarBinding` entries. Each `VarBinding` must pair one name with an `Option<Expr>` initializer. The type of the `initializer` field is `Option<Expr>`.
+- **FR-017**: The AST must represent a multi-binding variable declaration (`var a, b: T = e1, e2`) as one `Stmt::VarDeclaration` with several `VarBinding` entries. Each `VarBinding` must pair one name with one initializer. The initializer is mandatory in the language. The type of the `initializer` field is `Option<Expr>`.
     - The `Option<Expr>` type describes the AST representation. It does not make the initializer optional in the language grammar.
+    - This requirement is the only place that defines the initializer rule. The other sections refer to FR-017. They do not define a different rule.
     - A declaration is valid only when it has at least one name and the number of initializers is equal to the number of names.
     - Each name must have exactly one initializer in a valid declaration.
+    - The initializer-count rule is a context-sensitive condition. A context-free grammar cannot check it. The parser checks it after it parses both lists (Aho et al., Section 4.3.5).
     - In a valid declaration, the `initializer` of every `VarBinding` must be `Some`.
     - `None` is not a valid language form. `None` represents only parser recovery after an initializer-count error or an AST value constructed directly by program code.
     - The source form contains a list of names and a list of initializers.
@@ -389,6 +391,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
     - `Stmt::For.initializer` is an optional statement. Valid parser output restricts it to `Stmt::VarDeclaration` and `Stmt::Expression`.
     - `Expr::Grouping` is a distinct node for explicit parenthesized expressions.
     - `Expr::ArrayAccess` and `Expr::ArrayLiteral` are distinct nodes.
+    - `VarBinding.initializer` has exactly one child in valid parser output. Its `Option<Expr>` type represents parser recovery only (FR-017).
 
   The AST must not contain nodes that exist only for the grammar, such as punctuation, keywords, and chain productions.
 
@@ -427,7 +430,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
   `TypedElseBranch` must have the same three cases as `ElseBranch` (FR-007). Its `Block` payload and its `ElseIf` payload have the type `Box<TypedStmt>`. For parser output, the `ElseIf` payload is a `TypedStmt::If` and the `Block` payload is a `TypedStmt::Block`.
 
-  `TypedVarBinding` must pair the name with an `Option<TypedExpr>` initializer, in the same way as `VarBinding`.
+  `TypedVarBinding` must pair the name with an `Option<TypedExpr>` initializer, in the same way as `VarBinding`. The rule of FR-017 applies: the initializer is mandatory in a valid tree, and `None` is a recovery value only.
 
   `TypedStmt` has no `resolved_type` of its own. A statement does not have a value. In the typed tree, only a `TypedExpr` node holds a type attribute.
 
@@ -532,7 +535,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
 - **`Parameter`**: A struct with the public fields `name: String`, `type_annotation: Type`, and `span: SourceSpan`, for function parameters. The typed tree and the untyped tree share this type.
 
-- **`VarBinding`**: A struct with the public fields `name: String` and `initializer: Option<Expr>`, for multi-binding declarations. `VarBinding` has no `SourceSpan`. The `Option<Expr>` field is part of the AST representation. It does not mean that the language permits a missing initializer. In a valid parsed declaration, `initializer` is always `Some(Expr)`. `None` is allowed only for parser recovery after E2001 or for an AST value constructed directly by program code. The n-th binding corresponds to the n-th name and the n-th initializer. A declaration is valid only when the number of names is equal to the number of initializers.
+- **`VarBinding`**: A struct with the public fields `name: String` and `initializer: Option<Expr>`, for multi-binding declarations. `VarBinding` has no `SourceSpan`. The initializer is mandatory in the language (FR-017). The `Option<Expr>` field is part of the AST representation. It does not mean that the language permits a missing initializer. In a valid parsed declaration, `initializer` is always `Some(Expr)`. `None` is allowed only for parser recovery after E2001 or for an AST value constructed directly by program code. The n-th binding corresponds to the n-th name and the n-th initializer. A declaration is valid only when the number of names is equal to the number of initializers.
 
 - **`ElseBranch`**: An enumeration with three variants, for the else clause of an if statement. `ElseBranch` has no `SourceSpan`.
 
@@ -544,7 +547,7 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 
 - **`TypedElseBranch`**: An enumeration with three variants, in the same way as `ElseBranch`.
 
-- **`TypedVarBinding`**: A struct with the public fields `name: String` and `initializer: Option<TypedExpr>`.
+- **`TypedVarBinding`**: A struct with the public fields `name: String` and `initializer: Option<TypedExpr>`. The rule of FR-017 applies to its initializer.
 
 ---
 
@@ -605,6 +608,14 @@ A semantic analysis pass or an IR generator builds a typed tree from the parsed 
 - Q: Does `Type` equality use source spans?
   
   A: No. `Type` has no source span. Type equivalence does not use source positions. In particular, two equal array sizes at different source positions can still produce equivalent array types.
+
+### Session 2026-10-08
+
+- Q: Is the initializer of a `VarBinding` mandatory or optional? FR-017 required one initializer for each name, and the `Option<Expr>` type of the field could be read as optional. A: It is mandatory in the language. A valid `var` or `const` declaration has exactly one initializer for each declared name. `None` is a recovery value only.
+- Q: Why does the spec keep `Option<Expr>` for a mandatory initializer? A: The existing `VarBinding` has the field type `Option<Expr>`. The parser uses `None` for recovery after E2001. A change of the field type to `Expr` is a breaking change under SC-006.
+- Q: FR-018 says that an `Option<T>` field has zero or one child. Does this make the initializer optional? A: No. FR-018 lists `VarBinding.initializer` as an exception. In valid parser output it has exactly one child. The `Option` type represents parser recovery only.
+- Q: Which rule checks that the number of names is equal to the number of initializers? A: The parser checks it. The initializer-count rule is a context-sensitive condition, and a context-free grammar cannot check it (Aho et al., Section 4.3.5). The parser parses both lists first. Then it compares the counts (FR-017).
+- Q: Which section defines the initializer rule? A: FR-017 only. The Key Entities entries, the Edge Cases, FR-018, and FR-020 refer to FR-017.
 
 ---
 
