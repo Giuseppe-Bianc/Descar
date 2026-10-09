@@ -195,3 +195,25 @@ fn rejects_invalid_optimization_level() {
     let result = Args::try_parse_from(["descar", "compile", "program.dr", "--optimize", "turbo"]);
     assert!(result.is_err());
 }
+
+#[test]
+fn logging_accessor_returns_none_without_command() {
+    let args = Args::try_parse_from(["descar"]).expect("root command should parse");
+    assert!(args.logging().is_none());
+}
+
+#[test]
+fn logging_accessor_returns_arguments_of_compile_command() {
+    let args = Args::try_parse_from(["descar", "compile", "program.dr", "-vv"]).expect("compile should parse");
+    let logging = args.logging().expect("compile carries logging arguments");
+    assert_eq!(logging.verbose, 2);
+    assert!(!logging.quiet);
+}
+
+#[test]
+fn logging_accessor_returns_arguments_of_check_command() {
+    let args = Args::try_parse_from(["descar", "check", "program.dr", "-q"]).expect("check should parse");
+    let logging = args.logging().expect("check carries logging arguments");
+    assert_eq!(logging.verbose, 0);
+    assert!(logging.quiet);
+}
