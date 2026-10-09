@@ -1,0 +1,22 @@
+crates/descar-cli/tests/cli.rs
+  h_361662506da91f 198-219
+crates/descar/src/logging.rs
+  h_361662506da91f 1-121
+crates/descar/src/main.rs
+  h_361662506da91f 1-2,4,8,12,16,23,28,30-38,43-44,47-49,59-65,73-74,77,81,84-85,87,89,92-93,96,98,104-126,129-133,137-142,145-149
+crates/descar/tests/logging.rs
+  h_361662506da91f 1-238
+crates/descar-cli/src/cli.rs
+  h_361662506da91f 96-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b68102bf234e9987a99a0b4764b817b8dd8b98f4",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
