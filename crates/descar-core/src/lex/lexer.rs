@@ -56,15 +56,15 @@ impl<'a> Lexer<'a> {
                 if matches!(kind, TokenKind::StringLiteral(_) | TokenKind::CharLiteral(_))
                     && validate_escapes(slice).is_err()
                 {
-                    warn!(token_start = span.start(), "invalid escape sequence in literal");
+                    warn!(token_start = %span.start(), "invalid escape sequence in literal");
                     return Some(Err(Self::convert_lex_error(LexError::InvalidEscapeSequence, span, slice)));
                 }
 
-                trace!(token_start = span.start(), token_end = span.end(), "token recognized");
+                trace!(token_start = %span.start(), token_end = %span.end(), "token recognized");
                 Some(Ok(Token { kind, span }))
             }
             Err(error) => {
-                warn!(token_start = span.start(), token_end = span.end(), "lexical error encountered");
+                warn!(token_start = %span.start(), token_end = %span.end(), "lexical error encountered");
                 Some(Err(Self::convert_lex_error(error, span, slice)))
             }
         }
