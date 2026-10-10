@@ -93,6 +93,20 @@ pub struct Args {
     pub command: Option<Command>,
 }
 
+impl Args {
+    /// Returns the logging arguments of the selected command.
+    ///
+    /// Returns `None` when no command was selected, because the help text is then the only output.
+    #[must_use]
+    pub const fn logging(&self) -> Option<&LoggingArgs> {
+        match &self.command {
+            Some(Command::Compile(args)) => Some(&args.logging),
+            Some(Command::Check(args)) => Some(&args.logging),
+            None => None,
+        }
+    }
+}
+
 /// Top-level Descar CLI commands.
 #[derive(Debug, Subcommand)]
 pub enum Command {
