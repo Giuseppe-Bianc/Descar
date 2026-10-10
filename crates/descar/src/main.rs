@@ -13,7 +13,7 @@ use descar_cli::cli::{Args, Command, CompileArgs, OptimizationLevel};
 use descar_core::error::error_reporter::ErrorReporter;
 use descar_core::syntax::ast::Stmt;
 use descar_core::syntax::parser::JsavParser;
-use tracing::{debug, error, error_span, info, instrument, trace, warn};
+use tracing::{debug, error, error_span, info, trace, warn};
 
 use descar_core::file::{FileSizeInfo, SizeSystems};
 
@@ -40,8 +40,8 @@ fn log_source_size(bytes: usize) {
 }
 
 /// Reads a source file, reporting an I/O error and exiting if the read fails.
-#[instrument(skip(path), fields(path = %path.display()))]
 fn read_input(path: &Path) -> String {
+    let _span = tracing::debug_span!("read_input", path = %path.display()).entered();
     trace!("reading source file");
     let input = fs::read_to_string(path).unwrap_or_else(|e| {
         handle_io_error("I/O", format!("failed to read '{}': {}", path.to_string_lossy(), e));
@@ -73,8 +73,8 @@ fn stop_frontend(stage: &'static str, error_reporter: &ErrorReporter, errors: Ve
 ///
 /// Returns the parsed statements when all stages succeed. If any stage reports
 /// diagnostics, prints them and exits with status code 1.
-#[instrument(skip(input), fields(source_bytes = input.len()))]
 fn run_frontend(file_path: &str, input: &str) -> Vec<Stmt> {
+    let _span = tracing::debug_span!("run_frontend", file_path, source_bytes = input.len()).entered();
     trace!(file_path, "frontend started");
     trace!(source_len = input.len(), "lexing started");
     let started = Instant::now();
@@ -109,8 +109,8 @@ fn run_frontend(file_path: &str, input: &str) -> Vec<Stmt> {
 }
 
 /// Reads a source file and runs the frontend on it.
-#[instrument(skip(path), fields(path = %path.display()))]
 fn analyze(path: &Path) -> Vec<Stmt> {
+    let _span = tracing::debug_span!("analyze", path = %path.display()).entered();
     let input = read_input(path);
     let file_path_str = path_to_str(path);
     run_frontend(file_path_str, &input)
