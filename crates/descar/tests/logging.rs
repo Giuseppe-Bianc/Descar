@@ -236,3 +236,122 @@ fn control_characters_in_paths_are_escaped_in_logs() {
         assert!(LEVELS.contains(&first), "a forged or split line reached stderr: {line:?}");
     }
 }
+
+/// Log events of a command. Compiler diagnostics share stderr with them but carry no command span.
+fn events(text: &str) -> Vec<&str> {
+    text.lines().filter(|line| line.contains("compile{") || line.contains("check{")).collect()
+}
+
+fn write_probe(name: &str, content: &str) -> PathBuf {
+    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"));
+    fs::create_dir_all(&dir).expect("the target tmp directory should be creatable");
+    let path = dir.join(name);
+    fs::write(&path, content).expect("the probe should be written");
+    path
+}
+
+#[test]
+fn failing_source_emits_no_events_at_the_default_level() {
+    let output = run(&["compile", &fixture("break_outside_loop.dr")]);
+    let err = stderr(&output);
+
+    assert_eq!(output.status.code(), Some(1));
+    assert!(err.contains("E2009"), "stderr was: {err}");
+    assert_eq!(events(&err), Vec::<&str>::new(), "events must stay below ERROR, stderr was: {err}");
+}
+
+#[test]
+fn type_errors_are_logged_with_code_and_position() {
+    let output = run(&["compile", &fixture("break_outside_loop.dr"), "-vv"]);
+    let err = stderr(&output);
+
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        events(&err)
+            .iter()
+            .any(|line| line.contains("type error") && line.contains("code=\"E2009\"") && line.contains("line=5")),
+        "stderr was: {err}"
+    );
+}
+
+#[test]
+fn lexical_error_events_carry_code_and_position_but_not_source_text() {
+    let secret = "secret-lexical-probe-1";
+    let path = write_probe("logging_lexical_probe.dr", &format!("main {{\n    var s: string = \"{secret}\\q\"\n}}\n"));
+
+    let output = run(&["compile", path.to_str().expect("UTF-8 path"), "-vvv"]);
+    let err = stderr(&output);
+    let logged = events(&err);
+
+    assert_eq!(output.status.code(), Some(1));
+    assert!(err.contains("E0007"), "the diagnostic must still be printed, stderr was: {err}");
+    assert!(
+        logged
+            .iter()
+            .any(|line| line.contains("lexical error") && line.contains("code=\"E0007\"") && line.contains("line=2")),
+        "stderr was: {err}"
+    );
+    assert!(logged.iter().all(|line| !line.contains(secret)), "source text leaked into events: {logged:?}");
+}
+
+#[test]
+fn syntax_error_events_carry_code_position_and_recovery_but_not_source_text() {
+    let secret = "secret-syntax-probe-2";
+    let path =
+        write_probe("logging_syntax_probe.dr", &format!("main {{\n    var s: string = \"{secret}\"\n    )\n}}\n"));
+
+    let output = run(&["compile", path.to_str().expect("UTF-8 path"), "-vvv"]);
+    let err = stderr(&output);
+    let logged = events(&err);
+
+    assert_eq!(output.status.code(), Some(1));
+    assert!(
+        logged.iter().any(|line| line.contains("syntax error")
+            && line.contains("code=\"E1004\"")
+            && line.contains("line=3 column=5")),
+        "stderr was: {err}"
+    );
+    assert!(logged.iter().any(|line| line.contains("skipping token after a failed statement")), "stderr was: {err}");
+    assert!(logged.iter().all(|line| !line.contains(secret)), "source text leaked into events: {logged:?}");
+}
+
+#[test]
+fn recursion_limit_warning_is_visible_at_single_v_and_hidden_by_default() {
+    let depth = 1100;
+    let source = format!("main {{\n    var x: i32 = {}1{}\n}}\n", "(".repeat(depth), ")".repeat(depth));
+    let path = write_probe("logging_recursion_probe.dr", &source);
+    let path = path.to_str().expect("UTF-8 path");
+
+    let verbose = run(&["compile", path, "-v"]);
+    let verbose_err = stderr(&verbose);
+    let default = run(&["compile", path]);
+
+    assert_eq!(verbose.status.code(), Some(1));
+    assert!(has_level(&verbose_err, "WARN"), "stderr was: {verbose_err}");
+    assert!(verbose_err.contains("maximum recursion depth exceeded"), "stderr was: {verbose_err}");
+    assert_eq!(default.status.code(), Some(1));
+    assert_eq!(events(&stderr(&default)), Vec::<&str>::new());
+}
+
+#[test]
+fn scope_events_appear_only_at_trace_level() {
+    let debug = stderr(&run(&["check", &fixture("simple_test.dr"), "-vv"]));
+    let trace = stderr(&run(&["check", &fixture("simple_test.dr"), "-vvv"]));
+
+    assert!(!debug.contains("scope opened"), "stderr was: {debug}");
+    assert!(trace.contains("scope opened"), "stderr was: {trace}");
+    assert!(trace.contains("scope closed"), "stderr was: {trace}");
+    assert!(trace.contains("function{parameters=2 line=1 column=1}"), "stderr was: {trace}");
+}
+
+#[test]
+fn started_event_reports_the_version_and_success_reports_the_elapsed_time() {
+    for command in ["check", "compile"] {
+        let output = run(&[command, &fixture("simple_test.dr"), "-vv"]);
+        let err = stderr(&output);
+
+        assert!(output.status.success(), "{command} failed, stderr was: {err}");
+        assert!(err.contains(&format!("version=\"{}\"", env!("CARGO_PKG_VERSION"))), "{command}: {err}");
+        assert!(err.contains("succeeded elapsed="), "{command}: {err}");
+    }
+}
