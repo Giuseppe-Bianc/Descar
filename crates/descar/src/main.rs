@@ -13,7 +13,7 @@ use descar_cli::cli::{Args, Command, CompileArgs, OptimizationLevel};
 use descar_core::error::error_reporter::ErrorReporter;
 use descar_core::syntax::ast::Stmt;
 use descar_core::syntax::parser::JsavParser;
-use tracing::{debug, error_span, info, trace, warn};
+use tracing::{debug, error, error_span, info, instrument, trace, warn};
 
 use descar_core::file::{FileSizeInfo, SizeSystems};
 
@@ -22,6 +22,7 @@ use descar_core::file::{FileSizeInfo, SizeSystems};
 /// The error category and underlying error value are printed to standard error.
 /// This message is a user-facing error, not a log event, so `-q` does not hide it.
 fn handle_io_error<T: std::fmt::Display>(error_type: &str, e: T) {
+    error!(error_type, error = %e, "I/O operation failed");
     eprintln!("{} {}: {}\n", style("ERROR:").red().bold(), style(error_type).red(), style(e).yellow());
 }
 
@@ -39,12 +40,14 @@ fn log_source_size(bytes: usize) {
 }
 
 /// Reads a source file, reporting an I/O error and exiting if the read fails.
+#[instrument(skip(path), fields(path = %path.display()))]
 fn read_input(path: &Path) -> String {
     trace!("reading source file");
     let input = fs::read_to_string(path).unwrap_or_else(|e| {
         handle_io_error("I/O", format!("failed to read '{}': {}", path.to_string_lossy(), e));
         process::exit(1);
     });
+    debug!(source_bytes = input.len(), "source file read successfully");
     log_source_size(input.len());
     input
 }
@@ -60,6 +63,7 @@ fn path_to_str(path: &Path) -> &str {
 ///
 /// The diagnostics are the output of the compiler, not log events, so `-q` does not hide them.
 fn stop_frontend(stage: &'static str, error_reporter: &ErrorReporter, errors: Vec<CompileError>) -> ! {
+    error!(stage, error_count = errors.len(), "frontend stage failed");
     debug!(stage, errors = errors.len(), "frontend stopped");
     eprintln!("{}", error_reporter.report_errors(errors));
     process::exit(1);
@@ -69,7 +73,9 @@ fn stop_frontend(stage: &'static str, error_reporter: &ErrorReporter, errors: Ve
 ///
 /// Returns the parsed statements when all stages succeed. If any stage reports
 /// diagnostics, prints them and exits with status code 1.
+#[instrument(skip(input), fields(source_bytes = input.len()))]
 fn run_frontend(file_path: &str, input: &str) -> Vec<Stmt> {
+    trace!(file_path, "frontend started");
     trace!(source_len = input.len(), "lexing started");
     let started = Instant::now();
     let mut lexer = Lexer::new(file_path, input);
@@ -98,10 +104,12 @@ fn run_frontend(file_path: &str, input: &str) -> Vec<Stmt> {
         stop_frontend("type checking", &error_reporter, type_checker_errors);
     }
 
+    info!(statements = statements.len(), "frontend completed successfully");
     statements
 }
 
 /// Reads a source file and runs the frontend on it.
+#[instrument(skip(path), fields(path = %path.display()))]
 fn analyze(path: &Path) -> Vec<Stmt> {
     let input = read_input(path);
     let file_path_str = path_to_str(path);
@@ -134,16 +142,18 @@ fn main() {
     match args.command {
         None => Args::command().print_help().expect("failed to print help"),
         Some(Command::Compile(args)) => {
-            let _command = error_span!("compile", file = ?args.input).entered();
-            debug!(optimize = ?args.optimize, emit_ir = args.emit_ir, diagnostics = args.diagnostics, output = ?args.output, "command started");
+            let _command = error_span!("compile", file = %args.input.display()).entered();
+            info!(file = %args.input.display(), optimize = ?args.optimize, "compilation started");
+            debug!(optimize = ?args.optimize, emit_ir = args.emit_ir, diagnostics = args.diagnostics, output = ?args.output, "command options");
             warn_ignored_options(&args);
 
             let _statements = analyze(args.input.as_path());
             info!("compilation succeeded");
         }
         Some(Command::Check(args)) => {
-            let _command = error_span!("check", file = ?args.input).entered();
-            debug!("command started");
+            let _command = error_span!("check", file = %args.input.display()).entered();
+            info!(file = %args.input.display(), "syntax check started");
+            debug!("command options parsed");
 
             let _statements = analyze(args.input.as_path());
             info!("check succeeded");
