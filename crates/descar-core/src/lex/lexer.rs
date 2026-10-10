@@ -6,6 +6,7 @@ use crate::{
 };
 use logos::Logos;
 use std::sync::Arc;
+use tracing::{debug, trace, warn};
 
 /// Maximum number of tokens to allocate to prevent excessive memory usage.
 const MAX_TOKENS_CAPACITY: usize = 10_000_000;
@@ -22,6 +23,7 @@ impl<'a> Lexer<'a> {
     pub fn new(file_path: &str, source: &'a str) -> Self {
         let line_tracker = LineTracker::new(file_path, source.to_owned());
         let source_len = source.len();
+        trace!(source_bytes = source_len, "lexer initialized");
         let inner = TokenKind::lexer(source);
         Self { inner, line_tracker, source_len, eof_emitted: false }
     }
@@ -41,6 +43,7 @@ impl<'a> Lexer<'a> {
             self.eof_emitted = true;
             let range = self.source_len..self.source_len;
             let span = self.line_tracker.span_for(range);
+            trace!("lexer reached end of input");
             return Some(Ok(Token { kind: TokenKind::Eof, span }));
         };
 
@@ -53,12 +56,17 @@ impl<'a> Lexer<'a> {
                 if matches!(kind, TokenKind::StringLiteral(_) | TokenKind::CharLiteral(_))
                     && validate_escapes(slice).is_err()
                 {
+                    warn!(token_start = span.start, "invalid escape sequence in literal");
                     return Some(Err(Self::convert_lex_error(LexError::InvalidEscapeSequence, span, slice)));
                 }
 
+                trace!(token_start = span.start, token_end = span.end, "token recognized");
                 Some(Ok(Token { kind, span }))
             }
-            Err(error) => Some(Err(Self::convert_lex_error(error, span, slice))),
+            Err(error) => {
+                warn!(token_start = span.start, token_end = span.end, "lexical error encountered");
+                Some(Err(Self::convert_lex_error(error, span, slice)))
+            }
         }
     }
 
@@ -176,6 +184,7 @@ pub fn lexer_tokenize_with_errors(lexer: &mut Lexer<'_>) -> (Vec<Token>, Vec<Com
     let estimated_tokens = lexer.source_len / 8;
     let mut tokens = Vec::with_capacity(estimated_tokens.clamp(1, MAX_TOKENS_CAPACITY));
     let mut errors = Vec::new();
+    trace!(estimated_tokens, "tokenization started");
 
     while let Some(result) = lexer.next_token() {
         match result {
@@ -184,5 +193,6 @@ pub fn lexer_tokenize_with_errors(lexer: &mut Lexer<'_>) -> (Vec<Token>, Vec<Com
         }
     }
 
+    debug!(tokens = tokens.len(), errors = errors.len(), "tokenization completed");
     (tokens, errors)
 }
