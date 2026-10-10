@@ -1,0 +1,14 @@
+crates/descar-core/src/lex/lexer.rs
+  h_361662506da91f 59,63,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "9bc48b3e01057f1c8f2268f54c1bd065a2e6dd45",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
