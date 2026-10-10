@@ -6,7 +6,7 @@ use crate::{
 };
 use logos::Logos;
 use std::sync::Arc;
-use tracing::{debug, trace, warn};
+use tracing::{trace, warn};
 
 /// Maximum number of tokens to allocate to prevent excessive memory usage.
 const MAX_TOKENS_CAPACITY: usize = 10_000_000;
@@ -60,13 +60,9 @@ impl<'a> Lexer<'a> {
                     return Some(Err(Self::convert_lex_error(LexError::InvalidEscapeSequence, span, slice)));
                 }
 
-                trace!(token_start = %span.start(), token_end = %span.end(), "token recognized");
                 Some(Ok(Token { kind, span }))
             }
-            Err(error) => {
-                warn!(token_start = %span.start(), token_end = %span.end(), "lexical error encountered");
-                Some(Err(Self::convert_lex_error(error, span, slice)))
-            }
+            Err(error) => Some(Err(Self::convert_lex_error(error, span, slice))),
         }
     }
 
@@ -184,7 +180,6 @@ pub fn lexer_tokenize_with_errors(lexer: &mut Lexer<'_>) -> (Vec<Token>, Vec<Com
     let estimated_tokens = lexer.source_len / 8;
     let mut tokens = Vec::with_capacity(estimated_tokens.clamp(1, MAX_TOKENS_CAPACITY));
     let mut errors = Vec::new();
-    trace!(estimated_tokens, "tokenization started");
 
     while let Some(result) = lexer.next_token() {
         match result {
@@ -193,6 +188,5 @@ pub fn lexer_tokenize_with_errors(lexer: &mut Lexer<'_>) -> (Vec<Token>, Vec<Com
         }
     }
 
-    debug!(tokens = tokens.len(), errors = errors.len(), "tokenization completed");
     (tokens, errors)
 }

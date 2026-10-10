@@ -143,7 +143,7 @@ fn main() {
         None => Args::command().print_help().expect("failed to print help"),
         Some(Command::Compile(args)) => {
             let _command = error_span!("compile", file = %args.input.display()).entered();
-            info!(file = %args.input.display(), optimize = ?args.optimize, "compilation started");
+            info!(file = %args.input.display(), "compilation started");
             debug!(optimize = ?args.optimize, emit_ir = args.emit_ir, diagnostics = args.diagnostics, output = ?args.output, "command options");
             warn_ignored_options(&args);
 
