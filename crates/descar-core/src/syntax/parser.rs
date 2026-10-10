@@ -14,6 +14,7 @@ use crate::syntax::precendence::Precedence;
 use crate::tokens::token::Token;
 use crate::tokens::token_kind::TokenKind;
 use std::sync::Arc;
+use tracing::{debug, trace, warn};
 
 pub struct JsavParser<'a> {
     tokens: &'a [Token],
@@ -58,6 +59,7 @@ impl<'a> JsavParser<'a> {
 
     #[must_use]
     pub fn parse(mut self) -> (Vec<Stmt>, Vec<CompileError>) {
+        trace!(tokens = self.tokens.len(), "parsing started");
         let mut statements = Vec::with_capacity(self.tokens.len() / 4);
         while !self.is_at_end() {
             if let Some(stmt) = self.parse_stmt() {
@@ -69,6 +71,10 @@ impl<'a> JsavParser<'a> {
         }
         statements.shrink_to_fit();
         self.errors.shrink_to_fit();
+        debug!(statements = statements.len(), errors = self.errors.len(), "parsing finished");
+        if !self.errors.is_empty() {
+            warn!(errors = self.errors.len(), "syntax errors detected");
+        }
         (statements, self.errors)
     }
 
