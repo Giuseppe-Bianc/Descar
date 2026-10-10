@@ -18,3 +18,4 @@ thiserror = { workspace = true }
 console = { workspace = true }
 regex = { workspace = true }
 logos = { workspace = true }
+tracing = { workspace = true }
