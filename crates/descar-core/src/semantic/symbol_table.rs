@@ -1,5 +1,7 @@
 use std::{collections::HashMap, sync::Arc};
 
+use tracing::{trace, warn};
+
 use crate::{
     error::{compile_error::CompileError, error_code::ErrorCode},
     location::source_span::SourceSpan,
@@ -199,10 +201,12 @@ impl SymbolTable {
     /// ```
     pub fn push_scope(&mut self, kind: ScopeKind, defined_at: Option<SourceSpan>) {
         if kind == ScopeKind::Global {
+            warn!("ignored a request to open a second global scope");
             return;
         }
 
         self.scopes.push(Scope::new(kind, defined_at));
+        trace!(?kind, depth = self.scopes.len(), "scope opened");
     }
 
     /// Closes the current non-global scope.
@@ -221,8 +225,13 @@ impl SymbolTable {
     /// assert_eq!(table.scope_count(), 1);
     /// ```
     pub fn pop_scope(&mut self) {
-        if self.scopes.len() > 1 {
-            self.scopes.pop();
+        if self.scopes.len() <= 1 {
+            warn!("ignored a request to close the global scope");
+            return;
+        }
+
+        if let Some(scope) = self.scopes.pop() {
+            trace!(kind = ?scope.kind, symbols = scope.symbol_count(), depth = self.scopes.len(), "scope closed");
         }
     }
 

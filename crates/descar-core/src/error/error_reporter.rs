@@ -5,6 +5,7 @@ use crate::error::error_code::ErrorCode;
 use crate::location::line_tracker::LineTracker;
 use crate::location::source_span::SourceSpan;
 use std::fmt::{Display, Write};
+use tracing::debug;
 
 /// Enhanced error reporter with source context display.
 /// Sanitizes output strings by removing control characters (including ANSI escape sequences) to prevent terminal injection.
@@ -79,7 +80,10 @@ impl ErrorReporter {
         let end_line = span.end().line();
         let end_column = span.end().column();
 
-        let source_line = self.line_tracker.get_line(start_line).unwrap_or_default();
+        let source_line = self.line_tracker.get_line(start_line).unwrap_or_else(|| {
+            debug!(line = start_line, "source line not found, the diagnostic is reported without context");
+            ""
+        });
 
         let estimated_capacity =
             100 + message.len() + category.len() + source_line.len() + help.map_or(0, |value| value.len() + 20) + 50;

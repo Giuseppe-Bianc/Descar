@@ -1,5 +1,6 @@
 use crate::location::{source_location::SourceLocation, source_span::SourceSpan};
 use std::sync::Arc;
+use tracing::trace;
 
 /// Tracks source positions through efficient offset-to-location conversion.
 ///
@@ -92,6 +93,8 @@ impl LineTracker {
         // EOF is a valid UTF-8 and UTF-16 position.
         char_starts.push(source.len());
         utf16_offsets.push(utf16_offset);
+
+        trace!(lines = line_starts.len(), chars = char_count, bytes = source.len(), "line index built");
 
         Self {
             source: source.into(),

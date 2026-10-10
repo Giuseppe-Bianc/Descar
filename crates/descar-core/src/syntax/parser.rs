@@ -14,6 +14,7 @@ use crate::syntax::precendence::Precedence;
 use crate::tokens::token::Token;
 use crate::tokens::token_kind::TokenKind;
 use std::sync::Arc;
+use tracing::{debug, trace, warn};
 
 pub struct JsavParser<'a> {
     tokens: &'a [Token],
@@ -28,7 +29,14 @@ impl<'a> JsavParser<'a> {
     fn check_recursion_limit(&mut self) -> bool {
         if self.recursion_depth > Self::MAX_RECURSION_DEPTH {
             if let Some(token) = self.peek() {
-                self.errors.push(CompileError::SyntaxError {
+                warn!(
+                    depth = self.recursion_depth,
+                    limit = Self::MAX_RECURSION_DEPTH,
+                    line = token.span.start().line(),
+                    column = token.span.start().column(),
+                    "maximum recursion depth exceeded"
+                );
+                self.record_error(CompileError::SyntaxError {
                     code: Some(ErrorCode::E1001),
                     message: "Maximum recursion depth exceeded".into(),
                     span: token.span.clone(),
@@ -56,6 +64,26 @@ impl<'a> JsavParser<'a> {
         Self { tokens, current: 0, errors: Vec::with_capacity(8), recursion_depth: 0 }
     }
 
+    /// Records a syntax error and logs its code and position.
+    ///
+    /// The message is not logged because it can contain source text.
+    fn record_error(&mut self, error: CompileError) {
+        let (line, column) = error.span().map_or((0, 0), |span| (span.start().line(), span.start().column()));
+        debug!(code = error.error_code().map(ErrorCode::code), line, column, "syntax error");
+        self.errors.push(error);
+    }
+
+    /// Logs the position of the token that error recovery is about to skip.
+    fn trace_skipped_token(&self) {
+        if let Some(token) = self.peek() {
+            trace!(
+                line = token.span.start().line(),
+                column = token.span.start().column(),
+                "skipping token after a failed statement"
+            );
+        }
+    }
+
     #[must_use]
     pub fn parse(mut self) -> (Vec<Stmt>, Vec<CompileError>) {
         let mut statements = Vec::with_capacity(self.tokens.len() / 4);
@@ -64,6 +92,7 @@ impl<'a> JsavParser<'a> {
                 statements.push(stmt);
             } else {
                 // Error recovery: skip the problematic token
+                self.trace_skipped_token();
                 self.advance();
             }
         }
@@ -125,6 +154,7 @@ impl<'a> JsavParser<'a> {
             if let Some(stmt) = self.parse_stmt() {
                 statements.push(stmt);
             } else {
+                self.trace_skipped_token();
                 self.advance();
             }
         }
@@ -217,7 +247,7 @@ impl<'a> JsavParser<'a> {
                 block @ Stmt::Block { .. } => ElseBranch::Block(Box::new(block)),
                 if_stmt @ Stmt::If { .. } => ElseBranch::ElseIf(Box::new(if_stmt)),
                 invalid_stmt => {
-                    self.errors.push(CompileError::SyntaxError {
+                    self.record_error(CompileError::SyntaxError {
                         code: Some(ErrorCode::E1004),
                         message: "Invalid else branch".into(),
                         span: invalid_stmt.span().clone(),
@@ -610,7 +640,7 @@ impl<'a> JsavParser<'a> {
     fn report_invalid_assignment_target(&mut self, left: &Expr) {
         let help_msg = "Only variables and array elements can be assigned to. Consider using a variable name or an array access expression.";
 
-        self.errors.push(CompileError::SyntaxError {
+        self.record_error(CompileError::SyntaxError {
             code: Some(ErrorCode::E1003),
             message: "Invalid left-hand side in assignment".into(),
             span: left.span().clone(),
@@ -651,7 +681,7 @@ impl<'a> JsavParser<'a> {
         let op = match BinaryOp::get_op(&token) {
             Ok(op) => op,
             Err(e) => {
-                self.errors.push(e);
+                self.record_error(e);
                 return None;
             }
         };
@@ -715,7 +745,7 @@ impl<'a> JsavParser<'a> {
         &mut self, message: impl Into<String>, token: &Token, help: Option<&str>, error_code: Option<ErrorCode>,
     ) {
         let message_str = message.into();
-        self.errors.push(CompileError::SyntaxError {
+        self.record_error(CompileError::SyntaxError {
             code: error_code,
             message: Arc::from(format!("{}: {}", message_str, token.kind)),
             span: token.span.clone(),
@@ -736,7 +766,7 @@ impl<'a> JsavParser<'a> {
 
             let error_message = Arc::from(format!("Expected {expected} in {context}, found {found_str}."));
             let help_message = format!("Try adding a {expected}");
-            self.errors.push(CompileError::SyntaxError {
+            self.record_error(CompileError::SyntaxError {
                 code: Some(ErrorCode::E1004),
                 message: error_message,
                 span,

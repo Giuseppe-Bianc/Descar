@@ -135,18 +135,20 @@ fn main() {
         None => Args::command().print_help().expect("failed to print help"),
         Some(Command::Compile(args)) => {
             let _command = error_span!("compile", file = ?args.input).entered();
-            debug!(optimize = ?args.optimize, emit_ir = args.emit_ir, diagnostics = args.diagnostics, output = ?args.output, "command started");
+            let started = Instant::now();
+            debug!(version = env!("CARGO_PKG_VERSION"), optimize = ?args.optimize, emit_ir = args.emit_ir, diagnostics = args.diagnostics, output = ?args.output, "command started");
             warn_ignored_options(&args);
 
             let _statements = analyze(args.input.as_path());
-            info!("compilation succeeded");
+            info!(elapsed = ?started.elapsed(), "compilation succeeded");
         }
         Some(Command::Check(args)) => {
             let _command = error_span!("check", file = ?args.input).entered();
-            debug!("command started");
+            let started = Instant::now();
+            debug!(version = env!("CARGO_PKG_VERSION"), "command started");
 
             let _statements = analyze(args.input.as_path());
-            info!("check succeeded");
+            info!(elapsed = ?started.elapsed(), "check succeeded");
         }
     }
 }

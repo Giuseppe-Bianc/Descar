@@ -44,6 +44,7 @@ use crate::syntax::ast::{Expr, LiteralValue, Parameter, Stmt, Type};
 use crate::tokens::number::Number;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
+use tracing::{debug, trace_span};
 
 /// Type checker for semantic analysis of Descar programs.
 ///
@@ -120,7 +121,16 @@ impl TypeChecker {
     /// * `message` - Error message describing the type violation
     /// * `span` - Source location where the error occurred
     fn type_error_with_code(&mut self, code: Option<ErrorCode>, message: impl Into<Arc<str>>, span: &SourceSpan) {
-        self.errors.push(CompileError::TypeError { code, message: message.into(), span: span.clone(), help: None });
+        self.record_error(CompileError::TypeError { code, message: message.into(), span: span.clone(), help: None });
+    }
+
+    /// Stores a type error and logs its code and position.
+    ///
+    /// The message is not logged because it can contain source text such as identifiers.
+    fn record_error(&mut self, error: CompileError) {
+        let (line, column) = error.span().map_or((0, 0), |span| (span.start().line(), span.start().column()));
+        debug!(code = error.error_code().map(ErrorCode::code), line, column, "type error");
+        self.errors.push(error);
     }
 
     /// Performs type checking on a list of statements.
@@ -165,7 +175,7 @@ impl TypeChecker {
     /// compilation error for reporting after the semantic analysis pass.
     fn declare_symbol(&mut self, name: &str, symbol: Symbol, declared_at: &SourceSpan) {
         if let Err(e) = self.symbol_table.declare(name, symbol, declared_at.clone()) {
-            self.errors.push(e);
+            self.record_error(e);
         }
     }
 
@@ -255,6 +265,14 @@ impl TypeChecker {
     fn visit_function(
         &mut self, name: &str, parameters: &[Parameter], return_type: &Type, body: &Stmt, span: &SourceSpan,
     ) {
+        // The span gives context to the events of the body without logging the function name.
+        let _function = trace_span!(
+            "function",
+            parameters = parameters.len(),
+            line = span.start().line(),
+            column = span.start().column()
+        )
+        .entered();
         let func_symbol = FunctionSymbol {
             name: name.into(),
             parameters: parameters.to_vec(),

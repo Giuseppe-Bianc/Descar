@@ -189,6 +189,8 @@ dependencies = [
  "logos",
  "regex",
  "thiserror",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

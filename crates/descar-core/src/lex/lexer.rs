@@ -6,6 +6,7 @@ use crate::{
 };
 use logos::Logos;
 use std::sync::Arc;
+use tracing::debug;
 
 /// Maximum number of tokens to allocate to prevent excessive memory usage.
 const MAX_TOKENS_CAPACITY: usize = 10_000_000;
@@ -62,6 +63,10 @@ impl<'a> Lexer<'a> {
         }
     }
 
+    /// Converts a lexical error into a diagnostic and logs where it happened.
+    ///
+    /// The event carries the error code and the position only. The offending text is part of the
+    /// diagnostic message but never of the log event, because it is source text.
     fn convert_lex_error(error: LexError, span: crate::location::source_span::SourceSpan, slice: &str) -> CompileError {
         let (code, message, help) = match error {
             LexError::InvalidToken => (ErrorCode::E0001, format!("Invalid or unrecognized token: \"{slice}\""), None),
@@ -101,6 +106,8 @@ impl<'a> Lexer<'a> {
                 Some(String::from("Use a smaller value or a compatible type.")),
             ),
         };
+
+        debug!(code = code.code(), line = span.start().line(), column = span.start().column(), "lexical error");
 
         CompileError::LexerError { code: Some(code), message: Arc::from(message), span, help }
     }
@@ -174,6 +181,9 @@ fn validate_unicode_escape(chars: &mut std::str::Chars<'_>) -> Result<(), LexErr
 /// Tokenizes the complete input and collects errors.
 pub fn lexer_tokenize_with_errors(lexer: &mut Lexer<'_>) -> (Vec<Token>, Vec<CompileError>) {
     let estimated_tokens = lexer.source_len / 8;
+    if estimated_tokens > MAX_TOKENS_CAPACITY {
+        debug!(estimated_tokens, limit = MAX_TOKENS_CAPACITY, "token buffer preallocation limited");
+    }
     let mut tokens = Vec::with_capacity(estimated_tokens.clamp(1, MAX_TOKENS_CAPACITY));
     let mut errors = Vec::new();
 

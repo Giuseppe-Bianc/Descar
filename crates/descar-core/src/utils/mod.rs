@@ -12,6 +12,7 @@ use std::sync::LazyLock;
 use std::sync::Mutex;
 
 use std::process::{Command, Stdio};
+use tracing::warn;
 
 /// Funzione helper per recuperare l'hash SHA-1 del commit corrente.
 /// Restituisce `Some(hash)` se riesce, altrimenti `None`.
@@ -202,6 +203,7 @@ impl<T> ObjectPool<T> {
             Ok(mut guard) => guard.pop(),
             Err(poisoned) => {
                 // Clear the poisoned state and continue
+                warn!("object pool mutex was poisoned, continuing with its content");
                 poisoned.into_inner().pop()
             }
         }
@@ -211,6 +213,7 @@ impl<T> ObjectPool<T> {
             Ok(mut guard) => guard.push(obj),
             Err(poisoned) => {
                 // Clear poisoned state and continue
+                warn!("object pool mutex was poisoned, continuing with its content");
                 poisoned.into_inner().push(obj);
             }
         }
