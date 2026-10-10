@@ -44,6 +44,7 @@ use crate::syntax::ast::{Expr, LiteralValue, Parameter, Stmt, Type};
 use crate::tokens::number::Number;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
+use tracing::{debug, trace, warn};
 
 /// Type checker for semantic analysis of Descar programs.
 ///
@@ -154,7 +155,12 @@ impl TypeChecker {
     /// }
     /// ```
     pub fn check(&mut self, statements: &[Stmt]) -> Vec<CompileError> {
+        trace!(statements = statements.len(), "type checking started");
         self.visit_statements(statements);
+        debug!(errors = self.errors.len(), "type checking finished");
+        if !self.errors.is_empty() {
+            warn!(errors = self.errors.len(), "type errors detected");
+        }
         std::mem::take(&mut self.errors)
     }
 
