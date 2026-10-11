@@ -14,6 +14,7 @@ use crate::syntax::precendence::Precedence;
 use crate::tokens::token::Token;
 use crate::tokens::token_kind::TokenKind;
 use std::sync::Arc;
+use tracing::warn;
 
 pub struct JsavParser<'a> {
     tokens: &'a [Token],
@@ -28,6 +29,7 @@ impl<'a> JsavParser<'a> {
     fn check_recursion_limit(&mut self) -> bool {
         if self.recursion_depth > Self::MAX_RECURSION_DEPTH {
             if let Some(token) = self.peek() {
+                warn!(depth = self.recursion_depth, "parser recursion limit exceeded");
                 self.errors.push(CompileError::SyntaxError {
                     code: Some(ErrorCode::E1001),
                     message: "Maximum recursion depth exceeded".into(),

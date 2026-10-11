@@ -5,7 +5,6 @@ use descar_core::error::compile_error::CompileError;
 use descar_core::lex::lexer::{Lexer, lexer_tokenize_with_errors};
 use descar_core::semantic::type_checker::TypeChecker;
 use std::path::Path;
-use std::time::Instant;
 use std::{fs, process};
 
 use clap::{CommandFactory, Parser};
@@ -71,10 +70,9 @@ fn stop_frontend(stage: &'static str, error_reporter: &ErrorReporter, errors: Ve
 /// diagnostics, prints them and exits with status code 1.
 fn run_frontend(file_path: &str, input: &str) -> Vec<Stmt> {
     trace!(source_len = input.len(), "lexing started");
-    let started = Instant::now();
     let mut lexer = Lexer::new(file_path, input);
     let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);
-    debug!(tokens = tokens.len(), errors = lexer_errors.len(), elapsed = ?started.elapsed(), "lexing finished");
+    debug!(tokens = tokens.len(), errors = lexer_errors.len(), "lexing finished");
     let error_reporter = ErrorReporter::new(lexer.get_line_tracker().clone());
 
     if !lexer_errors.is_empty() {
@@ -82,18 +80,16 @@ fn run_frontend(file_path: &str, input: &str) -> Vec<Stmt> {
     }
 
     trace!(tokens = tokens.len(), "parsing started");
-    let started = Instant::now();
     let (statements, parser_errors) = JsavParser::new(&tokens).parse();
-    debug!(statements = statements.len(), errors = parser_errors.len(), elapsed = ?started.elapsed(), "parsing finished");
+    debug!(statements = statements.len(), errors = parser_errors.len(), "parsing finished");
     if !parser_errors.is_empty() {
         stop_frontend("parsing", &error_reporter, parser_errors);
     }
 
     trace!(statements = statements.len(), "type checking started");
-    let started = Instant::now();
     let mut type_checker = TypeChecker::new();
     let type_checker_errors = type_checker.check(&statements);
-    debug!(errors = type_checker_errors.len(), elapsed = ?started.elapsed(), "type checking finished");
+    debug!(errors = type_checker_errors.len(), "type checking finished");
     if !type_checker_errors.is_empty() {
         stop_frontend("type checking", &error_reporter, type_checker_errors);
     }

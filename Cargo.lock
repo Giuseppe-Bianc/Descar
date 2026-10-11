@@ -189,6 +189,7 @@ dependencies = [
  "logos",
  "regex",
  "thiserror",
+ "tracing",
 ]
 
 [[package]]
