@@ -1,0 +1,30 @@
+specs/001-typed-ast/spec.md
+  s_288717b2be02dc::t_cc761079e16ee3 70,125-148
+specs/001-typed-ast/research.md
+  s_288717b2be02dc::t_cf554ea9e3c177 1-72
+specs/001-typed-ast/quickstart.md
+  s_288717b2be02dc::t_1d06da5f7ca5b1 1-39
+specs/001-typed-ast/contracts/typed-ast-api.md
+  s_288717b2be02dc::t_c83d54d4b29873 1-36
+specs/001-typed-ast/plan.md
+  s_288717b2be02dc::t_54956e44422385 29-30
+  s_288717b2be02dc::t_beac03a27f66ee 1-28,31-106
+specs/001-typed-ast/data-model.md
+  s_288717b2be02dc::t_8b93543dde3d32 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "9798b94d5de74014c199bdb504fd75b0e065474d",
+  "prompts": {},
+  "sessions": {
+    "s_288717b2be02dc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12ba1-bf2c-7fc3-ac74-0f5e2534c4d2",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
