@@ -1,0 +1,25 @@
+specs/001-typed-ast/tasks.md
+  h_361662506da91f 48,53-56,101-106
+  s_6657ab050cffe4::t_d7b5cee0d18938 52,57-59,73,77-79,93,97-99,120,124-127,137-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c855845098b113ee397d9f459cba3d71a48c2312",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_6657ab050cffe4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a785232-257a-496f-ab30-d76c63ad4983",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
