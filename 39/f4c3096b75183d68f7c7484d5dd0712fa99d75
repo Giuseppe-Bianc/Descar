@@ -1,0 +1,19 @@
+specs/001-typed-ast/tasks.md
+  s_510f431be15f66::t_defc888bf1759e 31,68,88,109,113-115,126-127,156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "39f4c3096b75183d68f7c7484d5dd0712fa99d75",
+  "prompts": {},
+  "sessions": {
+    "s_510f431be15f66": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12b93-4310-7280-9ff9-0b7f9157d9c6",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
