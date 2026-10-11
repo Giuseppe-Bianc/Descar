@@ -1,0 +1,29 @@
+crates/descar/src/main.rs
+  s_a843370ee1349a::t_8c82e77ca3a05d 75,84,92
+crates/descar-core/src/syntax/parser.rs
+  s_a843370ee1349a::t_d515c327cfce3d 32
+  h_361662506da91f 17
+crates/descar-core/Cargo.toml
+  s_a843370ee1349a::t_d515c327cfce3d 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "8c3c11f89b1c90ca5faf6b70135c63d936f6d44c",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_a843370ee1349a": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a12af1-3c21-7093-9f65-b709c353a473",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
