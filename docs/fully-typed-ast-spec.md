@@ -157,6 +157,8 @@ All spans use half-open byte offsets `[start, end)` in one source file. A span h
 | SUR-003 | Optional syntax is represented by `Option<T>`, not a fabricated placeholder. |
 | SUR-004 | A node produced by parser recovery has `RecoveryStatus::Recovered` and at least one linked diagnostic. Normal nodes have `RecoveryStatus::Complete`. |
 | SUR-005 | Surface nodes do not contain inferred types or resolved symbol IDs. Written identifier text and written type syntax remain available. |
+| SUR-006 | Identifier spelling follows the current lexer: a name starts with a Unicode letter, Unicode mark, or `_`; later scalars may also be Unicode numbers. Names are compared by exact Unicode scalar sequence with no normalization. |
+| SUR-007 | Line comments (`//`) and block comments (`/* ... */`) are lexical trivia and do not create Surface AST nodes. |
 
 ### 6.3 Surface concrete nodes
 
@@ -181,10 +183,10 @@ All spans use half-open byte offsets `[start, end)` in one source file. A span h
 |---|---|---|
 | S-STM-01 `ExpressionStmt` | `expression: SExpr` | Evaluates an expression as a statement. |
 | S-STM-02 `VarDecl` | `bindings: NonEmptyVec<Binding>`, `annotation: TypeSyntax`, `mutability: Mutable | Immutable` | Current grammar requires a type annotation and exactly one initializer per declared name. Each binding has `name: Identifier`, `initializer: SExpr`, and its own span. Binding order is source order. Future annotation-free declarations require an approved grammar change. |
-| S-STM-03 `FunctionDecl` | `name: Identifier`, `parameters: Vec<Parameter>`, `return_annotation: Option<TypeSyntax>`, `body: SStmt` | Declares a function. Each parameter has name, required `TypeSyntax`, and span. Duplicate parameter names are semantic errors. |
-| S-STM-04 `MainDecl` | `body: SStmt` | Entry-point body. Executable mode requires exactly one. Library mode does not require one. |
-| S-STM-05 `If` | `condition: SExpr`, `then_branch: SStmt`, `else_branch: Option<ElseBranch>` | Conditional. `ElseBranch` is `Block(SStmt)` or `ElseIf(SStmt)`. |
-| S-STM-06 `While` | `condition: SExpr`, `body: SStmt` | Pre-test loop. |
+| S-STM-03 `FunctionDecl` | `name: Identifier`, `parameters: Vec<Parameter>`, `return_annotation: Option<TypeSyntax>`, `body: SStmt` | Declares a function with a required block body. Each parameter has name, required `TypeSyntax`, and span. Duplicate parameter names are semantic errors. |
+| S-STM-04 `MainDecl` | `body: SStmt` | Entry-point declaration with a required block body. Executable mode requires exactly one. Library mode does not require one. |
+| S-STM-05 `If` | `condition: SExpr`, `then_branch: SStmt`, `else_branch: Option<ElseBranch>` | Conditional. `then_branch` must be a block. `ElseBranch` is `Block(SStmt)` or `ElseIf(SStmt)`; each wrapped statement must have the matching variant. |
+| S-STM-06 `While` | `condition: SExpr`, `body: SStmt` | Pre-test loop with a required block body. |
 | S-STM-07 `For` | `initializer: Option<SStmt>`, `condition: Option<SExpr>`, `increment: Option<SExpr>`, `body: SStmt` | C-style loop. Optional fields represent omitted clauses. |
 | S-STM-08 `Block` | `statements: Vec<SStmt>` | Ordered lexical statement sequence. Empty block is valid. |
 | S-STM-09 `Return` | `value: Option<SExpr>` | Returns from the current function. |
@@ -203,6 +205,10 @@ All spans use half-open byte offsets `[start, end)` in one source file. A span h
 
 `LiteralValue` is a tagged value: numeric token value with suffix and radix, UTF-8 string contents, one Unicode scalar for a character, Boolean value, or null-pointer marker. A character payload must contain exactly one Unicode scalar after escape decoding.
 
+The current source syntax represented by these nodes is illustrated by `dr_files/input.dr`. Function declarations use `fun name(parameters)`, an optional `: returnType`, and a block body. The entry point is written `main { ... }`, without a parameter list. `if` and `while` require parenthesized conditions and block bodies; `else` accepts a block or an `else if`. A `for` loop has the form `for (initializer; condition; increment) statement`; each clause may be omitted, and its body may be any statement. The semicolons delimit only the three `for` clauses. Ordinary declarations, returns, and expression statements have no semicolon terminator, and newlines do not define statement boundaries.
+
+Variable declarations use `var` or `const`, one or more comma-separated names, one shared type annotation, `=`, and a matching comma-separated initializer for each name. For example, `var a, b: i64 = 1, 2`. Array dimensions follow the element type as suffixes: `i8[2][3]` means an array of length 2 whose elements are arrays of length 3 of `i8`. Braced array literals may nest to initialize such types. Vector types use `vector<T>`; unsized array syntax such as `i8[]` is not accepted. The lexer accepts Unicode identifiers, including the Greek, Cyrillic, Chinese, Japanese, and Arabic names shown in the fixture. Commented-out lines in the fixture are not valid-syntax examples. These statements describe current accepted syntax; a future grammar change must update this profile and the corresponding Surface AST constraints.
+
 `UnaryOp` is `Negate`, `Not`, `BitwiseNot`, `Increment`, or `Decrement`. `UnarySide` is `Prefix` or `Postfix`. `NonAssignmentBinaryOp` contains arithmetic, comparison, logical, bitwise, and shift operators. `CompoundOp` contains `+=`, `-=`, `*=`, `/=`, `%=`, `&=`, `|=`, `^=`, `<<=`, and `>>=`. Simple `=` is represented only by `Assign`.
 
 ### 6.4 Fully Typed AST nodes
@@ -216,7 +222,7 @@ The Fully Typed AST has the same source constructs, plus semantic fields. Its co
 | T-EX-01 `Literal` | `value: LiteralValue`, `result_type` | Type is fixed by literal kind and numeric suffix/defaulting rules. |
 | T-EX-02 `VariableRef` | `symbol: SymbolId`, `result_type` | `symbol` resolves to one variable declaration. Function references use T-EX-03. |
 | T-EX-03 `Grouping` | `inner: TExpr`, `result_type` | Result type equals the child result type. |
-| T-EX-04 `Unary` | `op`, `side`, `operand: TExpr`, `result_type` | Operand conversions are represented inside `operand`. |
+| T-EX-04 `Unary` | `op`, `side`, `operand: TypedUnaryOperand`, `result_type` | `TypedUnaryOperand` is `Value(TExpr)` for `Negate`, `Not`, and `BitwiseNot`, or `Place(TPlace)` for `Increment` and `Decrement`. Value operands contain any required conversions. Place operands must be mutable and have a numeric `place_type`; they are not value expressions. |
 | T-EX-05 `Binary` | `left: TExpr`, `op: NonAssignmentBinaryOp`, `right: TExpr`, `result_type` | Numeric or other required conversions are child `Convert` nodes. |
 | T-EX-06 `CompoundAssign` | `target: TPlace`, `op: CompoundOp`, `value: TExpr`, `result_type` | Target is mutable. RHS is converted to target type before the operation. Result type equals target type. |
 | T-EX-07 `ArrayLiteral` | `elements: NonEmptyVec<TExpr>`, `result_type` | All elements have equivalent type. No element conversion is inserted. |
@@ -229,6 +235,8 @@ The Fully Typed AST has the same source constructs, plus semantic fields. Its co
 
 For `Assign` and `CompoundAssign`, the target place is evaluated before the right-hand value. An indexed target evaluates its base and index once. `Assign` then evaluates the value, stores it, and yields the stored value. `CompoundAssign` reads the target value once before evaluating the right-hand value, applies the operation, stores the result, and yields that result. These evaluation-order rules apply even when evaluation has observable effects or fails at run time.
 
+An `IndexPlace` is an owned child of its assignment or unary update node, but it is not itself an AST node and has no `NodeId`. Its `base` and `index` expressions remain ordinary typed AST nodes and must each have unique ownership. `place_type` equals the element type of the resolved array or vector base. `VariablePlace.place_type` equals the type of its referenced variable symbol.
+
 `ConversionKind` has five forms: `IntegerWiden`, `IntegerToF32`, `IntegerToF64`, `FloatWiden`, and `CharToString`. The `from` and `to` fields select the exact source and target types. The validator rejects a kind/type pair that is not listed in Section 7.2. Identity conversions do not use this node.
 
 The semantic pass lowers a Surface `Binary` node with a compound-assignment operator into `CompoundAssign`. The source span and operator spelling remain attached to the typed node for diagnostics and source mapping.
@@ -239,11 +247,11 @@ The semantic pass lowers a Surface `Binary` node with a compound-assignment oper
 |---|---|---|
 | T-STM-01 `ExpressionStmt` | `expression: TExpr` | Child expression is fully typed. |
 | T-STM-02 `VarDecl` | `bindings: NonEmptyVec<TBinding>`, `declared_type: TypeId`, `mutability` | Each binding has `symbol`, required initializer, and span. The type origin is `Declared`. |
-| T-STM-03 `FunctionDecl` | `symbol`, `parameters: Vec<TParameter>`, `function_type: TypeId`, `body` | Parameters and return type agree with function type. |
-| T-STM-04 `MainDecl` | `symbol`, `function_type`, `body` | Signature has no parameters and returns `void`. Executable mode requires exactly one. Library mode does not require one. |
-| T-STM-05 `If` | `condition: TExpr`, `then_branch`, `else_branch: Option<TStmt>` | Condition result type is `bool`. |
-| T-STM-06 `While` | `condition: TExpr`, `body` | Condition result type is `bool`. |
-| T-STM-07 `For` | typed optional clauses and body | Present condition has type `bool`. Initializer scope encloses condition, increment, and body. |
+| T-STM-03 `FunctionDecl` | `symbol`, `parameters: Vec<TParameter>`, `function_type: TypeId`, `body` | Parameters and return type agree with function type. Body is a typed block. |
+| T-STM-04 `MainDecl` | `symbol`, `function_type`, `body` | Signature has no parameters and returns `void`. Body is a typed block. Executable mode requires exactly one. Library mode does not require one. |
+| T-STM-05 `If` | `condition: TExpr`, `then_branch`, `else_branch: Option<TStmt>` | Condition result type is `bool`. Then branch is a typed block. An else branch is a typed block or another typed `If`. |
+| T-STM-06 `While` | `condition: TExpr`, `body` | Condition result type is `bool`. Body is a typed block. |
+| T-STM-07 `For` | typed optional clauses and body | Present condition has type `bool`. Initializer scope encloses condition, increment, and body. Body may be any typed statement. |
 | T-STM-08 `Block` | `statements: Vec<TStmt>`, `scope: ScopeId` | Statements preserve source order. Scope parent and children are valid. |
 | T-STM-09 `Return` | `value: Option<TExpr>`, `function: SymbolId` | Return value presence and type match function return type. |
 | T-STM-10 `Break` | `loop_target: NodeId` | Target is an enclosing loop. |
@@ -261,10 +269,12 @@ No `ErrorExpr`, `ErrorStmt`, unresolved reference, or `Error` type is allowed in
 
 | Type form | Representation | Identity and constraints |
 |---|---|---|
-| Primitive | `I8` through `F64`, `Char`, `String`, `Bool`, `Void`, `NullPtr` | Each primitive kind has one canonical identity. `Void` is a function result and a call-result marker. It is not storable. `NullPtr` is a literal-only type and is not assignable to other types. |
-| Fixed array | `Array { element: TypeId, length: u64 }` | Structural identity: equivalent element types and equal length. Length is a non-negative source integer literal no greater than `u64::MAX`. |
-| Vector | `Vector { element: TypeId }` | Structural identity by equivalent element type. |
-| Function | `Function { parameters: Vec<TypeId>, result: TypeId }` | Structural signature identity in a compilation unit. Calling convention is separate target metadata. |
+| Primitive | `I8` through `F64`, `Char`, `String`, `Bool`, `Void`, `NullPtr` | Each primitive kind has one canonical identity. `Void` is valid only as a function result and a void call result. `NullPtr` is valid only as the type of a null literal. Neither type is storable or valid as a parameter or collection element. |
+| Fixed array | `Array { element: TypeId, length: u64 }` | Structural identity: equivalent element types and equal length. Length is a non-negative source integer literal no greater than `u64::MAX`. Element type must be storable. |
+| Vector | `Vector { element: TypeId }` | Structural identity by equivalent element type. Element type must be storable. |
+| Function | `Function { parameters: Vec<TypeId>, result: TypeId }` | Structural signature identity in a compilation unit. Every parameter type must be storable. The result type must be storable or `void`. Calling convention is separate target metadata. Function values are not storable. |
+
+A type is **storable** when it is a primitive other than `void` or `nullptr`, a fixed array whose element type is storable, or a vector whose element type is storable. Function types are not storable because the language has no function values. Every variable and parameter declaration must use a storable type. A valid type table contains no array, vector, or function type whose component types violate these constraints.
 
 Named custom types, aliases, references, unions, optional types, generics, tuples, and user-defined composite types are not language types in this version. The parser may preserve a named type for a precise diagnostic, but semantic analysis rejects it. The checker may use private error or inference sentinels. Those sentinels are not entries in the language `TypeRecord` table.
 
@@ -330,9 +340,9 @@ If `S ≡ T`, the checker does not create a redundant `Convert` node. Every othe
 | TYP-008 | Logical `&& ||`: both operands must be `bool`; result is `bool`. Evaluation is left-to-right and short-circuits. `&&` does not evaluate the right operand when the left operand is false. `||` does not evaluate the right operand when the left operand is true. |
 | TYP-009 | Bitwise `& | ^`: operands must be integer types. Convert them to their common integer type using Section 7.2. Result is that type. Shift `<< >>` requires an integer left operand and integer shift count. Result type is the left operand type. A negative shift count or a shift count greater than or equal to the left operand width is a runtime arithmetic error. Left shift discards high bits and fills low bits with zero. Right shift fills with the sign bit for signed types and with zero for unsigned types. |
 | TYP-010 | Unary `-`: operand must be numeric; result is operand type. Integer negation wraps. Unary `!`: operand and result are `bool`. Unary `~`: operand must be integer; result is operand type with every bit inverted. |
-| TYP-011 | Prefix/postfix `++ --`: operand must be a mutable place of numeric type. Result type is the place type. Prefix returns the updated value. Postfix returns the prior value. Integer overflow wraps. The typed node preserves prefix/postfix form. |
+| TYP-011 | Prefix/postfix `++ --`: operand must be represented as `Place(TPlace)` and must be mutable with numeric type. Evaluate the place once, read its value once, add or subtract one in the place type, store the updated value, and set result type to the place type. Prefix returns the updated value; postfix returns the prior value. Integer overflow wraps. The typed node preserves prefix/postfix form. |
 | TYP-012 | Simple assignment `x = e`: target must be a mutable variable or index place. Evaluate the target place before `e`. Type-check `e`, insert an approved conversion to place type, store the converted value, and set assignment result type to place type. |
-| TYP-013 | Compound assignment `x op= e`: target must be mutable. Evaluate and read the target once before evaluating `e`. Convert the right operand to the target type under Section 7.2. Apply the operation in the target type and store the result. No implicit narrowing occurs; if the right operand cannot convert to the target type, report a type error. The expression result is the stored target-type value. |
+| TYP-013 | Compound assignment `x op= e`: target must be mutable. Evaluate and read the target once before evaluating `e`. Convert the right operand to the target type under Section 7.2. The underlying operator (`+`, `-`, `*`, `/`, `%`, `&`, `|`, `^`, `<<`, or `>>`) must also be valid for that target type under TYP-006 or TYP-009; apply its operation in the target type and store the result. No implicit narrowing occurs. If conversion or the operator rule fails, report a type error. The expression result is the stored target-type value. |
 
 ### 8.4 Composite expressions and calls
 
@@ -408,7 +418,9 @@ An AST has independent classifications. An implementation must report each class
 | INV-009 | **Fully typed:** no unresolved inference variable, error type, parser recovery node, unresolved name, or dangling ID exists. | Typed AST validation | Reject; report internal error if the pass claimed success. |
 | INV-010 | **Fully typed:** each conversion's `from` equals operand type, its `to` equals result type, and the conversion relation allows it. | Typed AST validation | Reject as internal semantic-pass defect. |
 | INV-011 | **Fully typed:** variable references and calls agree with symbol declarations and function signatures. | Typed AST validation | Reject as internal semantic-pass defect. |
-| INV-012 | **IR-ready:** all `INV-001` through `INV-011` pass; target-specific entry and ABI checks pass; no blocking diagnostic exists. | Before IR lowering | Stop IR lowering and report diagnostics. |
+| INV-012 | **IR-ready:** all `INV-001` through `INV-011` and `INV-013` through `INV-014` pass; target-specific entry and ABI checks pass; no blocking diagnostic exists. | Before IR lowering | Stop IR lowering and report diagnostics. |
+| INV-013 | **Fully typed:** every `TypeId` resolves to one canonical record; the type graph is acyclic; all arrays, vectors, function parameters, and function results satisfy Section 7.1 storage constraints. | Typed AST validation | Reject as an internal semantic-pass defect. |
+| INV-014 | **Fully typed:** each place has the type of its resolved variable or indexed element, refers to a mutable location where mutation is required, and owns each index-place child expression exactly once. | Typed AST validation | Reject as an internal semantic-pass defect. |
 
 **Structurally valid** does not imply **semantically valid**. **Semantically valid** does not imply **fully typed** until all inferred types and conversions are materialized. An AST containing errors is never fully typed or IR-ready.
 
@@ -502,12 +514,12 @@ Each requirement ID in this document is normative. Verification methods below de
 
 | Verification ID | Covers | Acceptance condition |
 |---|---|---|
-| VER-001 | SUR-001–SUR-005; OPR-001 | Parse each concrete surface node fixture. Assert node kind, fields, spans, child order, and recovery status. |
-| VER-002 | S-EX-01–S-EX-10; S-STM-01–S-STM-12; S-TY-01–S-TY-04 | Unit test valid construction for every variant and rejection/reporting for missing required fields or invalid variant constraints. |
+| VER-001 | SUR-001–SUR-007; OPR-001 | Parse each concrete surface node fixture. Assert node kind, fields, spans, child order, recovery status, Unicode identifier spelling, and comment exclusion. |
+| VER-002 | S-EX-01–S-EX-10; S-STM-01–S-STM-12; S-TY-01–S-TY-04 | Unit test valid construction for every variant and rejection/reporting for missing required fields or invalid variant constraints. Include the function, main, control-flow, `for`, declaration, and multidimensional array forms in the source syntax profile. |
 | VER-003 | ARC-001–ARC-007; INV-001–INV-004 | Generate valid trees, then inject duplicate ownership, cycle, bad span, duplicate ID, and dangling child. Validator accepts all valid trees and rejects each corrupted tree with the specified category. |
-| VER-004 | TYP-001–TYP-026 | Table-driven tests cover each rule's valid and invalid cases, result type, conversion nodes, and diagnostic category/code. |
+| VER-004 | TYP-001–TYP-026 | Table-driven tests cover each rule's valid and invalid cases, result type, conversion nodes, and diagnostic category/code. Assignment and update cases assert target-before-value evaluation, single evaluation of indexed bases and indices, and correct prefix/postfix results. |
 | VER-005 | SYM-001–SYM-006; INV-005, INV-011 | Test lexical shadowing, duplicate declaration, unresolved name, wrong symbol kind, self-recursion, rejection of a later function reference, and ID-to-declaration consistency. |
-| VER-006 | INV-006–INV-012 | Validate that valid programs pass all stages; source type errors fail semantic validity; inference variables and error nodes fail typed validity; target-incomplete trees fail IR readiness. |
+| VER-006 | INV-006–INV-014 | Validate that valid programs pass all stages; source type errors fail semantic validity; inference variables and error nodes fail typed validity; malformed type graphs and invalid places fail typed validity; target-incomplete trees fail IR readiness. |
 | VER-007 | Error handling 11.1–11.4 | For each error class and semantic code, assert code/category, primary span, affected node when applicable, recovery behavior, and whether a Fully Typed AST is returned. |
 | VER-008 | OPR-002–OPR-008 | Assert deterministic traversal, no traversal through symbol links, scope resolution, type checking, and invariant preservation after each allowed transform or clone. |
 | VER-009 | OPR-009–OPR-010, if implemented | Round-trip each node category. Assert semantic and structural equality. Reject malformed input and unknown incompatible versions. |
