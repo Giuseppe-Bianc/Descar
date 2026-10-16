@@ -1,0 +1,23 @@
+docs/fully-typed-ast-spec.md
+  s_c41dac07d92075::t_4ae0a943db7638 90-92,281
+  s_c41dac07d92075::t_df2b3bd741a2d4 411
+  s_c41dac07d92075::t_663b4f1fa647f2 1-24,26-31,33-59,61-65,93-165,167-181,183,185-280,282-294,296-308,310-410,412-483
+  s_c41dac07d92075::t_65a4b7cc93de92 25,32,60
+  s_c41dac07d92075::t_ba68be3f571e77 66-89,166,182,184,295,309
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "b7bfab51cd87a411fa3df74dc6ab0db268acc65f",
+  "prompts": {},
+  "sessions": {
+    "s_c41dac07d92075": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a14597-fc6d-7233-892b-c9fd80e48e13",
+        "model": "gpt-6-luna"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
