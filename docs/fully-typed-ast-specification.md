@@ -183,6 +183,7 @@ In node tables, fields named `node_id` and `span` have types NodeId and SourceSp
 | GAP-010 | The parser permits increment and decrement on any expression. It permits assignment and compound assignment to variables or index expressions, including an index rooted in a temporary. The checker can accept some non-place targets when it finds no immutable variable name. | The new checker MUST require a mutable variable place or an index chain rooted in one. |
 | GAP-011 | The checker tracks loop context with a Boolean. It does not reset this state when it enters a nested function. | Nested functions are not supported. The parser MUST reject them under GAP-012. The loop-state leak cannot occur in a valid program. |
 | GAP-012 | The parser accepts function and main declarations wherever it parses a statement. The type checker also visits these declarations when they occur inside a block. | The parser MUST reject a function or main declaration that is not a direct program child, as required by SYN-003. |
+| GAP-013 | Every binary row has a right power below its left power, so the parser groups repeated operators to the right. For example, 10 - 3 - 2 parses as 10 - (3 - 2). | The parser MUST use the binding powers in Section 6.4. Each left-associative row MUST have a right power equal to its left power plus 1. |
 
 The performance target in BAS-016 is provisional. No unresolved decision affects the confirmed language scope.
 
@@ -369,30 +370,30 @@ For a for-statement, `initializer = declaration | expression`; `condition = expr
 
 An array suffix applies to a primitive type or identifier type. Multiple suffixes are valid. The parser does not accept an array suffix after a `vector-type`. A vector type can contain an array type or another vector type as its element type.
 
-Expression parsing uses the following binding powers. A larger binding power binds more tightly. The Pratt parser uses a loop condition `left_power > minimum_power` and parses each right operand with the listed right power. Under that rule, each binary row is right-associative, including arithmetic operators.
+Expression parsing uses the following binding powers. A larger binding power binds more tightly. The Pratt parser uses a loop condition `left_power > minimum_power` and parses each right operand with the listed right power. Under that rule, a row whose right power is greater than its left power is left-associative. A row whose right power is less than its left power is right-associative. Assignment and compound assignment are right-associative. All other binary rows are left-associative. For each infix row, the left power is 2 multiplied by the level. The right power is the left power plus 1 for a left-associative row and the left power minus 1 for a right-associative row. The prefix left power and the postfix right power are not used.
 
-| Syntax class | Operators | Left power | Right power |
-|---|---|---:|---:|
-| Assignment | =, +=, -=, *=, /=, %=, &=, \|=, ^=, <<=, >>= | 2 | 1 |
-| Logical OR | \|\| | 4 | 3 |
-| Logical AND | && | 6 | 5 |
-| Equality | ==, != | 8 | 7 |
-| Ordering | <, <=, >, >= | 10 | 9 |
-| Bitwise OR | \| | 12 | 11 |
-| Bitwise XOR | ^ | 14 | 13 |
-| Bitwise AND | & | 16 | 15 |
-| Shift | <<, >> | 18 | 17 |
-| Additive | +, - | 20 | 19 |
-| Multiplicative | *, /, % | 22 | 21 |
-| Prefix | !, -, ~, ++, -- | 24 | 23 |
-| Call, index, postfix update | (), [], ++, -- | 27 | 26 |
+| Level | Syntax class | Operators | Associativity | Left power | Right power |
+|---:|---|---|---|---:|---:|
+| 1 | Assignment | =, +=, -=, *=, /=, %=, &=, \|=, ^=, <<=, >>= | Right | 2 | 1 |
+| 2 | Logical OR | \|\| | Left | 4 | 5 |
+| 3 | Logical AND | && | Left | 6 | 7 |
+| 4 | Equality | ==, != | Left | 8 | 9 |
+| 5 | Ordering | <, <=, >, >= | Left | 10 | 11 |
+| 6 | Bitwise OR | \| | Left | 12 | 13 |
+| 7 | Bitwise XOR | ^ | Left | 14 | 15 |
+| 8 | Bitwise AND | & | Left | 16 | 17 |
+| 9 | Shift | <<, >> | Left | 18 | 19 |
+| 10 | Additive | +, - | Left | 20 | 21 |
+| 11 | Multiplicative | *, /, % | Left | 22 | 23 |
+| n/a | Prefix | !, -, ~, ++, -- | n/a | 24 | 23 |
+| n/a | Call, index, postfix update | (), [], ++, -- | n/a | 27 | 26 |
 
 The parser's binding-power table also lists dot at power 27, but the parser has no dot-expression handler. A dot token in expression position is a syntax error. Member access is outside this subset.
 
 | ID | Requirement | Verification |
 |---|---|---|
 | SYN-001 | The Surface AST grammar and documented clause constraints MUST match the syntax profile in this section. | Parser-conformance tests cover every production, each optional clause, and each stated parser restriction. |
-| SYN-002 | Expression AST shape MUST follow the binding powers and associativity in this table. | Parse a repeated operator sequence from every row and compare the exact nested node shape. |
+| SYN-002 | Expression AST shape MUST follow the binding powers and associativity in this table. | For every left-associative row, parse x op y op z and verify the shape (x op y) op z. For the assignment row, parse x op y op z and verify the shape x op (y op z). Verify that every infix table entry satisfies the power derivation rule in this section. |
 | SYN-003 | A `fun` or `main` declaration MUST be a direct child of the program root. The parser MUST reject either declaration in a block or other statement position with syntax diagnostic E1004. The SurfaceProgram status MUST be Incomplete. | Parse declarations at the root and inside blocks, branches, and loop bodies. Verify root declarations pass, nested declarations report E1004, and semantic analysis does not run. |
 
 Each declaration name has one initializer. The initializer count must equal the name count. Ordinary statements do not require a semicolon. Semicolons delimit the three for-loop clauses. A for-loop initializer is empty, a declaration, or an expression statement. Function and main declarations are top-level items. A block or other statement cannot contain either declaration.
@@ -922,7 +923,7 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | Requirement IDs | Verification |
 |---|---|
 | BAS-006–BAS-017 | Architecture review plus compile-mode, internal-model, supported-type, recovery, error-state, root-only function, and later workload-performance checks. |
-| GAP-001–GAP-010 | Source inspection confirms each observed gap; implementation review confirms the stated required consequence. |
+| GAP-001–GAP-010, GAP-013 | Source inspection confirms each observed gap; implementation review confirms the stated required consequence. |
 | GAP-011–GAP-012 | Source inspection confirms loop-state behavior and nested declaration acceptance; parser tests verify root-only function and main declarations. |
 | ARC-001–ARC-011 | Node ID uniqueness, tree shape, clone identity, semantic reference, pipeline, abstract-node, span, and resolved-type representation tests. |
 | SYN-001 | Parser-conformance tests for each grammar production and optional clause. |
@@ -939,7 +940,7 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | TR-001–TR-027 | Positive and negative tests for every typing rule, including primitive, named, vector, nested-array, and invalid array type syntax. |
 | SR-001–SR-012 | Scope, shadowing, duplicate, recursion, forward-reference, custom type, and symbol-kind tests. |
 | SR-013 | Record-shape, link-integrity, and type-canonicalization tests. |
-| SYN-002 | AST-shape tests for right-association and precedence for every operator class. |
+| SYN-002 | AST-shape tests for left associativity, assignment right associativity, and precedence for every operator class. |
 | INV-001–INV-021 | One validator test per invariant. Each negative case must identify the violated invariant. |
 | ERR-001–ERR-011 | Parser recovery, blocking errors, accumulated diagnostics, diagnostic fields, error codes, severity, CLI phase boundary, and internal-error separation tests. |
 | OP-001–OP-009 | Interface tests for each mandatory operation, transformation, and cloning. |
@@ -970,6 +971,7 @@ The test suite MUST include:
 19. A comparison between two Void-returning calls. Verify the current type rule accepts it and assigns Bool.
 20. An array literal whose elements are Void-returning calls. Verify the current checker assigns Array(Void,n).
 21. Primitive, named, vector, and nested-array type syntax. Verify canonical type identity and reject malformed type syntax.
+22. Operator associativity. Parse each source below and verify the exact node shape: 10 - 3 - 2 as (10 - 3) - 2; 2 - 3 + 4 as (2 - 3) + 4; 100 / 10 / 5 as (100 / 10) / 5; 1 << 2 << 3 as (1 << 2) << 3; a - b * c - d as (a - (b * c)) - d; a = b = c as a = (b = c); -a * b as (-a) * b.
 
 ### 13.3 Acceptance criteria
 
@@ -1101,7 +1103,7 @@ The result type of `no_result` is built-in Void because its annotation is omitte
 | DEC-010 | Identity fields use distinct newtype wrappers over u64. NodeId is unique in one AstId. | Distinct wrappers prevent accidental use of an ID from the wrong domain. Local IDs need no persistent encoding. | ARC-001–ARC-005, ERR-011 | IDs are not stable across ASTs, compilation units, or runs. |
 | DEC-011 | SourceSpan uses half-open UTF-8 byte offsets. | Byte offsets support source slicing and do not depend on character width. | ARC-010, INV-004 | A SourceMap is required to render line and column positions. |
 | DEC-012 | One source file is one CompilationUnitId in this subset. | The language model has no module or multi-file name-resolution rule. | N-ROOT-02, ARC-005, SR-001 | Multi-file compilation requires a new unit and symbol-resolution design. |
-| DEC-013 | The parser's listed binding powers and right-associative binary grouping are part of the syntax contract. | The target AST must preserve the expression tree that the current parser produces. | SYN-001, SYN-002 | A precedence or associativity change requires a language-syntax revision. |
+| DEC-013 | Assignment and compound assignment are right-associative. Every other binary operator is left-associative. Binding powers derive from the level and associativity in Section 6.4. | Left associativity gives a - b - c the shape (a - b) - c. Deriving the powers from an explicit associativity prevents a row from having the wrong relation. | SYN-001, SYN-002 | This replaces the previous right-associative grouping of every binary row. A program that relied on the old grouping changes meaning. A later change to a level or an associativity requires a language-syntax revision. |
 | DEC-014 | Implicit conversions appear as Convert nodes. Compound-assignment target and store conversions use explicit conversion metadata. | Later phases must not infer hidden conversions from operand types. | N-TE-06, N-TE-11, TY-15, ACC-004 | Every conversion is visible to typed-tree validation and lowering. |
 | DEC-015 | Function and main declarations are top-level items only. The parser rejects nested declarations with E1004. | The user confirmed that the language does not support nested functions. The parser currently accepts these declarations in statement positions, so the target parser must enforce the language boundary. | BAS-017, GAP-012, SYN-003, INV-021 | Nested function bodies do not enter name resolution or type checking. Loop-control references always stay within one function. |
 
