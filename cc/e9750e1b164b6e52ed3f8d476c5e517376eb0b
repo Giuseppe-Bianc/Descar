@@ -1,0 +1,14 @@
+docs/adr-0001-literal-typing-and-compound-assignment.md
+  h_361662506da91f 1-454
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "cce9750e1b164b6e52ed3f8d476c5e517376eb0b",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
