@@ -2,7 +2,7 @@
 
 **Status:** Normative design specification for the implemented Descar language subset.
 
-**Revision:** 2026-10-18. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change.
+**Revision:** 2026-10-22. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change.
 
 Repository facts are marked **Observed**. Requirements for the new model are marked **Specified**. A requirement marked **Gap** requires an implementation change. Open issues are listed in Section 15.
 
@@ -165,7 +165,7 @@ In node tables, fields named `node_id` and `span` have types NodeId and SourceSp
 | BAS-007 | Specified | A failed parse or semantic pass returns diagnostics outside the AST. It does not return a valid Fully Typed AST. |
 | BAS-008 | Specified | The AST is an internal compiler model. It has no stable external application programming interface (API) requirement. |
 | BAS-009 | Specified | Serialization and deserialization are outside this specification. |
-| BAS-010 | Specified | The type rules follow the current checker, except for the confirmed place, compound-assignment, and array-length corrections in DEC-006 through DEC-008 and the literal-typing and promotion corrections in DEC-016. |
+| BAS-010 | Specified | The type rules follow the current checker, except for the confirmed place, compound-assignment, and array-length corrections in DEC-006 through DEC-008, the literal-typing and promotion corrections in DEC-016, and the numeric-conversion correction in DEC-017. |
 | BAS-011 | Specified | A source fixed-array length MUST be a non-negative integer literal. The Fully Typed AST stores its value as u64. Zero is valid. |
 | BAS-012 | Specified | Named custom types are opaque names. They have no declarations, fields, constructors, or alias rules in this language subset. |
 | BAS-013 | Specified | The language has no first-class function type. A function signature is metadata on a function declaration and symbol. |
@@ -192,7 +192,7 @@ In node tables, fields named `node_id` and `span` have types NodeId and SourceSp
 | GAP-012 | The parser accepts function and main declarations wherever it parses a statement. The type checker also visits these declarations when they occur inside a block. | The parser MUST reject a function or main declaration that is not a direct program child, as required by SYN-003. |
 | GAP-013 | Every binary row has a right power below its left power, so the parser groups repeated operators to the right. For example, 10 - 3 - 2 parses as 10 - (3 - 2). | The parser MUST use the binding powers in Section 6.4. Each left-associative row MUST have a right power equal to its left power plus 1. |
 | GAP-014 | TR-001 types every unsuffixed numeric literal with a 64-bit type, and the assignability table has no narrowing edge. An unsuffixed literal cannot initialize a variable of a narrower type or combine with a value of a narrower type. | The new checker MUST apply TR-028. |
-| GAP-015 | Promotion selects the first type in the preference order without checking that the operands keep their values. Shift operators promote both operands. | The new checker MUST apply the promotion condition in Section 7.3 and the shift rule in TR-012. |
+| GAP-015 | Promotion selects the first type in the preference order without checking that the operands keep their values. Shift operators promote both operands. The assignability table also contains four numeric rows that round the source value: I32 and U32 to F32, and I64 and U64 to F64. | The new checker MUST apply the promotion condition in Section 7.3, the shift rule in TR-012, and the lossless conversion table in Section 7.2 (DEC-017). |
 
 The performance target in BAS-016 is provisional. No unresolved decision affects the confirmed language scope.
 
@@ -509,19 +509,19 @@ The assignability relation T₁ ⪯ T₂ is directional.
 | ID | Requirement | Verification |
 | --- | --- | --- |
 | TY-12 | Type equivalence MUST follow the five rules above. | Compare equal and unequal primitive, named, vector, array, Void, and NullPtr types. |
-| TY-13 | Assignability MUST follow the source-to-target table below. | Test each listed pair and each adjacent disallowed numeric pair in both directions. |
+| TY-13 | Assignability MUST follow the source-to-target table below. Every numeric row MUST preserve every value of the source type. The target type MUST represent each source value exactly. | Test each listed pair and each adjacent disallowed numeric pair in both directions. For every numeric pair, check the row against the value-preservation test that follows the table. Verify that I32 and U32 to F32, and I64 and U64 to F64, are not assignable. |
 
 | Source T₁ | Target T₂ | Assignable |
 | --- | --- | --- |
 | Any type | Same type | Yes |
 | I8 | I16, I32, I64, F32, F64 | Yes |
 | I16 | I32, I64, F32, F64 | Yes |
-| I32 | I64, F32, F64 | Yes |
-| I64 | F64 | Yes |
+| I32 | I64, F64 | Yes |
+| I64 | None | Not applicable |
 | U8 | U16, U32, U64, I16, I32, I64, F32, F64 | Yes |
 | U16 | U32, U64, I32, I64, F32, F64 | Yes |
-| U32 | U64, I64, F32, F64 | Yes |
-| U64 | F64 | Yes |
+| U32 | U64, I64, F64 | Yes |
+| U64 | None | Not applicable |
 | F32 | F64 | Yes |
 | Char | String | Yes |
 | Array(A,n) | Array(B,m) | Yes if n=m and A ⪯ B |
@@ -529,7 +529,16 @@ The assignability relation T₁ ⪯ T₂ is directional.
 | NullPtr | Array, Vector, or Named type | Yes |
 | Any other pair | Any other pair | No |
 
-The rows from U8, U16, and U32 to a wider signed integer preserve every value. They are the only conversions from an unsigned type to a signed type. They let a value widen to a signed type without a cast (DEC-016).
+Every numeric row preserves every value of the source type (DEC-017). An integer row to a floating-point type exists only when the floating-point significand holds every magnitude of the integer type. F32 has a 24-bit significand and F64 has a 53-bit significand. The value-preservation test for a numeric source S and target T is:
+
+1. If S and T are both signed integers or both unsigned integers, T has at least as many bits as S.
+2. If S is an unsigned integer and T is a signed integer, T has more bits than S.
+3. If S is a signed integer and T is an unsigned integer, the pair is not assignable.
+4. If S is an integer and T is a floating-point type, the number of magnitude bits of S is at most the significand width of T. The magnitude bits are 7, 15, 31, and 63 for I8, I16, I32, and I64, and 8, 16, 32, and 64 for U8, U16, U32, and U64.
+5. If S is a floating-point type, T is a floating-point type with a significand at least as wide.
+6. If S is a floating-point type and T is an integer type, the pair is not assignable.
+
+The rows from U8, U16, and U32 to a wider signed integer are the only conversions from an unsigned type to a signed type. They let a value widen to a signed type without a cast (DEC-016). The rows from I32 and U32 to F32, and from I64 and U64 to F64, are not in the table, because those conversions round values above 2^24 and 2^53. A value of type I64 or U64 has no implicit conversion to any other type, and no operation converts it without a cast, which this specification does not provide (Section 7.4). The exactness test in TR-028a applies the same principle to a literal.
 
 The array and vector rules preserve current checker behavior. They allow recursively assignable element types. They are not invariant.
 
@@ -545,13 +554,13 @@ For two numeric operand types, Promote(T₁,T₂) selects the first type C in th
 
 Promotion uses only the conversions in the assignment table in Section 7.2. The Fully Typed AST records each operand conversion as a NumericAssignable conversion.
 
-Of the 100 ordered pairs of numeric types, 76 have a promoted type. These twelve pairs have none, in either operand order: F32 with I64; F32 with U64; U64 with I64, I32, I16, or I8; U32 with I32, I16, or I8; U16 with I16 or I8; U8 with I8.
+Of the 100 ordered pairs of numeric types, 68 have a promoted type. These sixteen pairs have none, in either operand order: F32 with I32, I64, U32, or U64; F64 with I64 or U64; U64 with I64, I32, I16, or I8; U32 with I32, I16, or I8; U16 with I16 or I8; U8 with I8. No promotion rounds an operand, because every conversion in the table in Section 7.2 preserves every value.
 
 The order does not define arithmetic overflow, shift-count range, floating-point rounding, or runtime conversion behavior. Those rules belong to a later execution or lowering specification.
 
 | ID | Requirement | Verification |
 |---|---|---|
-| TY-14 | Numeric promotion MUST select the earliest matching type in the stated order for every pair of numeric types. It MUST report E2036 when either operand is not assignable to that type. | Exhaust all 10 × 10 ordered numeric type pairs. Assert the selected TypeId for 76 pairs and E2036 for the 24 ordered pairs listed above. |
+| TY-14 | Numeric promotion MUST select the earliest matching type in the stated order for every pair of numeric types. It MUST report E2036 when either operand is not assignable to that type. | Exhaust all 10 × 10 ordered numeric type pairs. Assert the selected TypeId for 68 pairs and E2036 for the 32 ordered pairs listed above. |
 
 ### 7.4 Conversion nodes
 
@@ -559,7 +568,7 @@ ConversionKind has these variants:
 
 | Kind | Requirement |
 | --- | --- |
-| NumericAssignable | Source and target are numeric, and the pair is in the assignment table in Section 7.2. The kind covers assignment conversions and the operand conversions of Section 7.3. This name does not imply that conversion preserves numeric precision. |
+| NumericAssignable | Source and target are numeric, and the pair is in the assignment table in Section 7.2. The kind covers assignment conversions and the operand conversions of Section 7.3. Every conversion of this kind preserves every value of the source type (DEC-017). |
 | CharToString | Source is Char and target is String. |
 | NullToAggregate | Source is NullPtr and target is Array, Vector, or Named. |
 | ArrayElementConversion | Source and target arrays have equal length, and source element is assignable to target element. |
@@ -999,8 +1008,8 @@ The implementation MUST provide tests or validator checks for each row below. A 
 The test suite MUST include:
 
 1. Every numeric type in literal typing, with and without a width suffix, and with and without a context type.
-2. Every permitted numeric assignment conversion, including the six unsigned-to-signed rows, and the adjacent disallowed conversion in both directions.
-3. All 100 ordered numeric type pairs. Verify the promoted type for 76 pairs and E2036 for the 24 ordered pairs listed in Section 7.3, including I64 with F32, U64 with I64, and I32 with U32.
+2. Every permitted numeric assignment conversion, including the six unsigned-to-signed rows, and the adjacent disallowed conversion in both directions. Include the four removed rows: I32 and U32 to F32, and I64 and U64 to F64. Each reports E2002 as an initializer.
+3. All 100 ordered numeric type pairs. Verify the promoted type for 68 pairs and E2036 for the 32 ordered pairs listed in Section 7.3, including I32 with F32, I64 with F64, U64 with I64, and I32 with U32.
 4. Empty and one-element array literals.
 5. Equal and unequal array lengths.
 6. Zero and maximum representable array lengths.
@@ -1025,6 +1034,7 @@ The test suite MUST include:
 25. Negation folding: `-128` for I8, `-9223372036854775808` for I64, `-(128)` for I8, and a suffixed literal. Verify that a folded literal is one Literal node.
 26. The peer rule with the literal on either side of a non-literal operand, with a flexible operator tree on one side, and with a float literal next to an integer operand.
 27. Context passing through array literals, nested array literals, call arguments, return values, and shifts with a non-literal count. Verify that an F32 or F64 context does not pass through an operator.
+28. Integer-to-float conversion of a non-literal value. Verify that an I32 or U32 variable assigned to F32, and an I64 or U64 variable assigned to F64, reports E2002, including a variable that holds 16777217. Verify that `x + y` with `x: i32` and `y: f32` reports E2036, and that `x + y` with `x: i32` and `y: f64` has type F64 with a NumericAssignable conversion on `x`. Verify that `var f: f64 = 7 / 2` reports E2002, because the expression has type I64.
 
 ### 13.3 Acceptance criteria
 
@@ -1198,7 +1208,7 @@ The checker reports E2035 for `a` and E2035 for `b`, because each value is outsi
 | --- | --- | --- | --- | --- |
 | DEC-001 | Scope is the implemented Descar language subset. | The user confirmed the current subset as the target. | Sections 1, 6, and 7 | No future language feature is implied. |
 | DEC-002 | Surface AST and Fully Typed AST are separate representations. | Syntax and semantic data have different validation needs. | Sections 5 and 6 | Semantic data is stored in a new typed representation. |
-| DEC-003 | Typing rules follow the current checker, except for the confirmed mutable-place, compound-assignment, and array-length rules in DEC-006 through DEC-008, and the literal-typing and promotion rules in DEC-016. | This preserves the selected checker behavior and isolates each approved correction. | Sections 7 and 8 | Existing promotion, assignability, and operator behavior is recorded, except where DEC-016 replaces it. |
+| DEC-003 | Typing rules follow the current checker, except for the confirmed mutable-place, compound-assignment, and array-length rules in DEC-006 through DEC-008, the literal-typing and promotion rules in DEC-016, and the numeric-conversion rule in DEC-017. | This preserves the selected checker behavior and isolates each approved correction. | Sections 7 and 8 | Existing promotion, assignability, and operator behavior is recorded, except where DEC-016 or DEC-017 replaces it. |
 | DEC-004 | Compile-mode errors remain outside the AST. | A recovered parse tree must not look like a successful semantic result. | Sections 5, 10, and 11 | Error nodes are not valid in either successful AST. Diagnostics remain external. |
 | DEC-005 | AST is an internal model. Serialization is out of scope. | No stable external interface was requested or found in the repository. | Section 12 | No external compatibility or encoding contract is required. |
 | DEC-006 | A compound assignment value must be assignable to the place type. The operation runs in the place type, and the expression result type is the place type. | The stored value must be valid for the mutable place. | TR-013, GAP-003 | The checker must reject some cases it currently accepts. |
@@ -1212,16 +1222,18 @@ The checker reports E2035 for `a` and E2035 for `b`, because each value is outsi
 | DEC-014 | Implicit conversions appear as Convert nodes. | Later phases must not infer hidden conversions from operand types. | N-TE-06, N-TE-11, TY-15, ACC-004 | Every conversion is visible to typed-tree validation and lowering. |
 | DEC-015 | Function and main declarations are top-level items only. The parser rejects nested declarations with E1004. | The user confirmed that the language does not support nested functions. The parser currently accepts these declarations in statement positions, so the target parser must enforce the language boundary. | BAS-017, GAP-012, SYN-003, INV-021 | Nested function bodies do not enter name resolution or type checking. Loop-control references always stay within one function. |
 | DEC-016 | Unsuffixed numeric literals take a context type. Numeric promotion requires both operands to convert to the result type under TY-13. Shifts take the type of the left operand. A compound assignment runs in the place type. ADR-0001 lists the alternatives considered. | Without context typing no literal reaches a type narrower than 64 bits. Without the promotion condition, promotion changes values for 24 ordered type pairs. | TR-001, TR-009, TR-010, TR-012, TR-013, TR-028, TY-13, TY-14, N-SE-01, N-TE-01, N-TE-05, N-TE-06 | A program can change type or be rejected. ADR-0001 lists the cases. |
+| DEC-017 | An implicit numeric conversion MUST preserve every value of the source type. TY-13 loses four rows: I32 and U32 to F32, and I64 and U64 to F64. The exactness test in TR-028a is the literal case of the same rule. ADR-0003 lists the alternatives considered. | The table converted four integer types to a floating-point type that cannot hold all their values. A literal above 2^24 was rejected for F32, while an I32 variable with the same value converted without a diagnostic. ADR-0001 chose promotion that defines no run-time conversion, and a rounding conversion needs a run-time definition. | TY-13, TY-14, TR-009, TR-010, TR-013, TR-028a, GAP-015, OPEN-001, Section 13.2 tests 2, 3 and 28 | 32 ordered numeric pairs have no promotion instead of 24. A program that converts a 32-bit or 64-bit integer to a floating-point type is rejected. No program can convert I64 or U64 to a floating-point type until the explicit conversions in ADR-0002 exist. A mixed integer and floating-point literal expression such as `1 + 2.5` has no promotion (OPEN-006). |
 
 ### 15.2 Open issues and pending clarification
 
 | ID | Issue or question | Evidence or rationale | Requirement affected | Consequence |
 | --- | --- | --- | --- | --- |
-| OPEN-001 | Runtime behavior is not defined for arithmetic overflow, division by zero, shift counts outside the operand width, conversion of a non-exact integer to a floating-point type, and rounding of a floating-point literal to F32. After ADR-0001, no promotion or compound assignment changes an integer value. | The checker selects types but does not define execution behavior. | Section 7.3 | IR and runtime specifications must define lowering behavior before executable semantics are claimed. |
+| OPEN-001 | Runtime behavior is not defined for arithmetic overflow, division by zero, shift counts outside the operand width, and rounding of a floating-point literal to F32. After ADR-0001 and ADR-0003, no promotion, compound assignment, or implicit conversion changes the value of a typed operand. | The checker selects types but does not define execution behavior. | Section 7.3 | IR and runtime specifications must define lowering behavior before executable semantics are claimed. |
 | OPEN-002 | The current non-void return heuristic does not prove return on all paths. | The checker uses a recursive presence test, not control-flow analysis. | TR-025, INV-015 | This specification records current checker behavior. A sound control-flow rule requires a later design decision. |
 | OPEN-003 | Custom names have no declarations or member access. | The parser accepts names, but the checker does not resolve declarations for them. | TY-09, SR-012 | A future user-defined type feature requires type declarations, name resolution, and new tests. |
 | OPEN-004 | The repository has no Fully Typed AST implementation or typed-tree consumer. | Source inspection found no typed-AST or IR-lowering module. | OP-005, OP-006 | This document defines a target contract. Integration design remains future work. |
 | OPEN-005 | The checker accepts compatible non-numeric operands for equality and ordering, including Void call results. It defines no runtime comparison implementation. | The type checker returns Bool after compatibility validation. It defines no compare operation or runtime value for Void. | TR-010, TY-10 | A later execution specification must define behavior for every accepted non-numeric pair or narrow the type rule. |
+| OPEN-006 | An expression with an integer literal operand and a floating-point literal operand, such as `1 + 2.5`, has no promotion. TR-028c passes no F32 or F64 context through an operator, so the integer literal has type I64 and the other operand has type F64. I64 is not assignable to F64 (DEC-017), and the operation reports E2036. | The earlier table accepted this program through the I64 to F64 row. The last sentence of TR-028c, which gives two flexible operands the context type of the Binary node, can be read to conflict with the F32 and F64 exception in TR-028b. | TR-028b, TR-028c, TR-009, TR-010 | A later decision must let an integer literal adapt to a floating-point peer, for example by evaluating a flexible expression as a constant and checking the value against the context type, or require the programmer to write a floating-point literal. |
 
 ## 16. Bibliographic References
 
