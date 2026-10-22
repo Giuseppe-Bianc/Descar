@@ -285,7 +285,7 @@ fn test_comparison_operator_type_mismatch_reports_compatible_types() {
     assert_eq!(errors.len(), 1);
     assert_eq!(
         errors[0].message(),
-        Some("Comparison operator 'Less' requires compatible types, found bool and string")
+        Some("Comparison operator 'Less' requires numeric operands, found bool and string")
     );
 }
 
@@ -374,6 +374,29 @@ fn test_binary_comparison_invalid() {
         errors[0].message(),
         Some("Comparison operator 'Less' requires compatible types, found bool and string")
     );
+}
+
+#[test]
+fn test_ordering_non_numeric_operands_are_rejected() {
+    for ast in [
+        "\"a\" < \"b\"",
+        "true <= false",
+        "'a' > 'b'",
+        "nullptr >= nullptr",
+    ] {
+        let errors = typecheck(ast);
+        assert_eq!(errors.len(), 1, "Expected ordering rejection for {ast}: {errors:?}");
+        assert!(
+            errors[0].message().unwrap().contains("requires numeric operands"),
+            "Unexpected diagnostic for {ast}: {errors:?}"
+        );
+    }
+}
+
+#[test]
+fn test_equality_non_numeric_operands_remains_supported() {
+    let errors = typecheck("\"a\" == \"b\"");
+    assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
 }
 
 #[test]
