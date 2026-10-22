@@ -541,6 +541,23 @@ impl TypeChecker {
         }
 
         /*
+         * Ordering is defined only for numeric operands. Equality retains the
+         * existing compatibility rule for non-numeric values.
+         */
+        if matches!(op, BinaryOp::Less | BinaryOp::LessEqual | BinaryOp::Greater | BinaryOp::GreaterEqual)
+            && (!Self::is_numeric(&left_type) || !Self::is_numeric(&right_type))
+        {
+            self.type_error_with_code(
+                Some(ErrorCode::E2014),
+                format!(
+                    "Comparison operator '{op:?}' requires numeric operands, found {left_type} and {right_type}"
+                ),
+                span,
+            );
+            return None;
+        }
+
+        /*
          * Arithmetic and comparison operators use numeric promotion when both
          * operands are numeric.
          */
