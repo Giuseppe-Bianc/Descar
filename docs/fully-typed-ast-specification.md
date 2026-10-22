@@ -2,7 +2,7 @@
 
 **Status:** Normative design specification for the implemented Descar language subset.
 
-**Revision:** 2026-10-22. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change. Decision DEC-018 clarifies numeric context propagation and the resulting diagnostics.
+**Revision:** 2026-10-22. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change.
 
 Repository facts are marked **Observed**. Requirements for the new model are marked **Specified**. A requirement marked **Gap** requires an implementation change. Open issues are listed in Section 15.
 
@@ -659,7 +659,7 @@ The call rule also requires exactly n arguments. All symbols in these rules use 
 | TR-002 Literal | String, character, Boolean, and nullptr literals have String, Char, Bool, and NullPtr types. | Invalid literal payload is a construction error. |
 | TR-003 Variable | If Γ(name) is a variable symbol with type T, then Γ ⊢ name : T and the node stores that SymbolId. | E2022 if the nearest declaration is a function; E2023 if no variable exists. |
 | TR-004 Grouping | If Γ ⊢ e : T, then Γ ⊢ (e) : T. The result type equals the child type. | Child error propagates. |
-| TR-028 Literal context | A flexible expression takes its type from its context under Section 8.2.1. | E2035 when a literal does not fit its context type. An enclosing operator or declaration can report E2036 or E2002 even when TR-028a reports no diagnostic at the literal. |
+| TR-028 Literal context | A flexible expression takes its type from its context under Section 8.2.1. | E2035 when a literal does not fit its context type. |
 
 ### 8.2.1 Context typing of numeric literals
 
@@ -684,20 +684,14 @@ A context type is a type that the position of an expression supplies to it. The 
 
 | Rule ID | Rule and postcondition | Possible error |
 | --- | --- | --- |
-| TR-028a Leaf adaptation | An adaptable literal that receives a numeric context type T takes type T when its signed value v passes the test for its kind. An integer literal with an integer T passes when v is within the range of T. An integer literal with F32 or F64 passes when v is exactly representable in T. A floating-point literal with F32 or F64 passes when its value is finite after rounding to nearest in T. A floating-point literal with an integer T is not compatible by kind. It keeps its default type, and this rule reports no diagnostic at the literal. The enclosing operator or declaration rule still applies and can report an error. | E2035 when the literal is compatible by kind and fails the test. |
-| TR-028b Passing | Only a flexible expression passes its context type to its children. Grouping passes any numeric T. Negate, BitwiseNot, and the Binary operators `+ - * / % & \| ^` pass an integer T to every operand. A shift passes an integer T to its left operand only. An operator node does not pass F32 or F64. An operand that receives no context from the operator uses its default type under TR-028d, unless TR-028c supplies a peer context. Operand and result types then follow TR-009 to TR-012. | None. |
-| TR-028c Peer | For `+ - * / % & \| ^ == != < <= > >=`, if exactly one operand is flexible and the other operand is not flexible and has numeric type S, the flexible operand receives S as its context type. This replaces the context type from the position of the Binary node. If both operands are flexible, they receive the Binary node's context only when TR-028b permits that context to pass to those operands. In particular, an F32 or F64 context is not passed through an operator. When no peer context applies, TR-028d determines the operand types. Shifts have no peer rule. | None. |
-| TR-028d No context | A flexible expression with no context type takes default types, and operators apply TR-009 to TR-012 to those types. When TR-028b does not pass an F32 or F64 context through an operator, its operands have no context from that operator and use default types, subject to TR-028c. Index expressions, conditions, shift counts, and operands of non-flexible unary operators receive no context type. A non-numeric context type has no effect. | None. |
+| TR-028a Leaf adaptation | An adaptable literal that receives a numeric context type T takes type T when its signed value v passes the test for its kind. An integer literal with an integer T passes when v is within the range of T. An integer literal with F32 or F64 passes when v is exactly representable in T. A floating-point literal with F32 or F64 passes when its value is finite after rounding to nearest in T. A floating-point literal with an integer T is not compatible by kind. It keeps its default type, and this rule reports nothing. | E2035 when the literal is compatible by kind and fails the test. |
+| TR-028b Passing | Only a flexible expression passes its context type to its children. Grouping passes any numeric T. Negate, BitwiseNot, and the Binary operators `+ - * / % & \| ^` pass an integer T to every operand. A shift passes an integer T to its left operand only. An operator node does not pass F32 or F64. Operand and result types then follow TR-009 to TR-012. | None. |
+| TR-028c Peer | For `+ - * / % & \| ^ == != < <= > >=`, if exactly one operand is flexible and the other operand is not flexible and has numeric type S, the flexible operand receives S as its context type. This replaces the context type from the position of the Binary node. If both operands are flexible, both receive the context type of the Binary node. Shifts have no peer rule. | None. |
+| TR-028d No context | A flexible expression with no context type takes default types, and operators apply TR-009 to TR-012 to those types. Index expressions, conditions, shift counts, and operands of non-flexible unary operators receive no context type. A non-numeric context type has no effect. | None. |
 
 A prefix Negate applied directly to an adaptable literal MUST be one Literal node in the typed tree. The node holds the negated value, and its span covers both tokens. The most negative value of a signed type has no positive counterpart in that type, so `-128` for I8 cannot be a Negate over an I8 literal. A Negate applied to any other expression, including `-(128)` and `- -5`, is a Unary node. A literal with `width_suffix` true is not folded.
 
 The Number variant of a typed numeric Literal corresponds to its result_type, and its value MUST be representable in that type (INV-022).
-
-These rules have the following required outcomes:
-
-- For `x + 1.5`, where `x` has integer type S, TR-028c gives `1.5` context S. Because a floating-point literal is not compatible with an integer context, TR-028a leaves it as F64. Promotion succeeds with result type F64 when S is I8, I16, I32, U8, U16, or U32. The left operand has a NumericAssignable conversion to F64. If S is I64 or U64, promotion reports E2036 because S is not assignable to F64.
-- For `var result: f64 = 1 << 3`, the F64 context is not passed to either shift operand. Both unsuffixed literals take their default type I64. TR-012 gives the shift expression type I64. Since I64 is not assignable to F64, the declaration reports E2002 and no Fully Typed AST is returned.
-- For `var result: f64 = 1 + 2.5`, both operands are flexible, but `+` does not pass its F64 context to them. `1` defaults to I64 and `2.5` defaults to F64. I64 is not assignable to F64, so the operator reports E2036 and no Fully Typed AST is returned.
 
 ### 8.3 Unary rules
 
@@ -813,7 +807,7 @@ The following forms state the premises and conclusion for every rule in TR-001 t
 | TR-025 | If a function result is Void, no return-path condition applies. If its result is non-Void, `HasReturn(body)=true ⇒ Γ ⊢ functionDecl:ok`. `HasReturn` follows the six cases listed in Section 8.6. |
 | TR-026 | For array type syntax with length literal `k`, `0≤k≤MAX_U64 ⇒ Length(k)=k`. For an inferred array literal with `n` elements, `0≤n≤MAX_U64 ⇒ Length(elements)=n`. |
 | TR-027 | `Γ ⊢ primitiveSyntax ⇒ its canonical primitive TypeId`; `Γ ⊢ namedSyntax(x) ⇒ Named(x)`; `Γ ⊢ τ⇒T` and `T≠Void ⇒ Γ ⊢ Vector(τ)⇒Vector(T)`; `Γ ⊢ τ⇒T` and `Length(k)=n ⇒ Γ ⊢ Array(τ,k)⇒Array(T,n)`. Named(`"void"`) is not the built-in Void type. |
-| TR-028 | `e` is an adaptable literal, `T` is numeric, and the signed value `v` of `e` passes the TR-028a test for its kind `⇒ Γ ⊢ e ⇐ T ⇒ T`. A flexible expression passes its context to its operands only as permitted by TR-028b. A flexible operand next to a non-flexible operand of numeric type `S` is checked with `S` under TR-028c. An operand that receives no context uses TR-028d. |
+| TR-028 | `e` is an adaptable literal, `T` is numeric, and the signed value `v` of `e` passes the TR-028a test for its kind `⇒ Γ ⊢ e ⇐ T ⇒ T`. A flexible expression passes `T` to its operands under TR-028b. A flexible operand next to a non-flexible operand of numeric type `S` is checked with `S` under TR-028c. |
 
 `MAX_U64` means the largest value representable by an unsigned 64-bit integer. A type-resolution error or a false premise has the diagnostic listed for that rule.
 
@@ -1041,7 +1035,6 @@ The test suite MUST include:
 26. The peer rule with the literal on either side of a non-literal operand, with a flexible operator tree on one side, and with a float literal next to an integer operand.
 27. Context passing through array literals, nested array literals, call arguments, return values, and shifts with a non-literal count. Verify that an F32 or F64 context does not pass through an operator.
 28. Integer-to-float conversion of a non-literal value. Verify that an I32 or U32 variable assigned to F32, and an I64 or U64 variable assigned to F64, reports E2002, including a variable that holds 16777217. Verify that `x + y` with `x: i32` and `y: f32` reports E2036, and that `x + y` with `x: i32` and `y: f64` has type F64 with a NumericAssignable conversion on `x`. Verify that `var f: f64 = 7 / 2` reports E2002, because the expression has type I64.
-29. Numeric context propagation through operators. Verify that `x + 1.5` has type F64 for `x: i32`, but reports E2036 for `x: i64`; `var result: f64 = 1 << 3` reports E2002; and `var result: f64 = 1 + 2.5` reports E2036.
 
 ### 13.3 Acceptance criteria
 
@@ -1205,23 +1198,7 @@ main {
 }
 ~~~
 
-The checker reports E2035 for `a` and E2035 for `b`, because each value is outside the range of its context type. For `c`, TR-028a leaves `1.5` as F64 without a leaf diagnostic, then TR-015 reports E2002 because F64 is not assignable to I32. The checker returns no Fully Typed AST.
-
-### 14.9 Numeric context at operators
-
-For `x + 1.5`, the result depends on the declared integer type of `x`. With `x: i32`, the literal remains F64 and the I32 operand converts losslessly to F64, so the expression succeeds with result type F64. With `x: i64`, the conversion to F64 is not permitted, so the operator reports E2036.
-
-For this source:
-
-~~~text
-main {
-    var result: f64 = 1 << 3
-}
-~~~
-
-The F64 context is not passed through the shift. Both literals default to I64, and the shift result is I64. The initializer reports E2002 because I64 is not assignable to F64.
-
-For `var result: f64 = 1 + 2.5`, the F64 context is not passed through `+`. The operands default to I64 and F64. The operator reports E2036 because I64 is not assignable to F64.
+The checker reports E2035 for `a` and E2035 for `b`, because each value is outside the range of its context type. It reports E2002 for `c`, because a floating-point literal does not adapt to an integer type. It returns no Fully Typed AST.
 
 ## 15. Open Issues and Design Decisions
 
@@ -1245,9 +1222,7 @@ For `var result: f64 = 1 + 2.5`, the F64 context is not passed through `+`. The 
 | DEC-014 | Implicit conversions appear as Convert nodes. | Later phases must not infer hidden conversions from operand types. | N-TE-06, N-TE-11, TY-15, ACC-004 | Every conversion is visible to typed-tree validation and lowering. |
 | DEC-015 | Function and main declarations are top-level items only. The parser rejects nested declarations with E1004. | The user confirmed that the language does not support nested functions. The parser currently accepts these declarations in statement positions, so the target parser must enforce the language boundary. | BAS-017, GAP-012, SYN-003, INV-021 | Nested function bodies do not enter name resolution or type checking. Loop-control references always stay within one function. |
 | DEC-016 | Unsuffixed numeric literals take a context type. Numeric promotion requires both operands to convert to the result type under TY-13. Shifts take the type of the left operand. A compound assignment runs in the place type. ADR-0001 lists the alternatives considered. | Without context typing no literal reaches a type narrower than 64 bits. Without the promotion condition, promotion changes values for 24 ordered type pairs. | TR-001, TR-009, TR-010, TR-012, TR-013, TR-028, TY-13, TY-14, N-SE-01, N-TE-01, N-TE-05, N-TE-06 | A program can change type or be rejected. ADR-0001 lists the cases. |
-| DEC-017 | An implicit numeric conversion MUST preserve every value of the source type. TY-13 loses four rows: I32 and U32 to F32, and I64 and U64 to F64. The exactness test in TR-028a is the literal case of the same rule. ADR-0003 lists the alternatives considered. | The table converted four integer types to a floating-point type that cannot hold all their values. A literal above 2^24 was rejected for F32, while an I32 variable with the same value converted without a diagnostic. ADR-0001 chose promotion that defines no run-time conversion, and a rounding conversion needs a run-time definition. | TY-13, TY-14, TR-009, TR-010, TR-013, TR-028a, GAP-015, OPEN-001, Section 13.2 tests 2, 3 and 28 | 32 ordered numeric pairs have no promotion instead of 24. The implicit conversions I32 and U32 to F32, and I64 and U64 to F64, are rejected. No program can convert I64 or U64 to a floating-point type until the explicit conversions in ADR-0002 exist. A mixed integer and floating-point literal expression such as `1 + 2.5` has no promotion and reports E2036 under TR-028b through TR-028d. |
-
-| DEC-018 | An operator does not pass F32 or F64 context to its operands. If both operands are flexible, the parent context reaches them only when TR-028b permits that propagation. The peer rule applies only when exactly one operand is flexible. A floating-point literal that rejects an integer peer context keeps its default type, while the enclosing operator or declaration still performs its own checks. | The rules must define an outcome for each expression without adding value-changing implicit conversions. | TR-028a through TR-028d, TR-009 through TR-015, Section 13.2 | `x + 1.5` has type F64 for `x: i32` and reports E2036 for `x: i64`; `1 + 2.5` reports E2036; `var result: f64 = 1 << 3` reports E2002. |
+| DEC-017 | An implicit numeric conversion MUST preserve every value of the source type. TY-13 loses four rows: I32 and U32 to F32, and I64 and U64 to F64. The exactness test in TR-028a is the literal case of the same rule. ADR-0003 lists the alternatives considered. | The table converted four integer types to a floating-point type that cannot hold all their values. A literal above 2^24 was rejected for F32, while an I32 variable with the same value converted without a diagnostic. ADR-0001 chose promotion that defines no run-time conversion, and a rounding conversion needs a run-time definition. | TY-13, TY-14, TR-009, TR-010, TR-013, TR-028a, GAP-015, OPEN-001, Section 13.2 tests 2, 3 and 28 | 32 ordered numeric pairs have no promotion instead of 24. The implicit conversions I32 and U32 to F32, and I64 and U64 to F64, are rejected. No program can convert I64 or U64 to a floating-point type until the explicit conversions in ADR-0002 exist. A mixed integer and floating-point literal expression such as `1 + 2.5` has no promotion (OPEN-006). |
 
 ### 15.2 Open issues and pending clarification
 
@@ -1258,6 +1233,7 @@ For `var result: f64 = 1 + 2.5`, the F64 context is not passed through `+`. The 
 | OPEN-003 | Custom names have no declarations or member access. | The parser accepts names, but the checker does not resolve declarations for them. | TY-09, SR-012 | A future user-defined type feature requires type declarations, name resolution, and new tests. |
 | OPEN-004 | The repository has no Fully Typed AST implementation or typed-tree consumer. | Source inspection found no typed-AST or IR-lowering module. | OP-005, OP-006 | This document defines a target contract. Integration design remains future work. |
 | OPEN-005 | The checker accepts compatible non-numeric operands for equality, including Void call results. It defines no runtime equality implementation. | The type checker returns Bool after compatibility validation. It defines no equality operation or runtime value for Void. | TR-010, TY-10 | A later execution specification must define behavior for accepted non-numeric equality pairs. Ordering on non-numeric operands is rejected by TR-010. |
+| OPEN-006 | An expression with an integer literal operand and a floating-point literal operand, such as `1 + 2.5`, has no promotion. TR-028c passes no F32 or F64 context through an operator, so the integer literal has type I64 and the other operand has type F64. I64 is not assignable to F64 (DEC-017), and the operation reports E2036. | The earlier table accepted this program through the I64 to F64 row. The last sentence of TR-028c, which gives two flexible operands the context type of the Binary node, can be read to conflict with the F32 and F64 exception in TR-028b. | TR-028b, TR-028c, TR-009, TR-010 | A later decision must let an integer literal adapt to a floating-point peer, for example by evaluating a flexible expression as a constant and checking the value against the context type, or require the programmer to write a floating-point literal. |
 
 ## 16. Bibliographic References
 
