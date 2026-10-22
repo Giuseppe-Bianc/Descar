@@ -1,6 +1,6 @@
 # ADR-0001: Literal typing and compound assignment
 
-**Status:** Accepted
+**Status:** Accepted. Amended in part by ADR-0003: the I32 and U32 to F32 rows and the I64 and U64 to F64 rows leave TY-13, and the pair counts in D6 become 68 and 32.
 **Date:** 2026-10-18
 **Deciders:** Descar language owner; implementer of the parser and type checker
 **Applies to:** Descar Fully Typed Abstract Syntax Tree Specification
