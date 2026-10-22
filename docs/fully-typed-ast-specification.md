@@ -165,7 +165,7 @@ In node tables, fields named `node_id` and `span` have types NodeId and SourceSp
 | BAS-007 | Specified | A failed parse or semantic pass returns diagnostics outside the AST. It does not return a valid Fully Typed AST. |
 | BAS-008 | Specified | The AST is an internal compiler model. It has no stable external application programming interface (API) requirement. |
 | BAS-009 | Specified | Serialization and deserialization are outside this specification. |
-| BAS-010 | Specified | The type rules follow the current checker, except for the confirmed place, compound-assignment, and array-length corrections in DEC-006 through DEC-008, the literal-typing and promotion corrections in DEC-016, and the numeric-conversion correction in DEC-017. |
+| BAS-010 | Specified | The type rules follow the current checker, except for the confirmed place, compound-assignment, and array-length corrections in DEC-006, [DEC-007](#dec-007), and [DEC-008](#dec-008), defined in Section 15.1, the literal-typing and promotion corrections in DEC-016, and the numeric-conversion correction in DEC-017. |
 | BAS-011 | Specified | A source fixed-array length MUST be a non-negative integer literal. The Fully Typed AST stores its value as u64. Zero is valid. |
 | BAS-012 | Specified | Named custom types are opaque names. They have no declarations, fields, constructors, or alias rules in this language subset. |
 | BAS-013 | Specified | The language has no first-class function type. A function signature is metadata on a function declaration and symbol. |
@@ -693,7 +693,7 @@ For example, `var value: i32 = 1.5` leaves `1.5` at F64 under TR-028a. Leaf adap
 
 A prefix Negate applied directly to an adaptable literal MUST be one Literal node in the typed tree. The node holds the negated value, and its span covers both tokens. The most negative value of a signed type has no positive counterpart in that type, so `-128` for I8 cannot be a Negate over an I8 literal. A Negate applied to any other expression, including `-(128)` and `- -5`, is a Unary node. A literal with `width_suffix` true is not folded.
 
-The Number variant of a typed numeric Literal corresponds to its result_type, and its value MUST be representable in that type (INV-022).
+The Number variant of a typed numeric Literal corresponds to its result_type, and its value MUST be representable in that type ([INV-022](#inv-022), defined in Section 10).
 
 ### 8.3 Unary rules
 
@@ -704,7 +704,7 @@ The Number variant of a typed numeric Literal corresponds to its result_type, an
 | TR-007 Bitwise not | Operand is an integer type. | Operand type. |
 | TR-008 Increment or decrement | Operand is a mutable Place and has numeric type. A variable place or index-place chain must be rooted in a mutable variable. | Place type. Prefix or postfix form does not change the type. |
 
-The checker reports E2018 for invalid numeric or integer operands, E2019 for invalid logical-not operands, and E2024 for an immutable target. Under DEC-008, a non-place operand also reports E2033.
+The checker reports E2018 for invalid numeric or integer operands, E2019 for invalid logical-not operands, and E2024 for an immutable target. Under [DEC-008](#dec-008), defined in Section 15.1, a non-place operand also reports E2033.
 
 ### 8.4 Binary rules
 
@@ -726,7 +726,7 @@ Ordering operators accept numeric operands only. The checker MUST reject non-num
 
 TR-013 requires the value to be assignable to the place type. For example, an I16 value cannot be applied to an I8 target. It also requires a valid mutable place.
 
-The checker reports E2011 for invalid bitwise operands, E2012 or E2017 for invalid logical operands, E2013 or E2016 for invalid arithmetic operands, and E2014 for incompatible comparison operands. It reports E2024 for an immutable compound-assignment target, E2033 for a non-place target under DEC-008, E2002 when the value cannot convert to the place type, E2035 when a literal does not fit its context type, and E2036 when numeric operands have no common type.
+The checker reports E2011 for invalid bitwise operands, E2012 or E2017 for invalid logical operands, E2013 or E2016 for invalid arithmetic operands, and E2014 for incompatible comparison operands. It reports E2024 for an immutable compound-assignment target, E2033 for a non-place target under [DEC-008](#dec-008), defined in Section 15.1, E2002 when the value cannot convert to the place type, E2035 when a literal does not fit its context type, and E2036 when numeric operands have no common type.
 
 ### 8.5 Assignment, declaration, call, and index rules
 
@@ -769,7 +769,7 @@ A non-void function MUST produce E2003 when this analysis says its body can comp
 
 The Fully Typed AST stores array length as a u64 constant. The source form must be a non-negative integer literal. The parser may retain other expressions in an incomplete Surface AST, but semantic analysis must report an invalid array-length diagnostic for them.
 
-This rule reflects the confirmed array-length decision in DEC-007. It resolves the current parser/checker mismatch.
+This rule reflects the confirmed array-length decision in [DEC-007](#dec-007), defined in Section 15.1. It resolves the current parser/checker mismatch.
 
 | Rule ID | Preconditions | Postcondition | Possible error |
 |---|---|---|---|
@@ -873,7 +873,7 @@ The AST validator must report the first failed invariant category and continue w
 | INV-019 | Every FunctionDecl signature equals its Function SymbolRecord. Main has no parameters and Void result. | Typed AST validation | Internal error for inconsistent signature metadata. |
 | INV-020 | TypeTable contains exactly one TypeId for each canonical type key. | Type resolution and typed validation | Internal error for duplicate or missing canonical entries. |
 | INV-021 | Surface and typed FunctionDecl and MainDecl nodes occur only as direct children of their program root. No block or other statement contains either declaration. | Parser output and typed validation | Report E1004 and mark SurfaceProgram Incomplete for source nesting. Treat a nested declaration in a typed tree as an internal error. |
-| INV-022 | A numeric Literal has a Number variant that corresponds to its result_type and a value that is representable in that type. | Typed AST validation | Internal error. |
+| <a id="inv-022"></a>INV-022 | A numeric Literal has a Number variant that corresponds to its result_type and a value that is representable in that type. | Typed AST validation | Internal error. |
 
 ### 10.1 Validity states
 
@@ -883,7 +883,7 @@ The AST validator must report the first failed invariant category and continue w
 | Incomplete Surface AST | Parser recovery occurred or parser diagnostics exist. | Diagnostic display and AST debugging only. |
 | Semantically valid | All names, types, operations, declarations, and control constraints pass the rules in Sections 7–9. | Fully Typed AST construction. |
 | Fully typed | Semantically valid; all expressions and declarations have resolved type data; all references use IDs; all conversions are explicit; all loop-control references are valid in the current function. | Typed AST validation. |
-| Ready for lowering | Fully typed and INV-001 through INV-022 pass. No blocking design question remains for the program's constructs. | A later lowering phase that implements this contract. |
+| Ready for lowering | Fully typed and INV-001 through [INV-022](#inv-022) pass. No blocking design question remains for the program's constructs. | A later lowering phase that implements this contract. |
 | Invalid AST | Any structural or typed invariant fails. | No compiler phase after the failing validator. |
 
 An AST with an error is not semantically valid. Diagnostics do not convert an invalid source program into a valid AST.
@@ -999,7 +999,7 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | SR-001–SR-012 | Scope, shadowing, duplicate, recursion, forward-reference, custom type, and symbol-kind tests. |
 | SR-013 | Record-shape, link-integrity, and type-canonicalization tests. |
 | SYN-002 | AST-shape tests for left associativity, assignment right associativity, and precedence for every operator class. |
-| INV-001–INV-022 | One validator test per invariant. Each negative case must identify the violated invariant. |
+| INV-001–[INV-022](#inv-022) | One validator test per invariant. Each negative case must identify the violated invariant. |
 | ERR-001–ERR-011 | Parser recovery, blocking errors, accumulated diagnostics, diagnostic fields, error codes, severity, CLI phase boundary, and internal-error separation tests. |
 | OP-001–OP-009 | Interface tests for each mandatory operation, transformation, and cloning. |
 | OP-010–OP-011 | Comparison tests only if an optional comparison utility is implemented. |
@@ -1051,7 +1051,7 @@ The specification is implemented when all the following conditions hold:
 | ACC-004 | Every implicit conversion is represented by a Convert node with the same source and target TypeIds. |
 | ACC-005 | Invalid source programs produce diagnostics and no Fully Typed AST. |
 | ACC-006 | Incomplete parser output is rejected by type checking. |
-| ACC-007 | The typed validator rejects each single-invariant mutation in INV-001 through INV-022. |
+| ACC-007 | The typed validator rejects each single-invariant mutation in INV-001 through [INV-022](#inv-022). |
 | ACC-008 | The complete test suite covers every operator, type category, semantic reference, and error category in this document. |
 | ACC-009 | No unsupported type category or language feature can be inserted into a successful Fully Typed AST. |
 | ACC-010 | The final document review confirms that each requirement has an ID and a verification method. |
@@ -1250,12 +1250,12 @@ Required semantic result:
 | --- | --- | --- | --- | --- |
 | DEC-001 | Scope is the implemented Descar language subset. | The user confirmed the current subset as the target. | Sections 1, 6, and 7 | No future language feature is implied. |
 | DEC-002 | Surface AST and Fully Typed AST are separate representations. | Syntax and semantic data have different validation needs. | Sections 5 and 6 | Semantic data is stored in a new typed representation. |
-| DEC-003 | Typing rules follow the current checker, except for the confirmed mutable-place, compound-assignment, and array-length rules in DEC-006 through DEC-008, the literal-typing and promotion rules in DEC-016, and the numeric-conversion rule in DEC-017. | This preserves the selected checker behavior and isolates each approved correction. | Sections 7 and 8 | Existing promotion, assignability, and operator behavior is recorded, except where DEC-016 or DEC-017 replaces it. |
+| DEC-003 | Typing rules follow the current checker, except for the confirmed mutable-place, compound-assignment, and array-length rules in DEC-006, [DEC-007](#dec-007), and [DEC-008](#dec-008), defined in Section 15.1, the literal-typing and promotion rules in DEC-016, and the numeric-conversion rule in DEC-017. | This preserves the selected checker behavior and isolates each approved correction. | Sections 7 and 8 | Existing promotion, assignability, and operator behavior is recorded, except where DEC-016 or DEC-017 replaces it. |
 | DEC-004 | Compile-mode errors remain outside the AST. | A recovered parse tree must not look like a successful semantic result. | Sections 5, 10, and 11 | Error nodes are not valid in either successful AST. Diagnostics remain external. |
 | DEC-005 | AST is an internal model. Serialization is out of scope. | No stable external interface was requested or found in the repository. | Section 12 | No external compatibility or encoding contract is required. |
 | DEC-006 | A compound assignment value must be assignable to the place type. The operation runs in the place type, and the expression result type is the place type. | The stored value must be valid for the mutable place. | TR-013, GAP-003 | The checker must reject some cases it currently accepts. |
-| DEC-007 | Source array lengths are non-negative integer literals. The Fully Typed AST stores the resolved u64 value. | The subset has no constant-expression evaluator for array length. A literal gives a stable type identity. | N-ST-03, TY-07, TR-026, TR-027 | The checker must reject non-literal and negative lengths. |
-| DEC-008 | Assignment and update targets must be mutable variable places or index chains rooted in a mutable variable. | Mutation requires a valid mutable storage location. A temporary value is not a place. | N-TP-01–N-TP-03, TR-008, TR-013, TR-014 | The checker must reject some non-place expressions it currently accepts. |
+| <a id="dec-007"></a>DEC-007 | Source array lengths are non-negative integer literals. The Fully Typed AST stores the resolved u64 value. | The subset has no constant-expression evaluator for array length. A literal gives a stable type identity. | N-ST-03, TY-07, TR-026, TR-027 | The checker must reject non-literal and negative lengths. |
+| <a id="dec-008"></a>DEC-008 | Assignment and update targets must be mutable variable places or index chains rooted in a mutable variable. | Mutation requires a valid mutable storage location. A temporary value is not a place. | N-TP-01–N-TP-03, TR-008, TR-013, TR-014 | The checker must reject some non-place expressions it currently accepts. |
 | DEC-009 | TypeTable stores one canonical TypeId per type key. Primitive and special types use kind keys; arrays and vectors use structural keys; named types use exact names. | Canonical IDs make equivalence checks and semantic references unambiguous. | ARC-005, TY-12, TY-17 | TypeIds remain local to one compilation unit. |
 | DEC-010 | Identity fields use distinct newtype wrappers over u64. NodeId is unique in one AstId. | Distinct wrappers prevent accidental use of an ID from the wrong domain. Local IDs need no persistent encoding. | ARC-001–ARC-005, ERR-011 | IDs are not stable across ASTs, compilation units, or runs. |
 | DEC-011 | SourceSpan uses half-open UTF-8 byte offsets. | Byte offsets support source slicing and do not depend on character width. | ARC-010, INV-004 | A SourceMap is required to render line and column positions. |
