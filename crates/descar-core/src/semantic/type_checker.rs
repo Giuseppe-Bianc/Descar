@@ -614,12 +614,7 @@ impl TypeChecker {
                 }
             }
 
-            BinaryOp::Equal
-            | BinaryOp::NotEqual
-            | BinaryOp::Less
-            | BinaryOp::LessEqual
-            | BinaryOp::Greater
-            | BinaryOp::GreaterEqual => {
+            BinaryOp::Equal | BinaryOp::NotEqual => {
                 if self.are_compatible(&left_type, &right_type) {
                     None
                 } else {
@@ -627,6 +622,19 @@ impl TypeChecker {
                         ErrorCode::E2014,
                         format!(
                             "Comparison operator '{op:?}' requires compatible types, found {left_type} and {right_type}"
+                        ),
+                    ))
+                }
+            }
+
+            BinaryOp::Less | BinaryOp::LessEqual | BinaryOp::Greater | BinaryOp::GreaterEqual => {
+                if Self::is_numeric(&left_type) && Self::is_numeric(&right_type) {
+                    None
+                } else {
+                    Some((
+                        ErrorCode::E2014,
+                        format!(
+                            "Ordering operator '{op:?}' requires numeric operands, found {left_type} and {right_type}"
                         ),
                     ))
                 }
