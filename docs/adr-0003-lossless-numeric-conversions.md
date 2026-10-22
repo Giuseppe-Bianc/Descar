@@ -25,7 +25,7 @@ TR-028a requires a literal to be exactly representable in an F32 or F64 context.
 | Program | Result before this ADR |
 |---|---|
 | `var f: f32 = 16777217` | E2035 |
-| `var n: i32 = 16777217` then `var f: f32 = n` | Accepted. The value becomes 16777216. |
+| `var n: i32 = 16777217` then `var f: f32 = n` | Accepted before ADR-0003. The conversion could lose precision; the exact runtime result is deferred to the execution specification (OPEN-001). |
 | `a + b`, `a: i64`, `b: f32` | E2036 |
 | `a + b`, `a: i32`, `b: f32` | Accepted with type F32. The value of `a` can change. |
 
