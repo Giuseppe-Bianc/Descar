@@ -16,7 +16,7 @@ The ambiguity obscures these results:
 
 | Source | Required result |
 |---|---|
-| `var mixed: f64 = i + 1.5`, where `i: i32` | E2036. The peer rule gives `1.5` an I32 context, but the floating-point literal remains F64. I32 and F64 have no common promotion type. |
+| `var mixed: f64 = i + 1.5`, where `i: i32` | F64. The peer rule gives `1.5` an I32 context, but the floating-point literal remains F64. I32 is assignable to F64, so promotion selects F64 and converts the I32 operand to F64. |
 | `var shifted: f64 = 1 << 3` | E2002. The F64 initializer context does not pass through the shift. The shift result is I64, which is not assignable to F64. |
 | `var value: i32 = 1.5` | E2002. Leaf adaptation does not diagnose the kind mismatch, but the initializer rule checks assignability. |
 | `var f: f64 = 1 + 2.5` | E2036 under the current rules. The two flexible literals do not receive the incoming F64 context through the operator. |
@@ -31,7 +31,7 @@ The phrase in TR-028a that leaf adaptation reports nothing applies only to the l
 
 ## Consequences
 
-- `i + 1.5`, where `i` has an integer type, reports E2036 when the resulting operand types have no common promotion type.
+- `i + 1.5` has type F64 when `i` is I32 or another integer type assignable to F64. The I32 operand receives a NumericAssignable conversion to F64. It reports E2036 when `i` is I64 or U64, which are not assignable to F64 under ADR-0003.
 - `var shifted: f64 = 1 << 3` reports E2002 because the shift result remains I64.
 - `var value: i32 = 1.5` reports E2002 from the initializer rule.
 - `1 + 2.5` and `var f: f64 = 1 + 2.5` continue to report E2036. Whether to support mixed flexible operands through constant-aware literal adaptation remains OPEN-006.
