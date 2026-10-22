@@ -2,7 +2,7 @@
 
 **Status:** Normative design specification for the implemented Descar language subset.
 
-**Revision:** 2026-10-22. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change. ADR-0004 clarifies operator context propagation. Decision DEC-018 records the change.
+**Revision:** 2026-10-22. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change. ADR-0004 clarifies operator context propagation. Decision DEC-018 records the change. DEC-019 defines conservative non-void return-path validation.
 
 Repository facts are marked **Observed**. Requirements for the new model are marked **Specified**. A requirement marked **Gap** requires an implementation change. Open issues are listed in Section 15.
 
@@ -185,7 +185,7 @@ In node tables, fields named `node_id` and `span` have types NodeId and SourceSp
 | GAP-005 | Custom type names parse, but the checker does not resolve them to declarations. | The Fully Typed AST MUST preserve them as opaque named types. It MUST NOT imply that named type declarations exist. |
 | GAP-006 | Parser recovery can insert a null-pointer literal as an expression placeholder and a built-in Void type as an invalid declaration-type fallback. | An incomplete SurfaceProgram represents a missing initializer or invalid annotation with an absent optional field. It MUST NOT pass a placeholder or fallback to type checking. |
 | GAP-007 | Binary expression spans can cover only the operator token. Prefix unary spans can cover only the prefix token. | The new Surface AST and Fully Typed AST MUST use spans for the full source construct. |
-| GAP-008 | The non-void return check uses a recursive heuristic. It does not prove that every runtime path returns. | Section 8 records the exact current rule. This limitation MUST remain visible in diagnostics and future control-flow work. |
+| GAP-008 | The non-void return check uses a recursive heuristic. | The checker MUST reject a non-void function when its body can complete normally without returning a value. The analysis is conservative and treats every loop as potentially completing normally. |
 | GAP-009 | No typed-AST module or IR-lowering module exists in the inspected core source. | This specification defines a target interface. It does not claim that the target interface is implemented. |
 | GAP-010 | The parser permits increment and decrement on any expression. It permits assignment and compound assignment to variables or index expressions, including an index rooted in a temporary. The checker can accept some non-place targets when it finds no immutable variable name. | The new checker MUST require a mutable variable place or an index chain rooted in one. |
 | GAP-011 | The checker tracks loop context with a Boolean. It does not reset this state when it enters a nested function. | Nested functions are not supported. The parser MUST reject them under GAP-012. The loop-state leak cannot occur in a valid program. |
@@ -750,21 +750,20 @@ The current parser accepts only a simple variable name as a function call target
 | TR-022 For | Present condition has Bool type. | Initializer scope covers condition, increment, and body. Loop context is active in the body. | E2004 non-Boolean condition. |
 | TR-023 Return | A current function exists. A value is absent only for Void result. A present value is checked with the function result type as context type and is assignable to that type. | Insert a conversion when needed. Return node links to its Function SymbolId. | E2005 outside function; E2006 value from Void; E2007 mismatch; E2008 missing value. |
 | TR-024 Break or continue | An active loop exists in the current function. | Node links to the nearest LoopId in that function. | E2009 break outside loop; E2010 continue outside loop. |
-| TR-025 Non-void function return check | The checker applies the current function_has_return rule described below. | A non-void function passes when the current heuristic returns true. | E2003 when the heuristic returns false. |
+| TR-025 Non-void function return check | For a non-void result, the function body MUST NOT be able to complete normally without a return. The analysis MUST process block statements in order, require both branches of an if/else to terminate to prove no fall-through, and treat every while/for loop as potentially completing normally. | Accept only when the body cannot reach its end through normal control flow. | E2003 when fall-through is possible. |
 | TR-026 Array length | Length is a non-negative integer literal that fits u64. An inferred array-literal length is its element count and must also fit u64. | The resolved array type stores that u64 length. | E2034 for a non-literal, negative, or out-of-range length. |
 
 Assignment, compound assignment, increment, and decrement require a place. The place must be a variable or an index chain rooted in a mutable variable. An array literal, call result, or other temporary expression cannot be a place.
 
-The current function_has_return rule is:
+The non-void return-path rule is a conservative normal-completion analysis:
 
-1. A Return statement returns true.
-2. A Block returns true if any contained statement returns true.
-3. A While or For returns the result for its body.
-4. An If returns true only if its then branch and present else branch return true.
-5. An If without an else returns false.
-6. Other statements return false.
+1. A Return statement cannot complete normally.
+2. A Block can complete normally if every statement in sequence can complete normally. Once a statement cannot complete normally, later statements do not restore normal completion.
+3. An If can complete normally if either branch can complete normally. An If without an else can always complete normally because its condition can be false.
+4. A While or For is always treated as potentially completing normally, regardless of returns in its body. The current checker does not prove that a loop condition is always true or that the loop cannot exit.
+5. Other statements can complete normally.
 
-This rule does not prove that all execution paths return. It is recorded to match current checker behavior. It MUST NOT be described as path-sensitive proof.
+A non-void function MUST produce E2003 when this analysis says its body can complete normally. This rule rejects a return that occurs only inside a loop, while accepting a guaranteed return after a loop or returns in both branches of an if/else. The analysis is conservative rather than a complete proof of runtime control flow.
 
 ### 8.7 Type syntax resolution and array lengths
 
@@ -806,7 +805,7 @@ The following forms state the premises and conclusion for every rule in TR-001 t
 | TR-022 | Every present initializer, condition, and increment passes in the for-scope; a present condition has type Bool; and `Γ;F;L·loop ⊢ body:ok ⇒ Γ;F;L ⊢ for(...):ok`. |
 | TR-023 | For a Void function `F`, `Γ;F;L ⊢ return:ok`. For a non-Void function with result `R`, `Γ ⊢ e:S` and `S⪯R ⇒ Γ;F;L ⊢ return e:ok`. |
 | TR-024 | `L` contains an active loop `l` whose `function` is `F ⇒ Γ;F;L ⊢ break:ok` or `continue:ok`, and the node stores the nearest such `LoopId`. |
-| TR-025 | If a function result is Void, no return-path condition applies. If its result is non-Void, `HasReturn(body)=true ⇒ Γ ⊢ functionDecl:ok`. `HasReturn` follows the six cases listed in Section 8.6. |
+| TR-025 | If a function result is Void, no return-path condition applies. If its result is non-Void, `MayCompleteNormally(body)=false ⇒ Γ ⊢ functionDecl:ok`; otherwise report E2003. `MayCompleteNormally` follows Section 8.6 and treats every loop as potentially completing normally. |
 | TR-026 | For array type syntax with length literal `k`, `0≤k≤MAX_U64 ⇒ Length(k)=k`. For an inferred array literal with `n` elements, `0≤n≤MAX_U64 ⇒ Length(elements)=n`. |
 | TR-027 | `Γ ⊢ primitiveSyntax ⇒ its canonical primitive TypeId`; `Γ ⊢ namedSyntax(x) ⇒ Named(x)`; `Γ ⊢ τ⇒T` and `T≠Void ⇒ Γ ⊢ Vector(τ)⇒Vector(T)`; `Γ ⊢ τ⇒T` and `Length(k)=n ⇒ Γ ⊢ Array(τ,k)⇒Array(T,n)`. Named(`"void"`) is not the built-in Void type. |
 | TR-028 | `e` is an adaptable literal, `T` is numeric, and the signed value `v` of `e` passes the TR-028a test for its kind `⇒ Γ ⊢ e ⇐ T ⇒ T`. A flexible expression passes `T` to its operands under TR-028b. A flexible operand next to a non-flexible operand of numeric type `S` is checked with `S` under TR-028c. |
@@ -1038,6 +1037,7 @@ The test suite MUST include:
 27. Context passing through array literals, nested array literals, call arguments, return values, and shifts with a non-literal count. Verify that an F32 or F64 context does not pass through an operator.
 28. Integer-to-float conversion of a non-literal value. Verify that an I32 or U32 variable assigned to F32, and an I64 or U64 variable assigned to F64, reports E2002, including a variable that holds 16777217. Verify that `x + y` with `x: i32` and `y: f32` reports E2036, and that `x + y` with `x: i32` and `y: f64` has type F64 with a NumericAssignable conversion on `x`. Verify that `var f: f64 = 7 / 2` reports E2002, because the expression has type I64.
 29. Operator context boundaries. Verify that `var i: i32 = 1; var mixed: f64 = i + 1.5` has type F64 and a NumericAssignable conversion from I32 to F64, because `1.5` remains F64 after receiving the peer context I32 and I32 is assignable to F64. Also verify that `var wide: i64 = 1; var rejected: f64 = wide + 1.5` reports E2036 because I64 is not assignable to F64. Verify that `var shifted: f64 = 1 << 3` reports E2002 because the shift result is I64. Verify the enclosing rule reports E2002 for `var value: i32 = 1.5`, even though TR-028a reports no leaf-adaptation error.
+30. Non-void return-path analysis. Verify that `fun f(): i32 { while (false) { return 1 } }` and the equivalent `for` loop report E2003. Verify that a return after a possibly completing loop passes, and that an `if/else` with a return in both branches passes. Verify that an `if` without `else` does not satisfy the check.
 
 ### 13.3 Acceptance criteria
 
@@ -1266,13 +1266,14 @@ Required semantic result:
 | DEC-016 | Unsuffixed numeric literals take a context type. Numeric promotion requires both operands to convert to the result type under TY-13. Shifts take the type of the left operand. A compound assignment runs in the place type. ADR-0001 lists the alternatives considered. | Without context typing no literal reaches a type narrower than 64 bits. Without the promotion condition, promotion changes values for 24 ordered type pairs. | TR-001, TR-009, TR-010, TR-012, TR-013, TR-028, TY-13, TY-14, N-SE-01, N-TE-01, N-TE-05, N-TE-06 | A program can change type or be rejected. ADR-0001 lists the cases. |
 | DEC-017 | An implicit numeric conversion MUST preserve every value of the source type. TY-13 loses four rows: I32 and U32 to F32, and I64 and U64 to F64. The exactness test in TR-028a is the literal case of the same rule. ADR-0003 lists the alternatives considered. | The table converted four integer types to a floating-point type that cannot hold all their values. A literal above 2^24 was rejected for F32, while an I32 variable with the same value converted without a diagnostic. ADR-0001 chose promotion that defines no run-time conversion, and a rounding conversion needs a run-time definition. | TY-13, TY-14, TR-009, TR-010, TR-013, TR-028a, GAP-015, OPEN-001, Section 13.2 tests 2, 3 and 28 | 32 ordered numeric pairs have no promotion instead of 24. The implicit conversions I32 and U32 to F32, and I64 and U64 to F64, are rejected. No program can convert I64 or U64 to a floating-point type until the explicit conversions in ADR-0002 exist. A mixed integer and floating-point literal expression such as `1 + 2.5` has no promotion (OPEN-006). |
 | DEC-018 | TR-028b controls whether a Binary node passes its incoming context to operands. The peer rule in TR-028c is separate. When both operands are flexible, the Binary node passes its context only when TR-028b permits it. An incoming F32 or F64 context is not passed through an operator. | The former TR-028c wording could be read to override TR-028b for two flexible operands. Explicit precedence fixes the type and diagnostic for operator expressions without adding a numeric conversion. | TR-028b, TR-028c, TR-009, TR-012, TR-015, Section 13.2 test 29, Section 14.9, OPEN-006 | `x + 1.5` has type F64 when `x` is I32, because I32 is assignable to F64. It reports E2036 when `x` is I64 or U64, because neither type is assignable to F64. `var x: f64 = 1 << 3` reports E2002 because the shift result is I64 and I64 is not assignable to F64. |
+| DEC-019 | Non-void functions are rejected when conservative statement analysis says their bodies can complete normally. Blocks are analyzed in order, if/else requires both branches to avoid fall-through, and all loops are treated as potentially completing normally. | A recursive search for a return can accept a return nested inside a loop that may execute zero times or exit. | TR-025, GAP-008, OPEN-002, Section 13.2 test 30 | A return inside a loop is insufficient by itself. A return after the loop or returns in both branches of an if/else satisfy the check. |
 
 ### 15.2 Open issues and pending clarification
 
 | ID | Issue or question | Evidence or rationale | Requirement affected | Consequence |
 | --- | --- | --- | --- | --- |
 | OPEN-001 | Runtime behavior is not defined for arithmetic overflow, division by zero, shift counts outside the operand width, and rounding of a floating-point literal to F32. After ADR-0001 and ADR-0003, no promotion, compound assignment, or implicit conversion changes the value of a typed operand. | The checker selects types but does not define execution behavior. | Section 7.3 | IR and runtime specifications must define lowering behavior before executable semantics are claimed. |
-| OPEN-002 | The current non-void return heuristic does not prove return on all paths. | The checker uses a recursive presence test, not control-flow analysis. | TR-025, INV-015 | This specification records current checker behavior. A sound control-flow rule requires a later design decision. |
+| OPEN-002 | The return-path analysis is conservative and does not prove arbitrary loop termination or unreachable-code properties. | Loops are treated as potentially completing normally, even when their conditions may be constant. | TR-025, INV-015 | This may reject some functions whose loop is in fact non-terminating, but it prevents a return inside a possibly skipped or exited loop from satisfying the non-void return requirement. |
 | OPEN-003 | Custom names have no declarations or member access. | The parser accepts names, but the checker does not resolve declarations for them. | TY-09, SR-012 | A future user-defined type feature requires type declarations, name resolution, and new tests. |
 | OPEN-004 | The repository has no Fully Typed AST implementation or typed-tree consumer. | Source inspection found no typed-AST or IR-lowering module. | OP-005, OP-006 | This document defines a target contract. Integration design remains future work. |
 | OPEN-005 | The checker accepts compatible non-numeric operands for equality, including Void call results. It defines no runtime equality implementation. | The type checker returns Bool after compatibility validation. It defines no equality operation or runtime value for Void. | TR-010, TY-10 | A later execution specification must define behavior for accepted non-numeric equality pairs. Ordering on non-numeric operands is rejected by TR-010. |
