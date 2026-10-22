@@ -279,14 +279,40 @@ fn test_immutable_assignment_in_expression_is_rejected() {
 }
 
 #[test]
-fn test_comparison_operator_type_mismatch_reports_compatible_types() {
-    let ast = "true < \"test\"";
-    let errors = typecheck(ast);
-    assert_eq!(errors.len(), 1);
-    assert_eq!(
-        errors[0].message(),
-        Some("Comparison operator 'Less' requires compatible types, found bool and string")
-    );
+fn test_non_numeric_equality_comparisons_keep_compatibility_rule() {
+    for ast in [
+        "true == false",
+        "true != false",
+        "\"alpha\" == \"beta\"",
+        "\"alpha\" != \"beta\"",
+    ] {
+        let errors = typecheck(ast);
+        assert!(errors.is_empty(), "Unexpected errors for {ast}: {errors:?}");
+    }
+}
+
+#[test]
+fn test_non_numeric_ordering_comparisons_are_rejected() {
+    let cases = [
+        ("true < false", "Less", "bool", "bool"),
+        ("true <= false", "LessEqual", "bool", "bool"),
+        ("true > false", "Greater", "bool", "bool"),
+        ("true >= false", "GreaterEqual", "bool", "bool"),
+        ("\"alpha\" < \"beta\"", "Less", "string", "string"),
+        ("\"alpha\" <= \"beta\"", "LessEqual", "string", "string"),
+        ("\"alpha\" > \"beta\"", "Greater", "string", "string"),
+        ("\"alpha\" >= \"beta\"", "GreaterEqual", "string", "string"),
+    ];
+
+    for (ast, operator, left_type, right_type) in cases {
+        let errors = typecheck(ast);
+        assert_eq!(errors.len(), 1, "Expected one error for {ast}, got {errors:?}");
+        assert_eq!(errors[0].error_code(), Some(&ErrorCode::E2014), "Unexpected error for {ast}");
+        let expected_message = format!(
+            "Ordering operator '{operator}' requires numeric operands, found {left_type} and {right_type}"
+        );
+        assert_eq!(errors[0].message(), Some(expected_message.as_str()), "Unexpected error for {ast}");
+    }
 }
 
 #[test]
@@ -372,7 +398,7 @@ fn test_binary_comparison_invalid() {
     assert_eq!(errors.len(), 1);
     assert_eq!(
         errors[0].message(),
-        Some("Comparison operator 'Less' requires compatible types, found bool and string")
+        Some("Ordering operator 'Less' requires numeric operands, found bool and string")
     );
 }
 
