@@ -282,7 +282,7 @@ impl TypeChecker {
             _ => self.visit_stmt(body),
         }
 
-        if *return_type != Type::Void && self.statement_may_complete_normally(body) {
+        if *return_type != Type::Void && !self.function_has_return(body) {
             self.type_error_with_code(
                 Some(ErrorCode::E2003),
                 format!(
@@ -1214,35 +1214,30 @@ impl TypeChecker {
         Self::is_integer_type(ty) || matches!(ty, Type::F32 | Type::F64)
     }
 
-    /// Returns whether a statement can reach its end without returning.
-    ///
-    /// Loops are conservatively treated as able to complete normally. Their
-    /// conditions may allow an exit before the body executes or returns.
+    /// Returns whether a return appears in a statement, requiring both branches
+    /// of a conditional to contain returns.
     #[inline]
     #[allow(clippy::only_used_in_recursion, clippy::self_only_used_in_recursion)]
-    fn statement_may_complete_normally(&self, stmt: &Stmt) -> bool {
-        match stmt {
-            Stmt::Return { .. } => false,
+    fn function_has_return(&self, body: &Stmt) -> bool {
+        match body {
+            Stmt::Return { .. } => true,
 
-            Stmt::Block { statements, .. } => {
-                statements.iter().all(|statement| self.statement_may_complete_normally(statement))
-            }
+            Stmt::Block { statements, .. } => statements.iter().any(|stmt| self.function_has_return(stmt)),
+
+            Stmt::While { body, .. } | Stmt::For { body, .. } => self.function_has_return(body),
 
             Stmt::If { then_branch, else_branch, .. } => {
-                let then_may_complete = self.statement_may_complete_normally(then_branch);
-                let else_may_complete = match else_branch {
-                    ElseBranch::None => true,
-                    ElseBranch::Block(statement) | ElseBranch::ElseIf(statement) => {
-                        self.statement_may_complete_normally(statement)
-                    }
+                let then_has_return = self.function_has_return(then_branch);
+
+                let else_has_return = match else_branch {
+                    ElseBranch::None => false,
+                    ElseBranch::Block(stmt) | ElseBranch::ElseIf(stmt) => self.function_has_return(stmt),
                 };
 
-                then_may_complete || else_may_complete
+                then_has_return && else_has_return
             }
 
-            Stmt::While { .. } | Stmt::For { .. } => true,
-
-            _ => true,
+            _ => false,
         }
     }
 }
@@ -1290,14 +1285,14 @@ mod tests {
     }
 
     #[test]
-    fn function_return_inside_while_body_does_not_guarantee_return() {
+    fn function_return_inside_while_body_counts_as_return() {
         let span = SourceSpan::default();
         let statements = [Stmt::Function {
             name: "while_return".into(),
             parameters: vec![],
             return_type: Type::I64,
             body: Box::new(Stmt::While {
-                condition: Box::new(Expr::new_bool_literal(false, span.clone())),
+                condition: Box::new(Expr::new_bool_literal(true, span.clone())),
                 body: Box::new(Stmt::Return { value: Some(number(span.clone())), span: span.clone() }),
                 span: span.clone(),
             }),
@@ -1306,13 +1301,13 @@ mod tests {
 
         let errors = TypeChecker::new().check(&statements);
         assert!(
-            errors.iter().any(|error| error.error_code() == Some(&ErrorCode::E2003)),
-            "expected E2003 for a return that only occurs inside a loop: {errors:#?}"
+            !errors.iter().any(|error| error.error_code() == Some(&ErrorCode::E2003)),
+            "unexpected missing-return error: {errors:#?}"
         );
     }
 
     #[test]
-    fn function_return_inside_for_body_does_not_guarantee_return() {
+    fn function_return_inside_for_body_counts_as_return() {
         let span = SourceSpan::default();
         let statements = [Stmt::Function {
             name: "for_return".into(),
@@ -1320,7 +1315,7 @@ mod tests {
             return_type: Type::I64,
             body: Box::new(Stmt::For {
                 initializer: None,
-                condition: Some(Expr::new_bool_literal(false, span.clone())),
+                condition: Some(Expr::new_bool_literal(true, span.clone())),
                 increment: None,
                 body: Box::new(Stmt::Return { value: Some(number(span.clone())), span: span.clone() }),
                 span: span.clone(),
@@ -1330,71 +1325,8 @@ mod tests {
 
         let errors = TypeChecker::new().check(&statements);
         assert!(
-            errors.iter().any(|error| error.error_code() == Some(&ErrorCode::E2003)),
-            "expected E2003 for a return that only occurs inside a loop: {errors:#?}"
-        );
-    }
-
-    #[test]
-    fn function_with_returns_in_both_if_branches_satisfies_return_check() {
-        let span = SourceSpan::default();
-        let statements = [Stmt::Function {
-            name: "if_else_return".into(),
-            parameters: vec![],
-            return_type: Type::I64,
-            body: Box::new(Stmt::If {
-                condition: Box::new(Expr::new_bool_literal(true, span.clone())),
-                then_branch: Box::new(Stmt::Return {
-                    value: Some(number(span.clone())),
-                    span: span.clone(),
-                }),
-                else_branch: ElseBranch::Block(Box::new(Stmt::Return {
-                    value: Some(number(span.clone())),
-                    span: span.clone(),
-                })),
-                span: span.clone(),
-            }),
-            span,
-        }];
-
-        let errors = TypeChecker::new().check(&statements);
-        assert!(
             !errors.iter().any(|error| error.error_code() == Some(&ErrorCode::E2003)),
-            "unexpected missing-return error when both branches return: {errors:#?}"
-        );
-    }
-
-    #[test]
-    fn unconditional_return_after_a_loop_satisfies_return_check() {
-        let span = SourceSpan::default();
-        let statements = [Stmt::Function {
-            name: "loop_then_return".into(),
-            parameters: vec![],
-            return_type: Type::I64,
-            body: Box::new(Stmt::Block {
-                statements: vec![
-                    Stmt::While {
-                        condition: Box::new(Expr::new_bool_literal(false, span.clone())),
-                        body: Box::new(Stmt::Return {
-                            value: Some(number(span.clone())),
-                            span: span.clone(),
-                        }),
-                        span: span.clone(),
-                    },
-                    Stmt::Return {
-                        value: Some(number(span.clone())),
-                        span: span.clone(),
-                    },
-                ],
-                span: span.clone(),
-            }),
-            span,
-        }];
-
-        let errors = TypeChecker::new().check(&statements);
-        assert!(
-            !errors.iter().any(|error| error.error_code() == Some(&ErrorCode::E2003)),
-            "unexpected missing-return error for a return after a loop: {errors:#?}"
+            "unexpected missing-return error: {errors:#?}"
         );
     }
 
