@@ -7,7 +7,7 @@ expression: errors
         code: Some(
             E2014,
         ),
-        message: "Comparison operator 'Less' requires compatible types, found bool and string",
+        message: "Ordering operator 'Less' requires numeric operands, found bool and string",
         span: SourceSpan {
             file_path: "test.vn",
             start: SourceLocation {
