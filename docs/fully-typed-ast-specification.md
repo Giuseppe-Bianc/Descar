@@ -1117,6 +1117,21 @@ The specification is implemented when all the following conditions hold:
 | ACC-009 | No unsupported type category or language feature can be inserted into a successful Fully Typed AST. |
 | ACC-010 | The final document review confirms that each requirement has an ID and a verification method. |
 
+### 13.4 Decision and source traceability
+
+The specification's requirement IDs are the primary links between behavior, design decisions, and verification. The tests listed in Sections 13.1 and 13.2 verify Descar-specific behavior. The textbook references identify the compiler theory used to organize the model; they do not establish the exact Descar typing rules or approve project-specific decisions.
+
+| Decision or source | Normative requirements | Verification coverage | Theoretical relationship and provenance |
+| --- | --- | --- | --- |
+| AST architecture in this specification | ARC-001 through ARC-012; N-* node definitions; INV-001 through INV-022 | Structural construction and validation tests in Section 13.1; phase-boundary failure tests for ARC-012 | Aho et al., Chapter 6, Section 6.1, *Variants of Syntax Trees*, informs syntax-tree structure. The project-specific node kinds, IDs, spans, and validity states are Descar decisions. |
+| ADR-0001, recorded as DEC-016 | TR-001, TR-009, TR-010, TR-012, TR-013, TR-028, TY-13, TY-14, and the corresponding literal, binary, and compound-assignment invariants | Section 13.2 tests 1, 3, 16, and 23 through 27; literal, peer-operand, and compound-assignment vectors in Section 14 and ADR-0001 | Aho et al., Chapter 6, Section 6.5, *Type Checking*, provides the general framework for enforcing typing rules. Literal adaptation, Descar's promotion order, and its compound-assignment semantics are project-specific. |
+| ADR-0003, recorded as DEC-017 | TY-13, TY-14, TR-009, TR-010, TR-013, TR-028a, and OPEN-001 | Section 13.2 tests 2, 3, and 28; conversion and promotion vectors in Section 14 and ADR-0003 | The compiler type-system framework motivates explicit conversion constraints. The value-preservation rule and the exact removed numeric-conversion pairs are Descar decisions, not claims attributed to the textbook. |
+| ADR-0004, recorded as DEC-018 | TR-028a through TR-028d, TR-009, TR-012, TR-015, OPEN-006, and DEC-018 | Section 13.2 test 29 and the operator-context examples in Section 14.9 | Syntax-directed translation and type checking provide the general context-propagation framework. The precedence between Descar's context-passing and peer-operand rules is a project-specific decision. |
+| Symbol resolution and canonical types | SR-001 through SR-014, TY-12, TY-17, INV-013, and INV-020 | Scope, shadowing, wrong-kind, declaration-order, canonicalization, and dangling-ID tests in Sections 13.1 and 13.2 | Aho et al., Chapter 2, Section 2.7, *Symbol Tables*, and Chapter 6, Section 6.3, *Types and Declarations*, support the role of symbol tables and type metadata. Exact visibility, opaque named types, and canonical keys are defined by this specification. |
+| Typed AST as an input to later lowering | ARC-011, OP-005 through OP-007, INV-007 through INV-020, ACC-002 through ACC-009 | Typed-tree, conversion, semantic-reference, and rejection tests in Sections 13.1 and 13.2 | Aho et al., Chapter 6, including Sections 6.1 and 6.4, relates syntax-tree forms and expression translation to intermediate-code generation. IR format, lowering algorithms, runtime behavior, and target code remain outside this specification. |
+
+A change to a normative rule MUST update its directly affected decision references and verification cases when those references become inaccurate. A change to an ADR MUST NOT silently change the specification: the normative requirements, examples, and tests must be amended in the same reviewed change set or through a clearly linked follow-up change. The relevant compiler-theory citation MUST remain separate from the record of the project-specific design choice.
+
 ## 14. Technical Examples
 
 ### 14.1 Valid typed conversion
