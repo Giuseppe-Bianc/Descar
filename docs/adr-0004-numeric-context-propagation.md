@@ -6,6 +6,21 @@
 **Applies to:** Descar Fully Typed Abstract Syntax Tree Specification
 **Amends:** TR-028a, TR-028b, TR-028c, DEC-018, OPEN-006, Section 13.2 test 29, Section 14.9
 
+## Theoretical relationship and scope
+
+This ADR specifies how Descar's context-sensitive literal typing interacts
+with expression typing at operator boundaries. Aho et al.,
+*Compilers: Principles, Techniques, and Tools*, 2nd edition, Chapter 5,
+“Syntax-Directed Translation,” and Chapter 6, Section 6.5, “Type Checking,”
+are relevant to the general process of attaching semantic information to
+syntax and checking expression types.
+
+The precedence between TR-028b and TR-028c, including the rule that an
+incoming floating-point context does not pass through an operator, is a
+Descar-specific decision. The textbook is a theoretical reference, not
+the source of these exact propagation rules. The examples and
+specification amendments in this ADR define the required behavior.
+
 ## Context
 
 TR-028a says that a floating-point literal does not adapt to an integer context. In that case, the literal keeps its default type and leaf adaptation does not report an error. The enclosing typing rule must still check assignability.
