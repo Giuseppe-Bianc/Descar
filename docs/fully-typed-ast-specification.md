@@ -1321,6 +1321,65 @@ Required semantic result:
 | OPEN-005 | The checker accepts compatible non-numeric operands for equality, including Void call results. It defines no runtime equality implementation. | The type checker returns Bool after compatibility validation. It defines no equality operation or runtime value for Void. | TR-010, TY-10 | A later execution specification must define behavior for accepted non-numeric equality pairs. Ordering on non-numeric operands is rejected by TR-010. |
 | OPEN-006 | An expression with two flexible operands of different numeric kinds, such as `1 + 2.5`, has no promotion under the current rules. The integer literal defaults to I64 and the floating-point literal defaults to F64 because an incoming F32 or F64 context is not passed through the operator. I64 is not assignable to F64 (DEC-017), so the operation reports E2036. | ADR-0004 clarifies that TR-028b takes precedence over TR-028c when both operands are flexible. It does not decide whether the language should later add constant-aware adaptation for mixed flexible operands. | TR-028b, TR-028c, TR-009, TR-010 | `1 + 2.5` and `var f: f64 = 1 + 2.5` report E2036 under the current rules. In contrast, `i + 1.5` where `i: i32` has type F64 because I32 is assignable to F64. A later language decision may add constant-aware adaptation for mixed flexible operands. |
 
+## 17. Traceability and Specification Review
+
+### 17.1 Requirement and decision traceability
+
+The following matrix identifies the principal sources of the normative rules. Requirement identifiers remain the stable references for implementation and tests. A design decision or textbook reference does not replace a requirement's acceptance criteria.
+
+| Specification area | Requirement or decision references | Verification location | Primary theoretical relationship |
+| --- | --- | --- | --- |
+| Surface and typed tree separation | BAS-006–BAS-009, ARC-001–ARC-011, INV-001–INV-005 | Sections 13.1–13.3 | Aho et al., Chapter 6, Section 6.1, syntax-tree representations |
+| Lexical scope and resolved references | SR-001–SR-012, INV-006, INV-013, DEC-009–DEC-012 | Sections 13.1–13.2 | Aho et al., Chapter 2, Section 2.7, symbol tables; Chapter 6, Section 6.3, types and declarations |
+| Type identity, assignment, and conversions | TY-01–TY-17, TR-001–TR-028, INV-007–INV-009, INV-016–INV-020 | Sections 13.1–13.3 and ADR-0001, ADR-0003, ADR-0004 verification vectors | Aho et al., Chapter 6, Section 6.5, type checking |
+| Operator precedence and AST shape | SYN-001–SYN-003, DEC-013, INV-003–INV-004 | Section 13.2, test 22 | Aho et al., Chapter 4, syntax analysis, and Chapter 6, Section 6.1 |
+| Syntax-directed semantic construction | ARC-008, OP-004–OP-007, IF-004–IF-006 | Sections 13.1–13.3 | Aho et al., Chapter 5, syntax-directed translation; Chapter 6, Sections 6.3 and 6.5 |
+| Control-flow and return validation | TR-025, GAP-008, DEC-019, OPEN-002 | Section 13.2, test 30 | Static semantic analysis associated with syntax-directed translation; the conservative rule itself is Descar-specific |
+| Error boundaries and invalid intermediate state | ERR-001–ERR-011, INV-005, INV-012, IF-001–IF-008 | Sections 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
+| Algorithmic expectations | CMP-001–CMP-008 | Section 12.4 plus implementation profiling when a workload is approved | Asymptotic analysis is general algorithmic methodology, not a Descar-specific textbook guarantee |
+| Numeric language decisions | DEC-016–DEC-018, OPEN-001, OPEN-006 | ADR-0001, ADR-0003, ADR-0004 and Section 13.2 tests 23–29 | The textbook supplies the type-checking framework. The exact numeric rules are project decisions. |
+
+### 17.2 Theoretical scope boundaries
+
+The specification applies compiler theory only where it informs the Fully Typed AST contract. It does not define a complete lexer, source grammar, intermediate representation, runtime system, optimizer, or target-code generator.
+
+| Textbook topic | Applicability to this document | Required follow-up if the project implements that phase |
+| --- | --- | --- |
+| Chapter 3, lexical analysis | Token and source-span interfaces are referenced, but token patterns and scanner algorithms are not specified here. | Define the lexical grammar, token priority, escape handling, invalid-token behavior, and lexer tests in a lexer specification. |
+| Chapter 4, syntax analysis | Parser output, precedence, associativity, and incomplete parse behavior are in scope where recorded in Sections 5, 6, and 11. | Maintain a complete grammar and parser strategy in the parser specification. Do not infer a parser algorithm from this AST contract. |
+| Chapter 5, syntax-directed translation | Relevant to constructing semantic information from source constructs. | Specify translation actions and their invariants if construction is implemented through syntax-directed translation. The current contract does not require a particular implementation technique. |
+| Chapter 6, intermediate-code generation | The Fully Typed AST is an input boundary before IR lowering. IR form and lowering rules are explicitly out of scope. | Define IR instructions, control-flow representation, temporary values, lowering rules, and semantic-preservation tests before implementing the consumer described by IF-007. |
+| Chapter 7, run-time environments | Runtime storage, activation records, parameter passing, and procedure-call implementation are out of scope. | Specify runtime layout and calling conventions when a concrete execution model is selected. |
+| Chapter 8, code generation | Target instructions, register allocation, instruction selection, and target calling conventions are out of scope. | Define target architecture assumptions and code-generation correctness criteria in a separate specification. |
+| Chapter 9, machine-independent optimizations | Optimization passes and data-flow analyses are out of scope. | Define each optimization's preconditions, semantic-preservation condition, and verification strategy before adding it to the pipeline. |
+
+The chapter mapping identifies topics for further specification. It does not claim that every described technique is required by Descar or that the textbook prescribes the project's data structures.
+
+### 17.3 Final consistency review
+
+A change to this specification is complete only when the author or reviewer has checked each applicable item below.
+
+| Review ID | Review condition | Evidence |
+| --- | --- | --- |
+| QA-001 | Every normative requirement has a unique identifier and an objective verification method. | Requirement tables and Section 13. |
+| QA-002 | Every numeric typing rule agrees with ADR-0001, ADR-0003, and ADR-0004. | Compare TR-001, TR-009–TR-013, TR-028, and DEC-016–DEC-018 against the ADR decisions and verification vectors. |
+| QA-003 | Observed implementation facts are distinguishable from specified behavior and proposed future work. | Status labels in Sections 1 and 4, GAP records, and OPEN records. |
+| QA-004 | Every interface identifies its required input state and failure behavior. | Sections 5.1.1 and 12. |
+| QA-005 | AST identity, type identity, symbol resolution, spans, conversions, and control-flow references satisfy the invariants in Section 10. | Structural and typed-AST validator tests. |
+| QA-006 | Tests cover valid programs, invalid programs, boundary values, and cross-phase behavior described by the requirements. | Section 13.2 test vectors and the acceptance criteria in Section 13.3. |
+| QA-007 | Complexity statements distinguish asymptotic expectations from measured performance claims. | Section 12.4 and BAS-016. |
+| QA-008 | No unsupported runtime or target-code behavior is implied by type checking or the Fully Typed AST. | Sections 1, 7, 12, and OPEN-001, OPEN-004, OPEN-005. |
+| QA-009 | Every remaining limitation is recorded rather than silently resolved. | Section 15.2. |
+| QA-010 | Any substantive change to established behavior is linked to an explicit design decision and its verification vectors. | Section 15.1 and the applicable ADR. |
+
+### 17.4 Remaining limitations
+
+The document is a target contract, not evidence that all specified components exist. In particular, OPEN-004 records that the Fully Typed AST implementation and its consumer are not present in the inspected repository state. The specification does not establish that the tests in Section 13 have been implemented or pass.
+
+The execution semantics for overflow, division by zero, shift counts outside the operand width, floating-point literal rounding, and accepted non-numeric equality remain unresolved as listed in OPEN-001 and OPEN-005. Mixed flexible numeric operands remain governed by OPEN-006 and ADR-0004. No quantitative resource limits or performance acceptance thresholds have been approved.
+
+These limitations must be resolved in the relevant implementation or follow-up specification before the project claims behavior beyond the defined AST and static semantic contract.
+
 ## 16. Bibliographic References
 
 1. Alfred V. Aho, Monica S. Lam, Ravi Sethi, and Jeffrey D. Ullman. *Compilers: Principles, Techniques, and Tools*. 2nd ed. Addison-Wesley, 2006. ISBN 978-0-321-48681-3. Relevant sections: 2.7, “Symbol Tables”; 6.1, “Variants of Syntax Trees”; 6.3, “Types and Declarations”; 6.5, “Type Checking.” The section titles and publication details are available from [Pearson's book page](https://www.informit.com/store/compilers-principles-techniques-and-tools-9780321486813).
