@@ -973,6 +973,31 @@ A transformation MUST preserve source spans for retained constructs. A transform
 
 A clone of a Surface AST or Typed AST is a new AST instance. It receives a new AstId and new NodeIds. Symbol and type tables may be shared only as immutable data within the same compilation unit.
 
+### 12.4 Algorithmic complexity and resource expectations
+
+This subsection defines asymptotic expectations for the required operations. These expectations describe algorithmic growth. They are not wall-clock performance guarantees. No maximum source size, latency target, or memory budget is confirmed by BAS-016.
+
+Let:
+- V be the number of AST nodes visited by an operation.
+- E be the number of owned child edges in the AST.
+- D be the maximum lexical-scope nesting depth.
+- S be the number of symbol records in the compilation unit.
+- T be the number of canonical types in the type table.
+- L be the number of source bytes.
+
+| ID | Operation | Complexity requirement | Assumptions and verification |
+| --- | --- | --- | --- |
+| CMP-001 | Full AST traversal and structural validation | Time O(V + E), auxiliary space O(H) for an iterative traversal, where H is the maximum pending traversal frontier. A recursive implementation may use O(D_ast) call-stack space, where D_ast is maximum AST depth. | Each node and child edge is examined a bounded number of times. Verify with instrumentation on generated trees of increasing size. Do not treat recursion depth as unbounded. |
+| CMP-002 | Source-span validation | O(1) per span, excluding source-map lookup. Whole-tree validation is O(V + E). | Span checks compare byte offsets and source identity. Validate boundary spans at byte offset zero and at the source length. |
+| CMP-003 | Lexical name lookup | The result must be equivalent to searching the current scope and then its lexical parents. A hash-based scope table commonly gives expected O(1) lookup per scope, and O(D) across D scopes; an ordered map commonly gives O(log S_scope) per scope. The chosen data structure remains implementation-dependent. | Correct shadowing takes precedence over a specific map implementation. Measure the selected implementation before making performance claims. |
+| CMP-004 | Type canonicalization and equivalence lookup | The TypeTable must return one canonical TypeId for each type key. Lookup complexity depends on the selected map and key representation and is not fixed by this specification. | Verify uniqueness and repeat lookup identity for primitive, named, array, and vector keys. Do not claim constant-time lookup without an implementation and data-structure basis. |
+| CMP-005 | Type checking and typed-AST construction | For a tree with V nodes, the pass must not repeatedly traverse an unchanged subtree solely to recompute information already available from that subtree. A single-pass implementation with constant work per node, excluding symbol/type lookups, has O(V + E) traversal work. | The exact bound includes the costs of symbol and type lookup, diagnostics, and any required contextual rechecking. Profile representative programs before setting a numeric performance threshold. |
+| CMP-006 | Diagnostic accumulation | Appending one diagnostic must not require copying all previously accumulated diagnostics. Total accumulation should be O(K), excluding message construction and sorting, for K diagnostics. | Verify that a sequence of K diagnostics does not trigger a quadratic append strategy. Diagnostic ordering must follow the defined phase and traversal behavior, not hash iteration order. |
+| CMP-007 | Return-path validation | The conservative analysis in TR-025 must inspect each statement in the function body a bounded number of times, giving O(V_f + E_f) time for a function subtree of V_f nodes and E_f child edges. | Loops are treated as potentially completing normally. The analysis must not recursively reanalyze a loop body without a defined bound. Verify nested blocks, conditionals, and loops. |
+| CMP-008 | Resource exhaustion | Allocation failure, excessive nesting, and source-size limits must not be reported as ordinary source type errors. The implementation must use the repository's established failure mechanism or document a new one before claiming recovery behavior. | No specific maximum size or recovery guarantee is established. Tests must distinguish a controlled failure from a panic, process abort, or invalid Fully Typed AST. |
+
+The complexity rows are normative design constraints on avoidable algorithmic work. They do not select hash maps, ordered maps, recursion, or an allocation strategy. A performance acceptance threshold requires a separately approved workload, execution environment, and measurement method.
+
 ## 13. Verification and Acceptance Criteria
 
 ### 13.1 Verification methods
