@@ -1096,6 +1096,48 @@ The validator MUST visit every owned node and every owned child edge (VAL-001). 
 7. A composite node span covers its complete source construct, as required by INV-004.
 8. A parser-recovered program or a program with parser diagnostics is Incomplete and cannot be accepted as complete semantic input.
 
+A conceptual traversal that satisfies VAL-001 is:
+
+```text
+validate_structure(root):
+    if root is absent:
+        return invalid-root result
+    expected_ast_id = root.ast_id
+    pending = [(root, root_parent)]
+    seen_node_ids = empty set
+    valid = true
+
+    while pending is not empty:
+        node, parent = remove next pending item
+        if node is absent:
+            record missing-child failure
+            valid = false
+            continue
+        if node.ast_id != expected_ast_id:
+            record cross-AST ownership failure
+            valid = false
+            continue
+        if node.node_id is in seen_node_ids:
+            record duplicate NodeId or repeated-owned-node failure
+            valid = false
+            continue
+        add node.node_id to seen_node_ids
+        validate node kind, field types, and required fields
+        validate node span against SourceMap
+        for each owned child field in declared field order:
+            validate required or optional child presence
+            add each present child to pending in reverse order
+            preserve its parent and field identity for validation
+
+    return valid only if no structural failure was recorded
+```
+
+This is an illustrative iterative walk, not a mandated implementation. The
+validity conditions and failure behavior remain those in INV-001 through
+INV-005 and VAL-001. An implementation MAY use a different traversal
+strategy, but it must detect repeated owned nodes and cycles without
+unbounded traversal.
+
 The validator MUST distinguish a malformed source result from a compiler-created invalid node (INV-005, ERR-001–ERR-003, VAL-001, VAL-004). Parser-produced invalidity must be represented by parser diagnostics and an Incomplete state. A constructed node that violates the node model or identity invariants is an internal error.
 
 #### 10.2.2 Typed-AST validation
