@@ -1077,6 +1077,53 @@ The AST validator must report the first failed invariant category and continue w
 
 An AST with an error is not semantically valid. Diagnostics do not convert an invalid source program into a valid AST.
 
+### 10.2 AST validation procedure
+
+Structural validation and typed-AST validation have separate responsibilities. Structural validation determines whether the node graph is a well-formed instance of its declared AST representation. Typed-AST validation additionally determines whether the semantic metadata and cross-references satisfy the invariants of a successful Fully Typed AST.
+
+#### 10.2.1 Structural validation
+
+The validator MUST visit every owned node and every owned child edge. It MUST check the following conditions before accepting a Surface AST or Typed AST:
+
+1. The root node has the expected root kind and belongs to one AstId.
+2. Every NodeId is unique within that AstId.
+3. Every non-root node has exactly one owning parent. Owned child edges form an acyclic tree.
+4. Every required child exists and has a node kind allowed by its parent field.
+5. Ordered child lists preserve the order required by the node definition and source syntax.
+6. Every SourceSpan refers to a registered SourceId. Its half-open byte range satisfies `start_byte <= end_byte <= source_length`.
+7. A composite node span covers its complete source construct, as required by INV-004.
+8. A parser-recovered program or a program with parser diagnostics is Incomplete and cannot be accepted as complete semantic input.
+
+The validator MUST distinguish a malformed source result from a compiler-created invalid node. Parser-produced invalidity must be represented by parser diagnostics and an Incomplete state. A constructed node that violates the node model or identity invariants is an internal error.
+
+#### 10.2.2 Typed-AST validation
+
+After structural validation succeeds, the typed validator MUST check all applicable semantic invariants in Section 10. At minimum, it MUST establish:
+
+- Every expression has one TypeId that resolves to the canonical TypeTable entry in the same CompilationUnitId.
+- Every declaration and function signature agrees with its SymbolRecord.
+- Every successfully resolved variable and call reference points to the correct SymbolRecord and has the type required by that record.
+- Every Convert node uses an allowed ConversionKind, its child type equals `from`, and its result type equals `to`.
+- Every compound assignment has a valid mutable Place, uses the operation type required by TR-013, and has result_type equal to the place type.
+- Every array node has a resolved length and every function call agrees with the resolved signature's arity and parameter types.
+- Every break and continue reference identifies the nearest valid loop in the same function.
+- No error marker, placeholder, unresolved type, dangling ID, unsupported type category, or diagnostic sentinel appears in a successful tree.
+
+Validation MUST use the same canonical type and assignability definitions as semantic analysis. It MUST NOT silently repair a malformed typed tree by inventing a type, rebinding a reference by name, or inserting an unrequested conversion.
+
+#### 10.2.3 Failure behavior and validation result
+
+A validator MUST return a successful validity result only if all required checks pass. It MAY accumulate multiple independent validation failures where this is safe, but it MUST stop following a branch when doing so would require dereferencing an invalid or dangling reference. Any typed-tree invariant failure is an internal error, not a source-language type diagnostic. An invalid tree MUST NOT be passed to a lowering or other downstream phase.
+
+| Rule ID | Requirement | Verification |
+| --- | --- | --- |
+| VAL-001 | Structural validation MUST check root kind, node identity, owned-child topology, required child kinds, source order, and source-span validity before accepting an AST. | Mutate a valid tree separately to introduce a duplicate NodeId, repeated child, missing child, invalid child kind, reversed child order, and out-of-range span. Verify each mutation is rejected with the corresponding invariant or internal-error result. |
+| VAL-002 | Typed-AST validation MUST verify semantic IDs, canonical types, declaration/signature consistency, conversion metadata, mutable places, array lengths, call signatures, and loop references against the invariants in Section 10. | Create one invalid typed tree per applicable invariant and assert that the validator rejects it before downstream use. |
+| VAL-003 | A validator MUST NOT repair an invalid AST by resolving names again, inventing missing type information, inserting conversions, or changing source spans. | Remove a type ID, replace a valid symbol ID with a dangling ID, and alter a conversion target. Verify failure without tree mutation or substituted metadata. |
+| VAL-004 | An Incomplete SurfaceProgram and any typed tree that fails validation MUST be rejected as downstream phase input. | Attempt semantic processing on an Incomplete SurfaceProgram and lowering on an invalid TypedProgram. Verify the next phase is not entered. |
+
+
+
 ## 11. Error Handling
 
 ### 11.1 Error categories
@@ -1217,6 +1264,7 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | TC-001–TC-006 | Negative and positive tests for pass input state, result types, contextual typing, diagnostic accumulation, deterministic ordering, and successful-output gating. |
 | SYN-002 | AST-shape tests for left associativity, assignment right associativity, and precedence for every operator class. |
 | INV-001–[INV-022](#inv-022) | One validator test per invariant. Each negative case must identify the violated invariant. |
+| VAL-001–VAL-004 | Structural topology, source-span, semantic cross-reference, no-repair, and downstream-gating tests for AST validators. |
 | ERR-001–ERR-013 | Parser recovery, blocking errors, accumulated diagnostics, diagnostic fields and locations, error codes, severity, CLI phase boundary, and internal-error separation tests. |
 | OP-001–OP-009 | Interface tests for each mandatory operation, transformation, and cloning. |
 | OP-010–OP-011 | Comparison tests only if an optional comparison utility is implemented. |
@@ -1508,7 +1556,7 @@ The following matrix identifies the principal sources of the normative rules. Re
 
 | Specification area | Requirement or decision references | Verification location | Primary theoretical relationship |
 | --- | --- | --- | --- |
-| Surface and typed tree separation | BAS-006–BAS-009, ARC-001–ARC-011, INV-001–INV-005 | Sections 13.1–13.3 | Aho et al., Chapter 6, Section 6.1, syntax-tree representations |
+| Surface and typed tree separation | BAS-006–BAS-009, ARC-001–ARC-011, INV-001–INV-005, VAL-001–VAL-004 | Sections 10.2 and 13.1–13.3 | Aho et al., Chapter 6, Section 6.1, syntax-tree representations |
 | Lexical scope and resolved references | SR-001–SR-017, INV-006, INV-013, DEC-009–DEC-012 | Sections 9.3, 13.1–13.2 | Aho et al., Chapter 2, Section 2.7, symbol tables; Chapter 6, Section 6.3, types and declarations |
 | Type identity, assignment, and conversions | TY-01–TY-17, TR-001–TR-028, TC-001–TC-006, INV-007–INV-009, INV-016–INV-020 | Sections 8.9, 13.1–13.3 and ADR-0001, ADR-0003, ADR-0004 verification vectors | Aho et al., Chapter 6, Section 6.5, type checking |
 | Operator precedence and AST shape | SYN-001–SYN-003, DEC-013, INV-003–INV-004 | Section 13.2, test 22 | Aho et al., Chapter 4, syntax analysis, and Chapter 6, Section 6.1 |
