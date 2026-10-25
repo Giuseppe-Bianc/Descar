@@ -2,7 +2,7 @@
 
 **Status:** Normative design specification for the implemented Descar language subset.
 
-**Revision:** 2026-10-22. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change. ADR-0004 clarifies operator context propagation. Decision DEC-018 records the change. DEC-019 defines conservative non-void return-path validation.
+**Revision:** 2026-10-25. This revision clarifies the normative numeric-promotion rule and distinguishes observed checker behavior from specified behavior. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change. ADR-0004 clarifies operator context propagation. Decision DEC-018 records the change. DEC-019 defines conservative non-void return-path validation.
 
 Repository facts are marked **Observed**. Requirements for the new model are marked **Specified**. A requirement marked **Gap** requires an implementation change. Open issues are listed in Section 15.
 
@@ -550,7 +550,7 @@ The checker uses this preference order:
 
 F64, F32, U64, I64, U32, I32, U16, I16, U8, I8.
 
-For two numeric operand types, Promote(T₁,T₂) selects the first type C in this list that is equal to either operand. The promotion is defined only when T₁ ⪯ C and T₂ ⪯ C. Otherwise the operation reports E2036 and has no result type. The current checker has no value-preservation condition (GAP-015).
+For two numeric operand types, Promote(T₁,T₂) selects the first type C in this list that is equal to either operand. The promotion is defined only when T₁ ⪯ C and T₂ ⪯ C. Otherwise the operation reports E2036 and has no result type. The observed checker lacks the value-preservation condition (GAP-015). The normative rule in this specification uses the assignability relation in Section 7.2, whose numeric conversions preserve every value of the source type (DEC-017).
 
 Promotion uses only the conversions in the assignment table in Section 7.2. The Fully Typed AST records each operand conversion as a NumericAssignable conversion.
 
