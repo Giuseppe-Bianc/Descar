@@ -1321,6 +1321,11 @@ Required semantic result:
 | OPEN-005 | The checker accepts compatible non-numeric operands for equality, including Void call results. It defines no runtime equality implementation. | The type checker returns Bool after compatibility validation. It defines no equality operation or runtime value for Void. | TR-010, TY-10 | A later execution specification must define behavior for accepted non-numeric equality pairs. Ordering on non-numeric operands is rejected by TR-010. |
 | OPEN-006 | An expression with two flexible operands of different numeric kinds, such as `1 + 2.5`, has no promotion under the current rules. The integer literal defaults to I64 and the floating-point literal defaults to F64 because an incoming F32 or F64 context is not passed through the operator. I64 is not assignable to F64 (DEC-017), so the operation reports E2036. | ADR-0004 clarifies that TR-028b takes precedence over TR-028c when both operands are flexible. It does not decide whether the language should later add constant-aware adaptation for mixed flexible operands. | TR-028b, TR-028c, TR-009, TR-010 | `1 + 2.5` and `var f: f64 = 1 + 2.5` report E2036 under the current rules. In contrast, `i + 1.5` where `i: i32` has type F64 because I32 is assignable to F64. A later language decision may add constant-aware adaptation for mixed flexible operands. |
 
+## 16. Bibliographic References
+
+1. Alfred V. Aho, Monica S. Lam, Ravi Sethi, and Jeffrey D. Ullman. *Compilers: Principles, Techniques, and Tools*. 2nd ed. Addison-Wesley, 2006. ISBN 978-0-321-48681-3. Relevant sections: 2.7, “Symbol Tables”; 6.1, “Variants of Syntax Trees”; 6.3, “Types and Declarations”; 6.5, “Type Checking.” The section titles and publication details are available from [Pearson's book page](https://www.informit.com/store/compilers-principles-techniques-and-tools-9780321486813).
+2. Aerospace, Security and Defence Industries Association of Europe. *ASD-STE100 Simplified Technical English*. Issue 9, January 15, 2025. Official issue information is available from the [ASD-STE100 website](https://www.asd-ste100.org/) and its [downloads page](https://www.asd-ste100.org/STE_downloads.html).
+
 ## 17. Traceability and Specification Review
 
 ### 17.1 Requirement and decision traceability
@@ -1379,8 +1384,3 @@ The document is a target contract, not evidence that all specified components ex
 The execution semantics for overflow, division by zero, shift counts outside the operand width, floating-point literal rounding, and accepted non-numeric equality remain unresolved as listed in OPEN-001 and OPEN-005. Mixed flexible numeric operands remain governed by OPEN-006 and ADR-0004. No quantitative resource limits or performance acceptance thresholds have been approved.
 
 These limitations must be resolved in the relevant implementation or follow-up specification before the project claims behavior beyond the defined AST and static semantic contract.
-
-## 16. Bibliographic References
-
-1. Alfred V. Aho, Monica S. Lam, Ravi Sethi, and Jeffrey D. Ullman. *Compilers: Principles, Techniques, and Tools*. 2nd ed. Addison-Wesley, 2006. ISBN 978-0-321-48681-3. Relevant sections: 2.7, “Symbol Tables”; 6.1, “Variants of Syntax Trees”; 6.3, “Types and Declarations”; 6.5, “Type Checking.” The section titles and publication details are available from [Pearson's book page](https://www.informit.com/store/compilers-principles-techniques-and-tools-9780321486813).
-2. Aerospace, Security and Defence Industries Association of Europe. *ASD-STE100 Simplified Technical English*. Issue 9, January 15, 2025. Official issue information is available from the [ASD-STE100 website](https://www.asd-ste100.org/) and its [downloads page](https://www.asd-ste100.org/STE_downloads.html).
