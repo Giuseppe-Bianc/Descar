@@ -276,6 +276,23 @@ TypeTable canonicalization MUST use these keys: primitive and special types use 
 
 SourceSpan uses a half-open byte range [start_byte, end_byte) in one source file. Every concrete node MUST have a span. The span MUST refer to a registered source file. The span of a composite expression or statement MUST cover its complete source construct. A point span is valid when start_byte equals end_byte.
 
+### 5.5 Phase interface contract
+
+The following table makes the phase boundaries in Section 5.1 explicit. It defines the contract at the AST and semantic-analysis boundary. It does not specify the internal implementation of the lexer, parser, resolver, or type checker.
+
+| Producer and consumer | Input contract | Successful output | Failure behavior |
+| --- | --- | --- | --- |
+| Lexer to parser | Source text and its SourceId. The lexer contract is external to this AST model. | Tokens in source order, each with a valid source span. | Lexical diagnostics identify malformed input. The parser MUST NOT treat an invalid token as valid source syntax. |
+| Parser to structural validator | Tokens for one source file. | A SurfaceProgram that preserves source order and full-construct spans, with parser diagnostics kept outside the AST. | Any parser error or recovery placeholder makes the result Incomplete under INV-005. |
+| Structural validator to semantic analysis | A Complete SurfaceProgram with valid node ownership and spans. | A validated SurfaceProgram accepted by the resolver. | An invalid compiler-created structure is an internal error. Source syntax errors remain parser diagnostics. |
+| Symbol and type resolution to type checking | A structurally valid program and its compilation-unit context. | Symbol and type tables whose IDs are unique and whose references are local to that compilation unit. Named custom types remain opaque as specified by TY-09 and SR-012. | Source-level name or type-syntax errors produce diagnostics. No dangling or unresolved IDs may be presented as successful resolution. |
+| Type checker and typed-AST builder to typed validator | A valid SurfaceProgram, resolved names, canonical types, and no prior blocking diagnostics. | A Fully Typed AST with explicit conversions and resolved semantic references. | Any blocking diagnostic produces no Fully Typed AST. An internal invariant failure is not converted into a source diagnostic. |
+| Typed validator to lowering | A Fully Typed AST. | A validated tree satisfying INV-001 through INV-022. | Invalid typed data is rejected as an internal error. Lowering itself is outside this specification. |
+
+A phase boundary MUST preserve the distinction between source errors and internal errors. A source error describes a program that violates a language rule. An internal error describes a compiler defect or an invalid compiler-created structure. A later phase MUST NOT reinterpret either failure as a successful result.
+
+**ARC-012 Phase boundary integrity.** Each implemented boundary in the table above MUST enforce its input preconditions and failure behavior. A successful output MUST satisfy the listed postconditions. A downstream phase MUST NOT run when its required input is incomplete or has a blocking diagnostic. Verification MUST inject at least one failure at every implemented boundary and assert that the consumer is not invoked with invalid input.
+
 ## 6. Node Model
 
 ### 6.1 Root nodes
