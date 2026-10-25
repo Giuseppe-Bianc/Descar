@@ -1247,6 +1247,7 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | GAP-001–GAP-010, GAP-013–GAP-015 | Source inspection confirms each observed gap; implementation review confirms the stated required consequence. |
 | GAP-011–GAP-012 | Source inspection confirms loop-state behavior and nested declaration acceptance; parser tests verify root-only function and main declarations. |
 | ARC-001–ARC-011 | Node ID uniqueness, tree shape, clone identity, semantic reference, pipeline, abstract-node, span, and resolved-type representation tests. |
+| SR-014–SR-017 | Lookup precedence, declaration visibility, scope exit, and resolved reference integrity tests. |
 | SYN-001 | Parser-conformance tests for each grammar production and optional clause. |
 | SYN-003 | Parser tests verify root-only `fun` and `main` declarations, E1004 diagnostics, incomplete status, and the semantic phase boundary. |
 | N-ROOT-01–N-ROOT-02 | Root construction tests for empty and non-empty source units. |
@@ -1260,7 +1261,8 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | TY-01–TY-17 | Type identity, canonicalization, assignability, promotion, conversion, and invalid-category tests. |
 | TR-001–TR-028 | Positive and negative tests for every typing rule, including primitive, named, vector, nested-array, and invalid array type syntax. |
 | SR-001–SR-012 | Scope, shadowing, duplicate, recursion, forward-reference, custom type, and symbol-kind tests. |
-| SR-013 | Record-shape, link-integrity, and type-canonicalization tests. |
+| SR-013 | Source-order visibility, direct recursion, and rejection of calls to later declarations and mutual recursion. |
+| SR-014–SR-017 | Nearest-scope lookup, declaration visibility, scope exit, and resolved SymbolId identity tests. |
 | TC-001–TC-006 | Negative and positive tests for pass input state, result types, contextual typing, diagnostic accumulation, deterministic ordering, and successful-output gating. |
 | SYN-002 | AST-shape tests for left associativity, assignment right associativity, and precedence for every operator class. |
 | INV-001–[INV-022](#inv-022) | One validator test per invariant. Each negative case must identify the violated invariant. |
@@ -1562,7 +1564,7 @@ The following matrix identifies the principal sources of the normative rules. Re
 | Operator precedence and AST shape | SYN-001–SYN-003, DEC-013, INV-003–INV-004 | Section 13.2, test 22 | Aho et al., Chapter 4, syntax analysis, and Chapter 6, Section 6.1 |
 | Syntax-directed semantic construction | ARC-008, OP-004–OP-007, IF-004–IF-006 | Sections 13.1–13.3 | Aho et al., Chapter 5, syntax-directed translation; Chapter 6, Sections 6.3 and 6.5 |
 | Control-flow and return validation | TR-025, GAP-008, DEC-019, OPEN-002 | Section 13.2, test 30 | Static semantic analysis associated with syntax-directed translation; the conservative rule itself is Descar-specific |
-| Error boundaries and invalid intermediate state | ERR-001–ERR-011, INV-005, INV-012, IF-001–IF-008 | Sections 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
+| Error boundaries and invalid intermediate state | ERR-001–ERR-013, INV-005, INV-012, IF-001–IF-010, VAL-001–VAL-004 | Sections 10.2, 11, and 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
 | Algorithmic expectations | CMP-001–CMP-008 | Section 12.4 plus implementation profiling when a workload is approved | Asymptotic analysis is general algorithmic methodology, not a Descar-specific textbook guarantee |
 | Numeric language decisions | DEC-016–DEC-018, OPEN-001, OPEN-006 | ADR-0001, ADR-0003, ADR-0004 and Section 13.2 tests 23–29 | The textbook supplies the type-checking framework. The exact numeric rules are project decisions. |
 
