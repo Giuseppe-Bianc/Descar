@@ -859,10 +859,53 @@ There is no type-alias symbol in the supported language. A custom type name is a
 | SR-011 | The Fully Typed AST MUST retain the resolved SymbolId. Later phases MUST NOT repeat name lookup. |
 | SR-012 | A named custom type MUST retain its exact source name as an opaque type identity. It does not resolve to a declaration in this language subset. |
 | SR-013 | Mutual recursion between distinct functions is not supported. Function declarations are processed in source order: a function MUST be registered before its body is checked, and a later function MUST NOT be visible to an earlier function. A function MAY call itself recursively. A call from one function to a later function MUST fail name resolution with E2023. | Define `first` before `second`, with `first` calling `second`, and verify E2023 and no Fully Typed AST. Verify direct self-recursion passes. Define `second` before `first`, with `first` calling `second`, and verify the call resolves. |
+| SR-014 | Name lookup MUST search the innermost active lexical scope first and then its parents. The first visible declaration with an exact matching identifier determines the result. If that declaration has the wrong symbol kind, lookup MUST report the corresponding diagnostic and MUST NOT continue to an outer scope. Visibility MUST follow SR-002 through SR-004 and SR-013, including source-order registration. | Test shadowing, wrong-kind shadowing, variable self-reference in an initializer, direct recursion, and calls to later function declarations. Each test verifies the resolved SymbolId or the required diagnostic. |
 
 The current checker visits top-level declarations in source order. It does not perform a whole-unit declaration prepass. Therefore, direct recursion is supported because the current function is registered before its body is checked. Mutual recursion between distinct functions is not supported: the earlier function cannot resolve a call to a later declaration. This restriction is explicit in SR-013. Reordering declarations can make a call to an already declared function valid, but does not enable a mutually recursive pair.
 
 The function body uses a function scope. The checker does not add a second block scope for the outer function body. A standalone block creates a block scope. Each if branch creates the scope of its block. A while condition is checked in the surrounding scope. The checker then creates a loop scope for the body; a block body creates a nested block scope. A for statement creates a loop scope before its initializer. This scope covers the initializer, condition, increment, and body. If the body is a block, that block creates a nested scope.
+
+### 9.3 Lookup algorithms and complexity
+
+The following algorithms make the lookup order and expected cost explicit. They do not require a particular container implementation beyond the semantic records defined in Section 5.3.
+
+#### 9.3.1 Lexical name lookup
+
+At a particular source position, the active environment exposes only declarations that are visible at that position under SR-002 through SR-004 and SR-013. In particular, a variable is not visible in its own initializer, while a function is visible in its own body after registration. A declaration later in the source is not made visible early.
+
+```text
+resolve_name(active_scope, exact_name, expected_kind):
+    scope = active_scope
+    while scope exists:
+        for declaration in visible_declarations(scope):
+            if declaration.name == exact_name:
+                symbol = symbol_record(declaration.symbol_id)
+                if symbol.kind != expected_kind:
+                    return WrongKind(symbol)
+                return Found(symbol)
+        scope = scope.parent
+    return NotFound
+```
+
+The comparison uses exact identifier spelling, as defined in Section 3. The algorithm stops at the first matching declaration, even when its kind is incorrect. It does not search an outer scope as a fallback. `Found`, `WrongKind`, and `NotFound` are algorithm outcomes, not source-language types. The caller maps failure outcomes to the diagnostic codes defined in Section 9.2.
+
+Let (S) be the number of scopes, (D) the total number of declarations, (N) the number of symbols, (h) the active scope depth, and (d_i) the number of visible declarations inspected in the (i)-th scope. With the specified vector records and no auxiliary indexes, one conservative implementation scans the scope vector to retrieve each scope record, scans that scope's declarations, and scans the symbol vector after finding a declaration. Its worst-case time per lookup is (O(hS + \sum_{i=1}^{h} d_i + N)), bounded by (O(S^2 + D + N)) because (h \leq S). This is a bound for the stated scan-based implementation, not a required runtime target.
+
+An implementation MAY add non-owning indexes keyed by ScopeId, SymbolId, or exact identifier spelling. Such indexes MUST agree with the canonical records and MUST NOT change visibility, shadowing, source-order, or wrong-kind behavior. An index build over the records is (O(S + D + N)) expected time with suitable hash tables and (O(S + D + N)) additional space. With hash indexes, each scope and symbol access is expected (O(1)), and a scope-local name lookup is expected (O(1)) plus identifier hashing and equality costs. Worst-case hash lookup remains linear in the indexed collection size unless the chosen data structure provides a stronger bound.
+
+#### 9.3.2 Type canonicalization
+
+TypeTable MUST return the existing TypeId when a type key already exists, and create one entry when no equivalent key exists. The canonical key is defined in Section 5.3: primitive and special kind, exact named-type spelling, vector element TypeId, or array element TypeId and resolved length.
+
+With the specified vector of TypeEntry records and no auxiliary index, interning performs at most (T) key comparisons for (T) existing types, so the lookup cost is (O(TK)), where (K) is the cost of comparing one key. For fixed-size keys, this is (O(T)). Comparing a named-type key can require (O(L)) time for a name of length (L), so an unindexed scan can take (O(TL)) for a named key in the worst case. The TypeTable requires (O(T)) entry space, excluding identifier storage.
+
+A canonicalization index MAY reduce expected lookup to (O(1)) key retrieval with expected hash-table behavior, excluding key construction and string hashing. It MUST preserve exact-name identity and structural array/vector identity. The index is an implementation detail and is not a second source of truth.
+
+#### 9.3.3 AST traversal and validation
+
+Let (V) be the number of AST nodes and (H) the maximum tree height. A traversal or validator that visits each node once and performs constant work per node takes (O(V)) time, excluding symbol or type lookups, and uses (O(H)) auxiliary call-stack space when implemented recursively. An iterative traversal can use an explicit work stack whose space is (O(H)) for depth-first traversal of a tree, subject to the implementation's child-enumeration strategy.
+
+No maximum AST depth or quantitative time or memory budget is specified by BAS-016. The complexity statements in this section are asymptotic bounds under the stated operation assumptions. They are not latency or memory guarantees. Deep-nesting limits and resource-exhaustion behavior remain implementation concerns until the project specifies explicit limits.
 
 ## 10. Invariants and Validity Criteria
 
