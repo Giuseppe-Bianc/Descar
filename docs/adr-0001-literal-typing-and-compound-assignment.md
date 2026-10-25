@@ -241,7 +241,7 @@ P2 is chosen. It keeps the Section 7.3 order, adds one precondition, and defines
 
 ## Spec Amendments
 
-Apply these when the ADR is accepted.
+The entries below record the specification changes associated with this accepted decision. They were applied on 2026-10-18, as confirmed by Action Item 6. The imperative wording is retained to preserve the original change checklist and does not indicate pending edits.
 
 **Section 3.** Add terms: *adaptable literal*, *flexible expression*, *context type*, *default type*, each as defined in D1 to D3.
 
