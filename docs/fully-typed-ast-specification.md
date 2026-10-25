@@ -831,6 +831,72 @@ The following forms state the premises and conclusion for every rule in TR-001 t
 
 `MAX_U64` means the largest value representable by an unsigned 64-bit integer. A type-resolution error or a false premise has the diagnostic listed for that rule.
 
+### 8.9 Type-checking pass procedure
+
+This section defines the required pass behavior that connects the local rules in Sections 7 and 8. It specifies the observable contract, not a required class hierarchy, visitor framework, or implementation language.
+
+#### 8.9.1 Pass inputs and output states
+
+The type-checking operation accepts only a complete, structurally valid SurfaceProgram with no parser diagnostics, the current CompilationUnitId, the canonical TypeTable, and the symbol-resolution result required by Sections 5 and 9. A type checker MUST reject an Incomplete SurfaceProgram before checking any source expression.
+
+The pass has two externally observable outcomes:
+
+- **Success:** a Fully Typed AST whose nodes satisfy the node definitions in Section 6 and all applicable invariants in Section 10.
+- **Failure:** diagnostics and no successful Fully Typed AST.
+
+The checker MAY retain private intermediate state while it checks a program. Such state MAY include an internal failure marker, temporary inferred types, a partially built typed node, and a diagnostic accumulator. These are implementation details. A failure marker MUST NOT be represented as a source-language TypeId or exposed as a successful Typed AST node.
+
+#### 8.9.2 Expression checking operation
+
+The conceptual expression-checking operation is:
+
+```text
+check_expression(surface_expr, optional_context_type, environment):
+    validate that surface_expr is a complete, structurally valid node
+    determine child contexts only from TR-028 and the applicable typing rule
+    check required child expressions in deterministic field/source order
+    apply the typing rule's preconditions to the child results
+    if a required child failed or a rule precondition is false:
+        record the rule's source diagnostic when applicable
+        return failure state, not a typed expression
+    determine the canonical result TypeId
+    insert each conversion required by the rule
+    construct the specified typed node with resolved IDs and source span
+    validate the constructed node's local invariants
+    return the typed expression
+```
+
+A rule MUST NOT infer a context merely because a destination type exists elsewhere in the AST. Context is passed only in positions identified by TR-028 and the rule tables. In particular, the restriction in TR-028b on forwarding an incoming F32 or F64 context, the distinct peer behavior in TR-028c, and the no-context cases in TR-028d are normative.
+
+A successful expression node MUST have exactly one result TypeId. A conversion node MUST have a source child whose result type equals its `from` type, and its result type MUST equal its `to` type. An identity conversion MUST NOT create a Convert node. A rule that requires a conversion MUST NOT leave that conversion implicit.
+
+When an expression cannot be checked, the checker MUST NOT manufacture a plausible result type to allow the parent node to appear valid. It MAY continue checking independent sibling expressions when doing so cannot depend on the failed result. Any such additional diagnostics do not turn the failed expression into a valid node.
+
+#### 8.9.3 Statement and declaration checking
+
+The checker MUST process statements in their specified order and establish lexical scope, function context, and loop context in accordance with Sections 8.6 and 9. A statement that does not produce an expression value MUST NOT receive an expression TypeId.
+
+For each declaration, the checker MUST resolve required type syntax, validate declaration constraints, and check initializers or function bodies under the applicable declared types and lexical environment. A variable declaration MUST NOT acquire its own binding before its initializer is checked, as required by SR-004. A function MUST be registered at the point required by SR-002 and SR-013 before its body is checked, so direct recursion can resolve without making later functions visible.
+
+The checker MUST apply the specified return-path analysis to every non-Void function. Finding a Return node somewhere in a function body is not sufficient. The condition for acceptance is the `MayCompleteNormally` result defined by TR-025 and Section 8.6.
+
+#### 8.9.4 Diagnostic accumulation and finalization
+
+The checker MAY report multiple independent source errors in one run. It MUST preserve a deterministic diagnostic order based on phase order and deterministic traversal or rule order. It MUST NOT depend on hash-table iteration order for externally visible diagnostics.
+
+At finalization, the checker MUST validate the candidate typed tree against the invariants in Section 10. The checker MUST return no Fully Typed AST if any blocking Error diagnostic exists, if a required type or semantic reference is missing, or if typed validation fails. An internal invariant failure MUST be classified as an internal error rather than rewritten as a source type error.
+
+| Rule ID | Requirement | Verification |
+| --- | --- | --- |
+| TC-001 | The type checker MUST reject an Incomplete or structurally invalid SurfaceProgram before expression checking. | Supply an Incomplete program with a recovery placeholder and a structurally invalid complete-status tree. Verify that neither enters the expression-checking operation and that no TypedProgram is returned. |
+| TC-002 | Every successfully checked expression MUST receive one canonical result TypeId, and every non-identity implicit conversion required by its rule MUST be explicit in the typed tree. | Check representative literals, variable references, binary expressions, assignments, call arguments, and return values. Assert result types and conversion source/target types. |
+| TC-003 | Context types MUST be propagated only according to TR-028a through TR-028d and the consuming typing rule. | Verify initializer, argument, return, assignment, array-element, compound-assignment, peer-operand, shift, and non-flexible operand cases. Include the operator boundaries in test 29 of Section 13.2. |
+| TC-004 | A failed expression check MUST NOT emit a successful typed expression with a fabricated type. The checker MAY continue through independent expressions where safe. | Check a program with two independent type errors and assert both diagnostics are reported, while no successful TypedProgram or error-typed expression is exposed. |
+| TC-005 | The checker MUST accumulate diagnostics deterministically and MUST NOT use hash iteration order to determine the externally visible order. | Run the same erroneous source repeatedly and with different hash seeds where supported. Compare the ordered diagnostic phase, code, primary span, and message. |
+| TC-006 | The checker MUST return a Fully Typed AST only when no blocking Error diagnostic exists and typed validation succeeds. | Exercise separately a source type error, a missing semantic reference in a candidate tree, and an invalid conversion node. Verify that each case returns failure and no Fully Typed AST. |
+
+
+
 ## 9. Symbol Resolution and Semantic References
 
 ### 9.1 Symbol records
@@ -1146,6 +1212,7 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | TR-001–TR-028 | Positive and negative tests for every typing rule, including primitive, named, vector, nested-array, and invalid array type syntax. |
 | SR-001–SR-012 | Scope, shadowing, duplicate, recursion, forward-reference, custom type, and symbol-kind tests. |
 | SR-013 | Record-shape, link-integrity, and type-canonicalization tests. |
+| TC-001–TC-006 | Negative and positive tests for pass input state, result types, contextual typing, diagnostic accumulation, deterministic ordering, and successful-output gating. |
 | SYN-002 | AST-shape tests for left associativity, assignment right associativity, and precedence for every operator class. |
 | INV-001–[INV-022](#inv-022) | One validator test per invariant. Each negative case must identify the violated invariant. |
 | ERR-001–ERR-011 | Parser recovery, blocking errors, accumulated diagnostics, diagnostic fields, error codes, severity, CLI phase boundary, and internal-error separation tests. |
