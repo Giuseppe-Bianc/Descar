@@ -6,21 +6,6 @@
 **Applies to:** Descar Fully Typed Abstract Syntax Tree Specification
 **Amends:** TR-028a, TR-028b, TR-028c, DEC-018, OPEN-006, Section 13.2 test 29, Section 14.9
 
-## Theoretical relationship and scope
-
-This ADR specifies how Descar's context-sensitive literal typing interacts
-with expression typing at operator boundaries. Aho et al.,
-*Compilers: Principles, Techniques, and Tools*, 2nd edition, Chapter 5,
-“Syntax-Directed Translation,” and Chapter 6, Section 6.5, “Type Checking,”
-are relevant to the general process of attaching semantic information to
-syntax and checking expression types.
-
-The precedence between TR-028b and TR-028c, including the rule that an
-incoming floating-point context does not pass through an operator, is a
-Descar-specific decision. The textbook is a theoretical reference, not
-the source of these exact propagation rules. The examples and
-specification amendments in this ADR define the required behavior.
-
 ## Context
 
 TR-028a says that a floating-point literal does not adapt to an integer context. In that case, the literal keeps its default type and leaf adaptation does not report an error. The enclosing typing rule must still check assignability.
@@ -35,6 +20,21 @@ The ambiguity obscures these results:
 | `var shifted: f64 = 1 << 3` | E2002. The F64 initializer context does not pass through the shift. The shift result is I64, which is not assignable to F64. |
 | `var value: i32 = 1.5` | E2002. Leaf adaptation does not diagnose the kind mismatch, but the initializer rule checks assignability. |
 | `var f: f64 = 1 + 2.5` | E2036 under the current rules. The two flexible literals do not receive the incoming F64 context through the operator. |
+
+## Theoretical relationship and scope
+
+This ADR specifies how Descar's context-sensitive literal typing interacts
+with expression typing at operator boundaries. Aho et al.,
+*Compilers: Principles, Techniques, and Tools*, 2nd edition, Chapter 5,
+“Syntax-Directed Translation,” and Chapter 6, Section 6.5, “Type Checking,”
+are relevant to the general process of attaching semantic information to
+syntax and checking expression types.
+
+The precedence between TR-028b and TR-028c, including the rule that an
+incoming floating-point context does not pass through an operator, is a
+Descar-specific decision. The textbook is a theoretical reference, not
+the source of these exact propagation rules. The examples and
+specification amendments in this ADR define the required behavior.
 
 ## Decision
 
