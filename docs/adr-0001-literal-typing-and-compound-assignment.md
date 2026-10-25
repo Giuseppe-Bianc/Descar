@@ -6,6 +6,21 @@
 **Applies to:** Descar Fully Typed Abstract Syntax Tree Specification
 **Amends:** BAS-010, DEC-003, TR-001, TR-009, TR-010, TR-012, TR-013, TY-13, TY-14, Section 7.3, Section 7.4, Section 8.1, Section 8.4, Section 8.8, Section 10.1, N-SE-01, N-TE-01, N-TE-05, N-TE-06, INV-016, ACC-007, ERR-009, OPEN-001, Example 14.2, Section 13.2 tests 1 to 3 and 16
 
+## Theoretical relationship and scope
+
+The typing decisions in this ADR apply compiler type-checking principles to
+Descar's numeric literal and compound-assignment rules. Aho et al.,
+*Compilers: Principles, Techniques, and Tools*, 2nd edition, Chapter 6,
+Sections 6.3, “Types and Declarations,” and 6.5, “Type Checking,” provide
+the relevant conceptual foundation for associating types with declarations
+and checking whether operators accept their operands.
+
+Context adaptation of unsuffixed literals, the exact numeric promotion
+preference, the lossless-conversion condition, shift typing, and the rule
+that compound assignment operates in the place type are Descar-specific
+decisions. They are not presented as algorithms mandated by the textbook.
+This ADR's verification vectors define the expected project behavior.
+
 ## Context
 
 TR-001 gives every unsuffixed numeric literal a 64-bit type: I64, U64 or F64. TY-13 has no edge from I64 to a narrower integer, from I64 to F32, or from F64 to F32. TR-014, TR-015, TR-017 and TR-023 require the value type to be assignable to the target type. DEC-006 and TR-013 require the result of a compound operation to be assignable to its place. That last rule is correct and stays. Together these rules reject ordinary programs and accept programs that change values.
