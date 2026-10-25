@@ -866,6 +866,109 @@ The current checker visits top-level declarations in source order. It does not p
 
 The function body uses a function scope. The checker does not add a second block scope for the outer function body. A standalone block creates a block scope. Each if branch creates the scope of its block. A while condition is checked in the surrounding scope. The checker then creates a loop scope for the body; a block body creates a nested block scope. A for statement creates a loop scope before its initializer. This scope covers the initializer, condition, increment, and body. If the body is a block, that block creates a nested scope.
 
+### 9.3 Required symbol-resolution procedure
+
+The rules in this section define the behavior that a resolver must produce. They do not require a specific map implementation or traversal library. The algorithm uses exact identifier spelling, the lexical scope tree, and source order.
+
+#### 9.3.1 Resolution state
+
+At the start of resolution, the compiler MUST create one SymbolTable and one global ScopeRecord for the current CompilationUnitId. The resolver MUST maintain:
+
+- An active scope, represented by a ScopeId.
+- The source-ordered declaration position currently being processed.
+- A mapping from each successfully registered declaration to one SymbolId.
+- A mapping from each resolved variable or call reference to its SymbolId.
+- The active function context and loop context required by the semantic rules.
+
+The resolver MUST NOT reuse a SymbolId for two declarations in one compilation unit. A failed declaration or reference MUST NOT produce a successful Fully Typed AST. Error recovery may continue to collect independent diagnostics, but a recovery result is not a resolved program.
+
+#### 9.3.2 Scope lookup
+
+The required name lookup operation is:
+
+```text
+lookup(name, starting_scope):
+    scope = starting_scope
+    while scope exists:
+        if scope contains a declaration whose identifier equals name:
+            return that declaration
+        scope = parent(scope)
+    return NOT_FOUND
+```
+
+Identifier equality uses the exact spelling rule in Section 3. The lookup operation returns the nearest declaration regardless of symbol kind. The caller then validates the required kind.
+
+For a variable reference:
+1. Call `lookup` from the active scope.
+2. If no declaration is found, report the undefined-variable diagnostic defined by TR-003.
+3. If the nearest declaration is not a variable or parameter, report E2022. Do not continue searching an outer scope.
+4. Otherwise, attach the declaration's SymbolId to the reference and use its canonical TypeId as the expression type.
+
+For a call:
+1. Call `lookup` from the active scope.
+2. If no declaration is found, report the undefined-function diagnostic defined by the call rule.
+3. If the nearest declaration is not a function, report E2027. Do not continue searching an outer scope.
+4. Otherwise, attach the function SymbolId, check argument count and each argument against the ordered signature, and use the signature's result TypeId for the call result.
+
+A source-level identifier reference MUST NOT retain only a name when resolution succeeds. Later phases MUST use the resolved SymbolId and MUST NOT repeat lexical lookup.
+
+#### 9.3.3 Source-ordered declaration processing
+
+The resolver MUST process root declarations in source order. It MUST NOT pre-register all functions in the compilation unit, because SR-003 and SR-013 prohibit references to later functions. For each function declaration, however, it MUST resolve the function signature and register that function in the containing scope before checking the function body. This order permits direct self-recursion without permitting calls to later declarations.
+
+The required conceptual procedure is:
+
+```text
+resolve_program(items):
+    create global scope
+    for item in source order:
+        if item is a function:
+            reject a duplicate name in the current scope
+            resolve its parameter and result types
+            register the function symbol
+            enter the function scope
+            register parameters in declaration order
+            check the body using that function scope
+            leave the function scope
+        else if item is main:
+            validate the required main signature
+            register the main symbol according to the root declaration rules
+            check the body in the main function scope
+        else:
+            resolve or validate the item under the root grammar
+    return diagnostics and semantic records
+```
+
+This pseudocode defines observable ordering, not a required code structure. A main declaration MUST be processed under the root-only and signature constraints in BAS-017, SR-006, and INV-019. Whether main is exposed as a callable source-level name must follow the existing call rules and MUST NOT be inferred from the fact that its internal symbol uses a function record.
+
+Before a variable declaration becomes visible, its initializer MUST be checked in the environment that exists before that declaration. The declaration itself MUST NOT be used to resolve a self-reference in its initializer. A declaration that conflicts with a name already present in the same scope MUST produce a duplicate-declaration diagnostic and MUST NOT replace the existing symbol. An inner-scope declaration may shadow a declaration in an outer scope, subject to the nearest-declaration lookup behavior above.
+
+#### 9.3.4 Scope entry and exit
+
+The resolver MUST enter and leave scopes as follows:
+
+| Construct | Scope rule |
+| --- | --- |
+| Function body | Use the function scope containing its parameters. Do not introduce an additional outer-body block scope. |
+| Standalone block | Enter a child block scope before processing its statements. Leave that scope when the block ends. |
+| If branch | Process the branch block in its block scope. Declarations in one branch are not visible in the other branch or after the conditional. |
+| While statement | Resolve the condition in the surrounding scope. Process the body under the loop context and the required loop/body scope arrangement in SR-007 and SR-008. Leave all scopes introduced for the body when it ends. |
+| For statement | Enter one for-scope before its initializer. Keep it active for the initializer, condition, increment, and body. If the body is a block, enter its nested block scope. Leave the for-scope after the complete statement. |
+| Nested standalone block | Enter a child scope and leave it at the end of the block. |
+
+Scope entry and exit MUST be balanced on both successful processing and recoverable diagnostic paths. A declaration introduced in a scope MUST NOT remain visible after that scope is left. Loop context is separate from lexical visibility: entering or leaving a lexical scope MUST NOT by itself change the active loop stack.
+
+#### 9.3.5 Additional requirements and verification
+
+| Rule ID | Requirement | Verification |
+| --- | --- | --- |
+| SR-014 | Name lookup MUST search the active scope and then each lexical parent, returning the first exact-name match regardless of symbol kind. A kind mismatch at that match MUST be diagnosed without searching outer scopes. | Create an outer function and an inner variable with the same name; verify a call in the inner scope reports E2027. Create an outer variable and an inner function with the same name where the grammar permits it; verify variable lookup reports E2022. |
+| SR-015 | A declaration MUST become visible only at the point specified by SR-002 through SR-004 and the source-ordered procedure in Section 9.3.3. A failed duplicate declaration MUST NOT replace an existing symbol. | Verify variable initializer self-reference does not resolve to the variable being declared, an initializer may resolve an outer binding that the new declaration will shadow, and duplicate declarations leave the original SymbolId intact. |
+| SR-016 | Scope entry and exit MUST match Section 9.3.4. No declaration may remain visible after its declaring scope ends. | Verify branch-local and block-local names are unavailable after the block, for-initializer names are visible throughout the for statement but unavailable after it, and nested shadowing does not alter the outer declaration after scope exit. |
+| SR-017 | Every successfully resolved variable reference and call MUST store the exact SymbolId selected by lookup. The symbol must belong to the same CompilationUnitId as the typed program. | Resolve shadowed references and direct recursive calls, then assert each reference points to the expected declaration. Mutate a resolved reference to a dangling or cross-unit SymbolId and verify typed validation rejects it. |
+
+
+
 ## 10. Invariants and Validity Criteria
 
 The AST validator must report the first failed invariant category and continue where safe.
