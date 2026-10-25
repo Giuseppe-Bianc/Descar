@@ -220,6 +220,23 @@ The type checker MAY use temporary symbol tables and side tables. The returned F
 | ARC-010 | Source locations MUST use the SourceSpan definition in Section 3. A concrete node MUST have one span. | Span validation tests check source identity, range bounds, and zero-length spans. |
 | ARC-011 | The Fully Typed AST MUST replace TypeSyntax nodes with canonical TypeIds and resolved constants. It MUST NOT own duplicate Surface TypeSyntax children. Declaration and symbol spans MUST continue to identify each source declaration. | Typed-tree tests verify type annotations resolve to TypeIds, array lengths become u64 constants, and declaration spans remain available. |
 
+### 5.1.1 Phase interface contract
+
+The pipeline in Section 5.1 defines ordering. The following table defines the minimum information contract at each boundary. It does not assert that a corresponding implementation module currently exists.
+
+| Boundary ID | Producer | Consumer | Required input state | Required output or failure behavior |
+| --- | --- | --- | --- | --- |
+| IF-001 | Lexer | Parser | Source bytes associated with one SourceId. | Tokens are ordered by source position and carry valid half-open spans. Lexical diagnostics prevent successful compilation. |
+| IF-002 | Parser | Structural validator | Tokens and lexer status. | A SurfaceProgram preserves source order and full-construct spans. Any parser diagnostic makes the program Incomplete. |
+| IF-003 | Structural validator | Resolver | A complete, structurally valid SurfaceProgram. | The resolver must not receive recovery placeholders or invalid required children. Structural implementation defects are internal errors. |
+| IF-004 | Resolver | Type checker and typed-AST builder | Surface nodes, lexical scope information, and resolved declaration identities. | Each valid name reference identifies exactly one declaration of the required kind. A blocking name-resolution error prevents successful typed output. |
+| IF-005 | Type checker | Typed-AST builder | Resolved names, canonical type information, source constructs, and context types where TR-028 requires them. | Each successfully checked expression has one result TypeId. Each required implicit conversion is explicit in the typed representation. |
+| IF-006 | Typed-AST builder | Typed-AST validator | A candidate TypedProgram and its compilation-unit symbol and type tables. | All invariants in Section 10 pass before the candidate is exposed as a successful Fully Typed AST. |
+| IF-007 | Typed-AST validator | Later lowering phase | A Fully Typed AST that passes all applicable invariants. | The consumer may rely on resolved references, canonical types, explicit conversions, and valid control-flow references. Lowering semantics remain outside this specification. |
+| IF-008 | Any phase | Diagnostic renderer | Diagnostics with phase, severity, source span when applicable, and stable diagnostic identity. | Rendering must not change diagnostic meaning or treat an internal error as a source-language error. |
+
+For each boundary, the producer owns the validity of the data it emits. A consumer must validate assumptions that cannot be guaranteed by the interface's type representation alone. A failed boundary check must prevent invalid data from being passed to a later phase.
+
 ### 5.2 Abstract and concrete categories
 
 The following are abstract categories. They cannot be instantiated directly:
