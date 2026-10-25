@@ -1103,16 +1103,12 @@ validate_structure(root):
     if root is absent:
         return invalid-root result
     expected_ast_id = root.ast_id
-    pending = [(root, root_parent)]
+    pending = [(root, root_parent, root_field)]
     seen_node_ids = empty set
     valid = true
 
     while pending is not empty:
-        node, parent = remove next pending item
-        if node is absent:
-            record missing-child failure
-            valid = false
-            continue
+        node, parent, parent_field = remove next pending item
         if node.ast_id != expected_ast_id:
             record cross-AST ownership failure
             valid = false
@@ -1125,9 +1121,11 @@ validate_structure(root):
         validate node kind, field types, and required fields
         validate node span against SourceMap
         for each owned child field in declared field order:
-            validate required or optional child presence
-            add each present child to pending in reverse order
-            preserve its parent and field identity for validation
+            if a required child is absent:
+                record missing-child failure
+                valid = false
+            for each present child in that field:
+                add (child, node, field) to pending in reverse order
 
     return valid only if no structural failure was recorded
 ```
