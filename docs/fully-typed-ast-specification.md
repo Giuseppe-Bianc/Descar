@@ -1331,6 +1331,12 @@ The specification is implemented when all the following conditions hold:
 | ACC-008 | The complete test suite covers every operator, type category, semantic reference, and error category in this document. |
 | ACC-009 | No unsupported type category or language feature can be inserted into a successful Fully Typed AST. |
 | ACC-010 | The final document review confirms that each requirement has an ID and a verification method. |
+| ACC-011 | Every phase boundary in IF-001 through IF-010 rejects inputs that fail its required preconditions, and no blocking result reaches a downstream phase as valid input. |
+| ACC-012 | The type-checking pass satisfies TC-001 through TC-006, including contextual typing under TR-028, explicit required conversions, deterministic diagnostics, and the absence of a successful Fully Typed AST on failure. |
+| ACC-013 | Symbol resolution satisfies SR-001 through SR-017, including exact nearest-scope lookup, declaration visibility, scope exit, direct recursion, and rejection of later-function references. |
+| ACC-014 | Diagnostic locations satisfy ERR-012 and ERR-013 for unresolved identifiers, duplicate declarations, numeric promotion failures, valid source-map references, and invalid-span handling. |
+| ACC-015 | The validators satisfy VAL-001 through VAL-004 by rejecting malformed trees and invalid semantic metadata without silently repairing the input or allowing downstream processing. |
+| ACC-016 | The implementation review or an explicit complexity argument addresses CMP-001 through CMP-008. Runtime performance thresholds are not claimed until a representative workload and measurement environment are approved. |
 
 ## 14. Technical Examples
 
