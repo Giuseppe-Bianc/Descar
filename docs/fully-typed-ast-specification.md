@@ -870,19 +870,19 @@ A rule MUST NOT infer a context merely because a destination type exists elsewhe
 
 A successful expression node MUST have exactly one result TypeId. A conversion node MUST have a source child whose result type equals its `from` type, and its result type MUST equal its `to` type. An identity conversion MUST NOT create a Convert node. A rule that requires a conversion MUST NOT leave that conversion implicit (TC-002).
 
-When an expression cannot be checked, the checker MUST NOT manufacture a plausible result type to allow the parent node to appear valid (TC-004). It MAY continue checking independent sibling expressions when doing so cannot depend on the failed result. Any such additional diagnostics do not turn the failed expression into a valid node.
+When an expression cannot be checked, the checker MUST NOT manufacture a plausible result type to allow the parent node to appear valid (TC-004). It MUST continue checking independent sibling expressions when doing so does not depend on the failed result (TC-004). Any such additional diagnostics do not turn the failed expression into a valid node.
 
 #### 8.9.3 Statement and declaration checking
 
-The checker MUST process statements in their specified order and establish lexical scope, function context, and loop context in accordance with Sections 8.6 and 9 (TR-020–TR-025, SR-001–SR-008, TC-004). A statement that does not produce an expression value MUST NOT receive an expression TypeId.
+The checker MUST process statements in their specified order and establish lexical scope, function context, and loop context in accordance with Sections 8.6 and 9 (TR-020–TR-025, SR-001–SR-008, TC-004). A statement that does not produce an expression value MUST NOT receive an expression TypeId (TC-002, TY-16).
 
-For each declaration, the checker MUST resolve required type syntax, validate declaration constraints, and check initializers or function bodies under the applicable declared types and lexical environment (TR-015–TR-017, SR-002–SR-004). A variable declaration MUST NOT acquire its own binding before its initializer is checked, as required by SR-004. A function MUST be registered at the point required by SR-002 and SR-013 before its body is checked, so direct recursion can resolve without making later functions visible.
+For each declaration, the checker MUST resolve required type syntax, validate declaration constraints, and check initializers or function bodies under the applicable declared types and lexical environment (TR-015–TR-017, SR-002–SR-004). A variable declaration MUST NOT acquire its own binding before its initializer is checked, as required by SR-004. A function MUST be registered at the point required by SR-002 and SR-013 before its body is checked, so direct recursion can resolve without making later functions visible (SR-002, SR-013).
 
 The checker MUST apply the specified return-path analysis to every non-Void function (TR-025). Finding a Return node somewhere in a function body is not sufficient. The condition for acceptance is the `MayCompleteNormally` result defined by TR-025 and Section 8.6.
 
 #### 8.9.4 Diagnostic accumulation and finalization
 
-The checker MAY report multiple independent source errors in one run. It MUST preserve a deterministic diagnostic order based on phase order and deterministic traversal or rule order. It MUST NOT depend on hash-table iteration order for externally visible diagnostics (TC-004, TC-005).
+The checker MUST accumulate diagnostics from independent expressions when their checks do not depend on a failed result. It MUST preserve a deterministic diagnostic order based on phase order and deterministic traversal or rule order. It MUST NOT depend on hash-table iteration order for externally visible diagnostics (TC-004, TC-005).
 
 At finalization, the checker MUST validate the candidate typed tree against the invariants in Section 10 (TC-006, VAL-002). The checker MUST return no Fully Typed AST if any blocking Error diagnostic exists, if a required type or semantic reference is missing, or if typed validation fails. An internal invariant failure MUST be classified as an internal error rather than rewritten as a source type error.
 
@@ -938,7 +938,7 @@ The rules in this section define the behavior that a resolver must produce. They
 
 #### 9.3.1 Resolution state
 
-At the start of resolution, the compiler MUST create one SymbolTable and one global ScopeRecord for the current CompilationUnitId (SR-001, DEC-012). The resolver MUST maintain:
+At the start of resolution, the compiler MUST create one SymbolTable and one global ScopeRecord for the current CompilationUnitId (SR-001, DEC-012). The resolver MUST maintain the following state (SR-001, SR-011, SR-017, INV-014):
 
 - An active scope, represented by a ScopeId.
 - The source-ordered declaration position currently being processed.
@@ -946,7 +946,7 @@ At the start of resolution, the compiler MUST create one SymbolTable and one glo
 - A mapping from each resolved variable or call reference to its SymbolId.
 - The active function context and loop context required by the semantic rules.
 
-The resolver MUST NOT reuse a SymbolId for two declarations in one compilation unit (ARC-005, SR-017). A failed declaration or reference MUST NOT produce a successful Fully Typed AST. Error recovery may continue to collect independent diagnostics, but a recovery result is not a resolved program.
+The resolver MUST NOT reuse a SymbolId for two declarations in one compilation unit (ARC-005, SR-017). A failed declaration or reference MUST NOT produce a successful Fully Typed AST (ERR-004, TC-006). Error recovery may continue to collect independent diagnostics, but a recovery result is not a resolved program.
 
 #### 9.3.2 Scope lookup
 
@@ -964,6 +964,8 @@ lookup(name, starting_scope):
 
 Identifier equality uses the exact spelling rule in Section 3. The lookup operation returns the nearest declaration regardless of symbol kind. The caller then validates the required kind.
 
+The following variable-reference and call cases operationalize SR-014 and are subject to the expression and call rules TR-003 and TR-017.
+
 For a variable reference:
 1. Call `lookup` from the active scope.
 2. If no declaration is found, report the undefined-variable diagnostic defined by TR-003.
@@ -976,7 +978,7 @@ For a call:
 3. If the nearest declaration is not a function, report E2027. Do not continue searching an outer scope.
 4. Otherwise, attach the function SymbolId, check argument count and each argument against the ordered signature, and use the signature's result TypeId for the call result.
 
-A source-level identifier reference MUST NOT retain only a name when resolution succeeds. Later phases MUST use the resolved SymbolId and MUST NOT repeat lexical lookup.
+A source-level identifier reference MUST NOT retain only a name when resolution succeeds. Later phases MUST use the resolved SymbolId and MUST NOT repeat lexical lookup (SR-011, SR-017).
 
 #### 9.3.3 Source-ordered declaration processing
 
@@ -1005,7 +1007,7 @@ resolve_program(items):
     return diagnostics and semantic records
 ```
 
-This pseudocode defines observable ordering, not a required code structure. A main declaration MUST be processed under the root-only and signature constraints in BAS-017, SR-006, and INV-019. Whether main is exposed as a callable source-level name must follow the existing call rules and MUST NOT be inferred from the fact that its internal symbol uses a function record.
+This pseudocode defines observable ordering, not a required code structure. A main declaration MUST be processed under the root-only and signature constraints in BAS-017, SR-006, and INV-019. Whether main is exposed as a callable source-level name must follow the existing call rules and MUST NOT be inferred from the fact that its internal symbol uses a function record (INV-019, TR-017).
 
 Before a variable declaration becomes visible, its initializer MUST be checked in the environment that exists before that declaration (SR-004, SR-015). The declaration itself MUST NOT be used to resolve a self-reference in its initializer. A declaration that conflicts with a name already present in the same scope MUST produce a duplicate-declaration diagnostic and MUST NOT replace the existing symbol (SR-005, SR-015). An inner-scope declaration may shadow a declaration in an outer scope, subject to the nearest-declaration lookup behavior above.
 
@@ -1022,7 +1024,7 @@ The scope behavior below elaborates SR-007, SR-008, and SR-016. The resolver MUS
 | For statement | Enter one for-scope before its initializer. Keep it active for the initializer, condition, increment, and body. If the body is a block, enter its nested block scope. Leave the for-scope after the complete statement. |
 | Nested standalone block | Enter a child scope and leave it at the end of the block. |
 
-Scope entry and exit MUST be balanced on both successful processing and recoverable diagnostic paths (SR-016). A declaration introduced in a scope MUST NOT remain visible after that scope is left. Loop context is separate from lexical visibility: entering or leaving a lexical scope MUST NOT by itself change the active loop stack.
+Scope entry and exit MUST be balanced on both successful processing and recoverable diagnostic paths (SR-016). A declaration introduced in a scope MUST NOT remain visible after that scope is left (SR-016). Loop context is separate from lexical visibility: entering or leaving a lexical scope MUST NOT by itself change the active loop stack (SR-016, INV-014).
 
 #### 9.3.5 Additional requirements and verification
 
@@ -1109,16 +1111,16 @@ After structural validation succeeds, the typed validator MUST check all applica
 - Every break and continue reference identifies the nearest valid loop in the same function.
 - No error marker, placeholder, unresolved type, dangling ID, unsupported type category, or diagnostic sentinel appears in a successful tree.
 
-Validation MUST use the same canonical type and assignability definitions as semantic analysis (TY-12, TY-13, TY-17, VAL-002). It MUST NOT silently repair a malformed typed tree by inventing a type, rebinding a reference by name, or inserting an unrequested conversion.
+Validation MUST use the same canonical type and assignability definitions as semantic analysis (TY-12, TY-13, TY-17, VAL-002). It MUST NOT silently repair a malformed typed tree by inventing a type, rebinding a reference by name, or inserting an unrequested conversion (VAL-003).
 
 #### 10.2.3 Failure behavior and validation result
 
-A validator MUST return a successful validity result only if all required checks pass (VAL-002, VAL-004). It MAY accumulate multiple independent validation failures where this is safe, but it MUST stop following a branch when doing so would require dereferencing an invalid or dangling reference. Any typed-tree invariant failure is an internal error, not a source-language type diagnostic (INV-001–INV-022, VAL-002, ERR-006). An invalid tree MUST NOT be passed to a lowering or other downstream phase.
+A validator MUST return a successful validity result only if all required checks pass (VAL-002, VAL-004). It MAY accumulate multiple independent validation failures where this is safe, but it MUST stop following a branch when doing so would require dereferencing an invalid or dangling reference (VAL-002). Any typed-tree invariant failure is an internal error, not a source-language type diagnostic (INV-001–INV-022, VAL-002, ERR-006). An invalid tree MUST NOT be passed to a lowering or other downstream phase (VAL-004).
 
 | Rule ID | Requirement | Verification |
 | --- | --- | --- |
 | VAL-001 | Structural validation MUST check root kind, node identity, owned-child topology, required child kinds, source order, and source-span validity before accepting an AST. | Mutate a valid tree separately to introduce a duplicate NodeId, repeated child, missing child, invalid child kind, reversed child order, and out-of-range span. Verify each mutation is rejected with the corresponding invariant or internal-error result. |
-| VAL-002 | Typed-AST validation MUST verify semantic IDs, canonical types, declaration/signature consistency, conversion metadata, mutable places, array lengths, call signatures, and loop references against the invariants in Section 10. | Create one invalid typed tree per applicable invariant and assert that the validator rejects it before downstream use. |
+| VAL-002 | Typed-AST validation MUST verify semantic IDs, canonical types, declaration/signature consistency, conversion metadata, mutable places, array lengths, call signatures, and loop references against the invariants in Section 10. It MUST classify typed-tree invariant failures as internal errors and MUST NOT dereference invalid or dangling references while continuing validation. | Create one invalid typed tree per applicable invariant, including multiple invalid references, and assert rejection as an internal error without a crash or downstream use. |
 | VAL-003 | A validator MUST NOT repair an invalid AST by resolving names again, inventing missing type information, inserting conversions, or changing source spans. | Remove a type ID, replace a valid symbol ID with a dangling ID, and alter a conversion target. Verify failure without tree mutation or substituted metadata. |
 | VAL-004 | An Incomplete SurfaceProgram and any typed tree that fails validation MUST be rejected as downstream phase input. | Attempt semantic processing on an Incomplete SurfaceProgram and lowering on an invalid TypedProgram. Verify the next phase is not entered. |
 
@@ -1140,7 +1142,7 @@ A validator MUST return a successful validity result only if all required checks
 
 ### 11.2 Diagnostic record
 
-Every diagnostic MUST contain:
+The normative diagnostic field set is defined by ERR-008. Every diagnostic MUST contain:
 
 - DiagnosticId.
 - Phase.
