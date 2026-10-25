@@ -1247,9 +1247,9 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | GAP-001–GAP-010, GAP-013–GAP-015 | Source inspection confirms each observed gap; implementation review confirms the stated required consequence. |
 | GAP-011–GAP-012 | Source inspection confirms loop-state behavior and nested declaration acceptance; parser tests verify root-only function and main declarations. |
 | ARC-001–ARC-011 | Node ID uniqueness, tree shape, clone identity, semantic reference, pipeline, abstract-node, span, and resolved-type representation tests. |
-| SR-014–SR-017 | Lookup precedence, declaration visibility, scope exit, and resolved reference integrity tests. |
 | SYN-001 | Parser-conformance tests for each grammar production and optional clause. |
 | SYN-003 | Parser tests verify root-only `fun` and `main` declarations, E1004 diagnostics, incomplete status, and the semantic phase boundary. |
+| IF-001–IF-010 | Interface input-state, output-invariant, diagnostics, validation, and blocking-failure tests at each compiler phase boundary. |
 | N-ROOT-01–N-ROOT-02 | Root construction tests for empty and non-empty source units. |
 | N-SE-01–N-SE-09 | One constructor and one structural-validation test per expression variant. |
 | N-SS-01–N-SS-11 | One constructor and one structural-validation test per statement variant. |
@@ -1572,6 +1572,7 @@ The following matrix identifies the principal sources of the normative rules. Re
 | Type identity, assignment, and conversions | TY-01–TY-17, TR-001–TR-028, TC-001–TC-006, INV-007–INV-009, INV-016–INV-020 | Sections 8.9, 13.1–13.3 and ADR-0001, ADR-0003, ADR-0004 verification vectors | Aho et al., Chapter 6, Section 6.5, type checking |
 | Operator precedence and AST shape | SYN-001–SYN-003, DEC-013, INV-003–INV-004 | Section 13.2, test 22 | Aho et al., Chapter 4, syntax analysis, and Chapter 6, Section 6.1 |
 | Syntax-directed semantic construction | ARC-008, OP-004–OP-007, IF-004–IF-006 | Sections 13.1–13.3 | Aho et al., Chapter 5, syntax-directed translation; Chapter 6, Sections 6.3 and 6.5 |
+| Phase interface and failure gating | IF-001–IF-010, VAL-001–VAL-004, TC-001, TC-006 | Sections 5.1.1, 8.9, 10.2, and 13.1–13.3 | Phase separation and semantic validation; interface identifiers and failure contracts are Descar-specific |
 | Control-flow and return validation | TR-025, GAP-008, DEC-019, OPEN-002 | Section 13.2, test 30 | Static semantic analysis associated with syntax-directed translation; the conservative rule itself is Descar-specific |
 | Error boundaries and invalid intermediate state | ERR-001–ERR-013, INV-005, INV-012, IF-001–IF-010, VAL-001–VAL-004 | Sections 10.2, 11, and 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
 | Algorithmic expectations | CMP-001–CMP-008 | Section 12.4 plus implementation profiling when a workload is approved | Asymptotic analysis is general algorithmic methodology, not a Descar-specific textbook guarantee |
