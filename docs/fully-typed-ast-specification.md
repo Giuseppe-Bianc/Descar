@@ -2,7 +2,7 @@
 
 **Status:** Normative design specification for the implemented Descar language subset.
 
-**Revision:** 2026-10-22. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change. ADR-0004 clarifies operator context propagation. Decision DEC-018 records the change. DEC-019 defines conservative non-void return-path validation.
+**Revision:** 2026-10-25. This revision expands phase-boundary contracts, symbol resolution, type-checking pass behavior, diagnostic source locations, AST validation, algorithmic expectations, traceability, and acceptance criteria. It does not change the established language scope or define runtime or IR semantics. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change. ADR-0004 clarifies operator context propagation. Decision DEC-018 records the change. DEC-019 defines conservative non-void return-path validation.
 
 Repository facts are marked **Observed**. Requirements for the new model are marked **Specified**. A requirement marked **Gap** requires an implementation change. Open issues are listed in Section 15.
 
