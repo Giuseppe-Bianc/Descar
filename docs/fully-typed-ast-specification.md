@@ -1109,8 +1109,10 @@ Every diagnostic MUST contain:
 | --- | --- | --- |
 | ERR-008 | Every diagnostic MUST contain the fields listed above. A source-caused diagnostic MUST include its primary SourceSpan. A diagnostic MUST link to its affected NodeId when that node exists. | Generate one diagnostic from each error category and validate all required fields and the source-node link. |
 | ERR-011 | DiagnosticId MUST be unique in one compiler run. Phase and Severity MUST use the enumerations in Section 3. Every Error is blocking. A Warning or Note does not block Fully Typed AST output. | Generate diagnostics in each phase and verify ID uniqueness, enum values, and blocking behavior by severity. |
+| ERR-012 | A diagnostic's primary span MUST identify the source construct responsible for the immediate error. An unresolved identifier or wrong-kind reference MUST point to the identifier token. A duplicate declaration MUST point to the later declaration and include the earlier declaration as a related span when available. An invalid operator or operand combination MUST point to the complete expression span. | Trigger each listed error and assert the primary span boundaries and, for duplicates, the related declaration span. |
+| ERR-013 | A diagnostic span MUST refer to an existing SourceId in the SourceMap and use valid half-open byte offsets within that source. A renderer encountering an invalid span record MUST report an internal reporting failure and MUST NOT misclassify the source program as invalid. | Render diagnostics at byte offset zero, at end of file where an empty span is permitted, and on multi-byte UTF-8 text. Inject an out-of-range span and an unknown SourceId and verify internal reporting failure. |
 
-The existing CompileError model provides a phase-specific variant, optional code, message, span, and optional help. Related spans and NodeId are specified additions.
+The existing CompileError model provides a phase-specific variant, optional code, message, span, and optional help. Related spans and NodeId are specified additions. The span-selection rules above define the diagnostic contract; the visual formatting of rendered messages remains implementation-dependent.
 
 ### 11.3 Recovery and stopping rules
 
@@ -1215,7 +1217,7 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | TC-001–TC-006 | Negative and positive tests for pass input state, result types, contextual typing, diagnostic accumulation, deterministic ordering, and successful-output gating. |
 | SYN-002 | AST-shape tests for left associativity, assignment right associativity, and precedence for every operator class. |
 | INV-001–[INV-022](#inv-022) | One validator test per invariant. Each negative case must identify the violated invariant. |
-| ERR-001–ERR-011 | Parser recovery, blocking errors, accumulated diagnostics, diagnostic fields, error codes, severity, CLI phase boundary, and internal-error separation tests. |
+| ERR-001–ERR-013 | Parser recovery, blocking errors, accumulated diagnostics, diagnostic fields and locations, error codes, severity, CLI phase boundary, and internal-error separation tests. |
 | OP-001–OP-009 | Interface tests for each mandatory operation, transformation, and cloning. |
 | OP-010–OP-011 | Comparison tests only if an optional comparison utility is implemented. |
 
@@ -1507,8 +1509,8 @@ The following matrix identifies the principal sources of the normative rules. Re
 | Specification area | Requirement or decision references | Verification location | Primary theoretical relationship |
 | --- | --- | --- | --- |
 | Surface and typed tree separation | BAS-006–BAS-009, ARC-001–ARC-011, INV-001–INV-005 | Sections 13.1–13.3 | Aho et al., Chapter 6, Section 6.1, syntax-tree representations |
-| Lexical scope and resolved references | SR-001–SR-012, INV-006, INV-013, DEC-009–DEC-012 | Sections 13.1–13.2 | Aho et al., Chapter 2, Section 2.7, symbol tables; Chapter 6, Section 6.3, types and declarations |
-| Type identity, assignment, and conversions | TY-01–TY-17, TR-001–TR-028, INV-007–INV-009, INV-016–INV-020 | Sections 13.1–13.3 and ADR-0001, ADR-0003, ADR-0004 verification vectors | Aho et al., Chapter 6, Section 6.5, type checking |
+| Lexical scope and resolved references | SR-001–SR-017, INV-006, INV-013, DEC-009–DEC-012 | Sections 9.3, 13.1–13.2 | Aho et al., Chapter 2, Section 2.7, symbol tables; Chapter 6, Section 6.3, types and declarations |
+| Type identity, assignment, and conversions | TY-01–TY-17, TR-001–TR-028, TC-001–TC-006, INV-007–INV-009, INV-016–INV-020 | Sections 8.9, 13.1–13.3 and ADR-0001, ADR-0003, ADR-0004 verification vectors | Aho et al., Chapter 6, Section 6.5, type checking |
 | Operator precedence and AST shape | SYN-001–SYN-003, DEC-013, INV-003–INV-004 | Section 13.2, test 22 | Aho et al., Chapter 4, syntax analysis, and Chapter 6, Section 6.1 |
 | Syntax-directed semantic construction | ARC-008, OP-004–OP-007, IF-004–IF-006 | Sections 13.1–13.3 | Aho et al., Chapter 5, syntax-directed translation; Chapter 6, Sections 6.3 and 6.5 |
 | Control-flow and return validation | TR-025, GAP-008, DEC-019, OPEN-002 | Section 13.2, test 30 | Static semantic analysis associated with syntax-directed translation; the conservative rule itself is Descar-specific |
