@@ -407,7 +407,7 @@ The parser's binding-power table also lists dot at power 27, but the parser has 
 
 Each declaration name has one initializer. The initializer count must equal the name count. Ordinary statements do not require a semicolon. Semicolons delimit the three for-loop clauses. A for-loop initializer is empty, a declaration, or an expression statement. Function and main declarations are top-level items. A block or other statement cannot contain either declaration.
 
-An array type suffix is applied in source order. For example, i32[2][3] is an array of length 2 whose elements are arrays of length 3 of i32.
+An array type suffix is applied in source order. For example, `i32[2][3]` is an array of length 2 whose elements are arrays of length 3 of i32.
 
 ### 6.5 Fully Typed expression nodes
 
@@ -1241,7 +1241,6 @@ Required semantic result:
 2. The left literal and shift-count literal both use their default type I64. The shift count receives no context under TR-028d.
 3. TR-012 assigns the shift expression the left operand type, I64.
 4. I64 is not assignable to F64 under Section 7.2. TR-015 reports E2002 for the initializer.
-
 
 ## 15. Open Issues and Design Decisions
 

@@ -73,9 +73,9 @@ Definitions:
 Rules:
 
 - **TR-028a. Leaf adaptation.** An adaptable literal that receives a numeric context type T takes type T when its signed value v (after D4) passes the test for its kind:
-  - an integer literal and an integer T: v is within the range of T;
-  - an integer literal and F32 or F64: v is exactly representable in T;
-  - a floating-point literal and F32 or F64: the value is finite after rounding to nearest in T.
+    - an integer literal and an integer T: v is within the range of T;
+    - an integer literal and F32 or F64: v is exactly representable in T;
+    - a floating-point literal and F32 or F64: the value is finite after rounding to nearest in T.
 
   If the literal is compatible with T by kind and fails its test, the checker reports E2035 at the literal. A floating-point literal with an integer T is not compatible by kind. It keeps its default type, and this rule reports nothing.
 - **TR-028b. Passing.** Only a flexible expression passes its context type to its children. Grouping passes any numeric T. A Negate, a BitwiseNot and the Binary operators `+ - * / % & | ^` pass an integer T to every operand. A shift passes an integer T to its left operand only. An operator node does not pass F32 or F64. Operand and result types then follow TR-009 to TR-012 as usual.
