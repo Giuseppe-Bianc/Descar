@@ -39,6 +39,8 @@ The phrase in TR-028a that leaf adaptation reports nothing applies only to the l
 
 ## Specification amendments
 
+These amendments are reflected in the current AST specification. The bullets below record the changes made and are not a list of pending edits.
+
 - Clarify that TR-028a's no-error outcome applies only to leaf adaptation.
 - Make TR-028b's prohibition on forwarding an incoming F32 or F64 context explicit and preserve the peer rule.
 - Make the both-flexible case in TR-028c conditional on TR-028b.
