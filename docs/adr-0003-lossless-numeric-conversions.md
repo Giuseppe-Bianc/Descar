@@ -7,6 +7,20 @@
 **Amends:** ADR-0001 D6, DEC-017 (new), GAP-015, TY-13, TY-14, Section 7.2, Section 7.3, Section 7.4, OPEN-001, Section 13.2 tests 2 and 3, and new test 28
 **Numbering:** ADR-0001 reserves ADR-0002 for explicit conversions. This ADR does not take that number.
 
+## Theoretical relationship and scope
+
+This ADR defines a Descar-specific restriction on implicit numeric
+conversions. Aho et al., *Compilers: Principles, Techniques, and Tools*,
+2nd edition, Chapter 6, Sections 6.3, “Types and Declarations,” and 6.5,
+“Type Checking,” provide the relevant framework for type compatibility and
+checking conversions between operand and destination types.
+
+The requirement that every implicit numeric conversion preserve every
+value of the source type is a project design decision. The textbook
+reference does not establish Descar's conversion table or guarantee that
+a particular conversion is lossless. The conversion table and verification
+vectors in this ADR remain the normative source for this language rule.
+
 ## Context
 
 ADR-0001 D6 limits promotion to pairs where both operands convert to the result type under TY-13. ADR-0001 rejected option P1, which requires the specification to define sign reinterpretation and float rounding. The same ADR says that promotion defines no new run-time conversion.
