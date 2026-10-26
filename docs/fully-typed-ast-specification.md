@@ -1546,6 +1546,7 @@ The specification is implemented when all the following conditions hold:
 | ACC-025 | Non-numeric equality between compatible, non-equivalent operand types selects the defined common type, inserts the required conversion on the correct operand, and returns Bool without implying runtime equality behavior. Verification: TR-010, TY-15, Section 13.2 tests 19 and 40, and OPEN-005. |
 | ACC-026 | Comparison typing rejects non-numeric ordering and incompatible non-numeric equality, emits the required diagnostic, and does not produce a successful typed comparison node on failure. Verification: TR-010, Section 13.2 test 41, and the procedure in Section 8.4. |
 | ACC-027 | Every parser recovery path makes progress or exits, terminates without an infinite loop, and leaves the SurfaceProgram Incomplete so semantic phases cannot consume it. Verification: ERR-001, ERR-003, ERR-010, ERR-015, and Section 13.2 test 42. |
+| ACC-028 | Fixed-array lengths accept the inclusive range from zero through MAX_U64 and reject negative, non-integer, or out-of-range values with E2034 before inserting a canonical array type. Verification: TR-026, TR-027, and Section 13.2 tests 6, 7, and 43. |
 
 ## 14. Technical Examples
 
