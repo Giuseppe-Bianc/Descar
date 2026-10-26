@@ -20,7 +20,7 @@ The scope is the language that the repository parser and type checker implement:
 - Null-pointer literals.
 - Variables, functions, parameters, and the main function.
 - Unary and binary operators.
-- Explicit numeric casts using `expression as numeric-type`.
+- Explicit casts using `expression as type` across the supported conversion families.
 - Assignment and compound assignment.
 - Calls.
 - Fixed arrays, array literals, vectors, and indexing.
@@ -1265,12 +1265,18 @@ main {
     var small: i8 = wide as i8
     var precise: f64 = 16777217i32 as f64
     var narrower_float: f32 = 3.5d as f32
+    var character: char = 65i32 as char
+    var text: string = character as string
+    var values: vector<i32> = nullptr as vector<i32>
+    var fixed: i32[4] = nullptr as i32[4]
+    var record: Record = nullptr as Record
+    var same_text: string = text as string
 }
 ~~~
 
 The parser constructs a Cast node for each `as` expression and parses the target using the existing type grammar. The type checker accepts numeric conversions, numeric-to-char/Boolean and char/Boolean-to-numeric conversions, char-to-string, null-pointer-to-aggregate conversions, and same-type identity casts. This permits explicit narrowing without adding it to implicit assignability. For example, I64 to I8 is accepted only because the source uses `as i8`.
 
-The current compiler front end does not define runtime behavior for integer overflow, out-of-range floating-point-to-integer conversions, or floating-point rounding. The execution and lowering specification must define those cases before the conversion can be executed.
+The current front end does not define runtime behavior for integer overflow, out-of-range floating-point-to-integer conversions, floating-point rounding, numeric-to-char conversion, numeric-to-bool conversion, or the runtime representation of null-backed aggregates. The execution and lowering specification must define those cases before generated code can execute them. Char-to-string and nullptr-to-aggregate reuse the existing CharToString and NullToAggregate conversion rules. Same-type casts are identity operations.
 
 
 ## 15. Open Issues and Design Decisions
