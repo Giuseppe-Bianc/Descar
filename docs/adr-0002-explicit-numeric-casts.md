@@ -1,4 +1,4 @@
-# ADR-0002: Explicit numeric casts
+# ADR-0002: Explicit cast syntax and conversion rules
 
 **Status:** Accepted  
 **Date:** 2026-10-26  
@@ -15,18 +15,26 @@ The numeric conversion rules preserve every value for implicit conversions. That
 Introduce the cast expression:
 
 ```text
-expression as numeric_type
+expression as type
 ```
 
-The target type may be one of `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`, or `bool`.
+The target follows Descar's existing type grammar, so targets may be numeric types (`i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`), `char`, `bool`, `string`, fixed arrays, vectors, or named custom types. `nullptr` is a value, not a target type token.
 
-Numeric-to-numeric casts are supported, including narrowing and precision loss. Numeric-to-char, char-to-numeric, numeric-to-bool, and bool-to-numeric conversions are also supported as explicit casts. String and pointer conversions are rejected. The parser represents the syntax as a dedicated Cast expression. Unsupported source and target combinations produce E2002; unsupported target tokens produce E1002.
+The supported conversion families are:
 
-Explicit casts do not expand or weaken the implicit assignability table. Numeric narrowing and precision loss are only expressible through this cast syntax. An identity cast is valid and does not require a runtime conversion operation.
+- Numeric-to-numeric, including narrowing and precision loss.
+- Numeric-to-`char` and `bool`, and `char` or `bool` to numeric.
+- `char` to `string`, using the existing CharToString conversion.
+- `nullptr` to an array, vector, or named custom type, using the existing NullToAggregate conversion.
+- Identity casts, where source and target types are equivalent.
+
+String parsing, string-to-numeric casts, unrelated aggregate conversions, arbitrary custom-to-custom conversions, and pointer reinterpretation are rejected. The parser represents casts as a dedicated Cast expression. Unsupported source/target combinations produce E2002; a token that cannot begin a type, such as `nullptr`, produces E1002.
+
+Explicit casts do not expand or weaken implicit assignability. Numeric narrowing and precision loss remain explicit-only. An identity cast does not require a runtime conversion operation. Conversions that already have a defined semantic conversion kind, such as CharToString and NullToAggregate, reuse that conversion kind rather than inventing new behavior.
 
 The cast binds more tightly than multiplicative operators and less tightly than prefix operators. Chained casts associate left-to-right. Therefore, `-value as i32` means `(-value) as i32`, while `left + right as f64` means `left + (right as f64)`.
 
-This decision specifies parsing and front-end type checking only. Runtime behavior for integer overflow or narrowing, out-of-range floating-point-to-integer conversion, floating-point rounding, numeric-to-char conversion, and numeric-to-bool conversion remains unspecified. The lowering and execution specifications must define those cases before generated code executes explicit casts.
+This decision specifies parsing and front-end type checking only. Runtime behavior for integer overflow or narrowing, out-of-range floating-point-to-integer conversion, floating-point rounding, numeric-to-char conversion, numeric-to-bool conversion, and the runtime representation of nullptr-backed aggregates remains unspecified. The lowering and execution specifications must define these cases before generated code executes value-changing casts.
 
 ## Alternatives considered
 
@@ -37,8 +45,9 @@ This decision specifies parsing and front-end type checking only. Runtime behavi
 ## Consequences
 
 - The lexer reserves `as` as a keyword.
-- `char` and `bool` are supported cast targets, but do not make string or pointer casts valid.
+- The full existing type grammar is accepted for cast targets, including strings, arrays, vectors, and custom types.
+- String parsing, unrelated aggregate conversions, and pointer reinterpretation remain unsupported.
 - The AST, parser, semantic checker, and AST printer represent cast expressions directly.
-- Regression tests cover cast parsing, precedence, chaining, numeric conversions, and invalid source or target types.
+- Regression tests cover cast parsing, precedence, chaining, numeric/scalar conversions, char-to-string, null-to-aggregate, identity casts, and invalid source or target types.
 - The README and Fully Typed AST specification document the syntax.
 - Runtime conversion behavior remains an open item for the lowering and execution specifications.
