@@ -576,6 +576,8 @@ impl<'a> JsavParser<'a> {
 
             // Assignment
             TokenKind::Equal => self.parse_assignment(left, &token),
+            // Explicit numeric cast
+            TokenKind::KeywordAs => self.parse_cast(left),
             // Function call
             TokenKind::OpenParen => self.parse_call(left, &token),
             // Array access
@@ -590,6 +592,33 @@ impl<'a> JsavParser<'a> {
                 None
             }
         }
+    }
+
+    /// Parses `expression as type`, accepting the same type syntax as declarations.
+    fn parse_cast(&mut self, expr: Expr) -> Option<Expr> {
+        let Some(target_start) = self.peek().cloned() else {
+            self.errors.push(CompileError::SyntaxError {
+                code: Some(ErrorCode::E1002),
+                message: "Missing cast target type".into(),
+                span: expr.span().clone(),
+                help: Some("Add a supported type after 'as'".into()),
+            });
+            return None;
+        };
+        if self.is_at_end() {
+            self.syntax_error(
+                "Missing cast target type",
+                &target_start,
+                Some("Add a supported type after 'as'"),
+                Some(ErrorCode::E1002),
+            );
+            return None;
+        }
+
+        let target_type = self.parse_type()?;
+        let target_end = self.previous().map_or_else(|| target_start.span.clone(), |token| token.span.clone());
+        let span = expr.span().merge(&target_start.span.merge(&target_end));
+        Some(Expr::Cast { expr: Box::new(expr), target_type, span })
     }
 
     /// Validates a compound-assignment target and preserves its `Expr::Binary` representation.

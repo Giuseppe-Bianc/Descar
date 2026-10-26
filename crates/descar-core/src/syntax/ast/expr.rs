@@ -1,4 +1,5 @@
 use crate::location::source_span::SourceSpan;
+use crate::syntax::ast::ast_type::Type;
 use crate::syntax::ast::binary_op::BinaryOp;
 use crate::syntax::ast::literal_value::LiteralValue;
 use crate::syntax::ast::unary_op::UnaryOp;
@@ -20,6 +21,18 @@ pub enum Expr {
         right: Box<Self>,
 
         /// Source extent.
+        span: SourceSpan,
+    },
+
+    /// Explicit conversion expression, written using the as keyword.
+    Cast {
+        /// Expression whose value is converted.
+        expr: Box<Self>,
+
+        /// Numeric type to convert to.
+        target_type: Type,
+
+        /// Source extent, including the cast target.
         span: SourceSpan,
     },
 
@@ -117,6 +130,7 @@ impl Expr {
     pub const fn span(&self) -> &SourceSpan {
         match self {
             Self::Binary { span, .. }
+            | Self::Cast { span, .. }
             | Self::Unary { span, .. }
             | Self::Grouping { span, .. }
             | Self::Literal { span, .. }

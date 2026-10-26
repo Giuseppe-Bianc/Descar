@@ -55,6 +55,9 @@ impl Precedence {
             | TokenKind::PlusPlus
             | TokenKind::MinusMinus => Self::new(27, 26),
 
+            // Casts bind more tightly than arithmetic and less tightly than unary operators.
+            TokenKind::KeywordAs => Self::new(23, 24),
+
             _ => Self::new(0, 0),
         }
     }

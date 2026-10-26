@@ -85,6 +85,8 @@ pub enum TokenKind {
     #[token(".")]
     Dot,
 
+    #[token("as")]
+    KeywordAs,
     #[token("fun")]
     KeywordFun,
     #[token("if")]
@@ -224,6 +226,24 @@ const fn unterminated_comment(_: &mut logos::Lexer<TokenKind>) -> Result<(), Lex
 }
 
 impl TokenKind {
+    /// Returns whether this token names a numeric cast target type.
+    #[must_use]
+    pub const fn is_numeric_type(&self) -> bool {
+        matches!(
+            self,
+            Self::TypeI8
+                | Self::TypeI16
+                | Self::TypeI32
+                | Self::TypeI64
+                | Self::TypeU8
+                | Self::TypeU16
+                | Self::TypeU32
+                | Self::TypeU64
+                | Self::TypeF32
+                | Self::TypeF64
+        )
+    }
+
     #[must_use]
     pub const fn is_type(&self) -> bool {
         matches!(

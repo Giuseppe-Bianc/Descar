@@ -453,6 +453,7 @@ impl TypeChecker {
     fn visit_expr(&mut self, expr: &Expr) -> Option<Type> {
         match expr {
             Expr::Binary { left, op, right, span } => self.visit_binary_expr(left, *op, right, span),
+            Expr::Cast { expr, target_type, span } => self.visit_cast_expr(expr, target_type, span),
             Expr::Unary { op, expr, span, .. } => self.visit_unary_expr(*op, expr, span),
             Expr::Grouping { expr, span: _ } => self.visit_expr(expr),
             Expr::Literal { value, span } => self.visit_literal(value, span),
@@ -461,6 +462,36 @@ impl TypeChecker {
             Expr::Assign { target, value, span } => self.visit_assign(target, value, span),
             Expr::Call { callee, arguments, span } => self.visit_call(callee, arguments, span),
             Expr::ArrayAccess { array, index, span } => self.visit_array_access(array, index, span),
+        }
+    }
+
+    /// Type-checks explicit casts without changing implicit assignability.
+    ///
+    /// In addition to numeric conversions, this accepts char-to-string casts,
+    /// null-pointer-to-aggregate casts, and identity casts. String parsing,
+    /// arbitrary custom conversions, and pointer reinterpretation are unsupported.
+    fn visit_cast_expr(&mut self, expr: &Expr, target_type: &Type, span: &SourceSpan) -> Option<Type> {
+        let source_type = self.visit_expr(expr)?;
+        let source_numeric = Self::is_numeric(&source_type);
+        let target_numeric = Self::is_numeric(target_type);
+        let aggregate_target = matches!(target_type, Type::Array { .. } | Type::Vector { .. } | Type::Custom { .. });
+        let same_type = source_type == *target_type
+            || (self.is_assignable(&source_type, target_type) && self.is_assignable(target_type, &source_type));
+        let supported = (source_numeric && (target_numeric || matches!(target_type, Type::Char | Type::Bool)))
+            || (matches!(source_type, Type::Char | Type::Bool) && target_numeric)
+            || (matches!(source_type, Type::Char) && matches!(target_type, Type::String))
+            || (matches!(source_type, Type::NullPtr) && aggregate_target)
+            || same_type;
+
+        if supported {
+            Some(target_type.clone())
+        } else {
+            self.type_error_with_code(
+                Some(ErrorCode::E2002),
+                format!("Unsupported explicit cast from {source_type} to {target_type}"),
+                span,
+            );
+            None
         }
     }
 

@@ -673,3 +673,36 @@ fn pretty_print_main_function_with_empty_body_covers_empty_stmt_body() {
 
     assert_eq!(output, "└── MainFunction\n    └── (empty)\n");
 }
+
+#[test]
+fn pretty_print_cast_expression_shows_target_type_and_operand() {
+    let expression = Expr::Cast { expr: Box::new(variable("value")), target_type: Type::I32, span: span(0, 13) };
+
+    let output = rendered_expr(&expression);
+    assert!(output.starts_with("└── Cast to i32\n"));
+    assert!(output.contains("Expr:"));
+    assert!(output.contains("Variable 'value'"));
+}
+
+#[test]
+fn pretty_print_cast_to_array_type() {
+    let expression = Expr::Cast {
+        expr: Box::new(variable("arr")),
+        target_type: Type::Array { element_type: Box::new(Type::I32), size: Box::new(number(4)) },
+        span: span(0, 10),
+    };
+    let output = rendered_expr(&expression);
+    assert!(output.starts_with("└── Cast to [i32; 4]\n"));
+    assert!(output.contains("Variable 'arr'"));
+}
+
+#[test]
+fn pretty_print_cast_to_custom_type() {
+    let expression = Expr::Cast {
+        expr: Box::new(number(1)),
+        target_type: Type::Custom { name: Arc::from("MyType") },
+        span: span(0, 5),
+    };
+    let output = rendered_expr(&expression);
+    assert!(output.starts_with("└── Cast to MyType\n"));
+}

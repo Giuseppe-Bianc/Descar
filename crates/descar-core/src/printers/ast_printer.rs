@@ -48,6 +48,7 @@ fn format_type_size(expr: &Expr) -> String {
         Expr::Binary { left, op, right, .. } => {
             format!("{} {} {}", format_type_size(left), format_binary_op(op), format_type_size(right))
         }
+        Expr::Cast { expr, target_type, .. } => format!("({} as {target_type})", format_type_size(expr)),
         Expr::Unary { op, side, expr, .. } => match side {
             UnaryOpSide::Prefix => format!("{}{}", format_unary_op(op), format_type_size(expr)),
             UnaryOpSide::Postfix => format!("{}{}", format_type_size(expr), format_unary_op(op)),
@@ -101,7 +102,7 @@ fn count_expr_nodes(expr: &Expr) -> usize {
                 stack.push(left);
                 stack.push(right);
             }
-            Expr::Unary { expr, .. } | Expr::Grouping { expr, .. } => {
+            Expr::Cast { expr, .. } | Expr::Unary { expr, .. } | Expr::Grouping { expr, .. } => {
                 stack.push(expr);
             }
             Expr::Assign { target, value, .. } => {
@@ -146,6 +147,11 @@ fn print_expr(expr: &Expr, indent: &str, branch_type: BranchType, output: &mut S
             let new_indent = get_indent(indent, &branch_type);
             print_labeled_expr("Left:", left, &new_indent, BranchType::Middle, output, styles);
             print_labeled_expr("Right:", right, &new_indent, BranchType::Last, output, styles);
+        }
+        Expr::Cast { expr, target_type, .. } => {
+            append_line(output, indent, branch_type, &styles.operator, &format!("Cast to {target_type}"));
+            let new_indent = get_indent(indent, &branch_type);
+            print_labeled_expr("Expr:", expr, &new_indent, BranchType::Last, output, styles);
         }
         Expr::Unary { op, side, expr, .. } => {
             append_line(

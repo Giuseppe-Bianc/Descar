@@ -6,3 +6,5 @@ invalid_assignment:
 Some(E1003): Invalid left-hand side in assignment
 missing_closing_brace:
 Some(E1004): Expected '}' in end of block, found end of file.
+missing_cast_target:
+Some(E1002): Missing cast target type: end of file

@@ -197,6 +197,23 @@ fn snapshot_binary_expression_printer() {
 }
 
 #[test]
+fn snapshot_cast_to_array_type() {
+    let expression = Expr::Cast {
+        expr: Box::new(variable("arr")),
+        target_type: Type::Array { element_type: Box::new(Type::I32), size: Box::new(number(4)) },
+        span: span(),
+    };
+    assert_snapshot!("cast_to_array_type", strip_ansi_codes(&pretty_print(&expression)));
+}
+
+#[test]
+fn snapshot_cast_to_custom_type() {
+    let expression =
+        Expr::Cast { expr: Box::new(number(1)), target_type: Type::Custom { name: Arc::from("MyType") }, span: span() };
+    assert_snapshot!("cast_to_custom_type", strip_ansi_codes(&pretty_print(&expression)));
+}
+
+#[test]
 fn snapshot_nested_statement_printer() {
     let statement = Stmt::If {
         condition: Box::new(Expr::new_bool_literal(true, span())),

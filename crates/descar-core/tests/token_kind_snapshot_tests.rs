@@ -36,7 +36,7 @@ fn test_operators() {
 #[test]
 fn test_keywords() {
     let input = r"
-		fun if else return while for main var const nullptr 
+		as fun if else return while for main var const nullptr
 		break continue true false
 	";
     let tokens = tokenize(input);
@@ -176,6 +176,7 @@ fn test_keyword_nullptr() {
 #[test]
 fn test_all_keywords() {
     let mapping = vec![
+        TokenKind::KeywordAs,
         TokenKind::KeywordFun,
         TokenKind::KeywordIf,
         TokenKind::KeywordElse,

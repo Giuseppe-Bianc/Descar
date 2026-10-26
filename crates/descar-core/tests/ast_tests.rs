@@ -111,6 +111,7 @@ fn expression_span_returns_node_span_for_every_variant() {
             right: Box::new(literal.clone()),
             span: node_span.clone(),
         },
+        Expr::Cast { expr: Box::new(literal.clone()), target_type: Type::I32, span: node_span.clone() },
         Expr::Unary {
             op: UnaryOp::Negate,
             side: UnaryOpSide::Prefix,
