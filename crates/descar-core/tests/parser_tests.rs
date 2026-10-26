@@ -382,3 +382,10 @@ fn rejects_non_numeric_cast_targets() {
     let (_, errors) = parse("value as string");
     assert_has_error(&errors, ErrorCode::E1002);
 }
+
+
+#[test]
+fn rejects_missing_cast_target() {
+    let (_, errors) = parse("value as");
+    assert_has_error(&errors, ErrorCode::E1002);
+}
