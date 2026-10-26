@@ -910,6 +910,25 @@ The checker MUST accumulate diagnostics from independent expressions when their 
 
 At finalization, the checker MUST validate the candidate typed tree against the invariants in Section 10 (TC-006, VAL-002). The checker MUST return no Fully Typed AST if any blocking Error diagnostic exists, if a required type or semantic reference is missing, or if typed validation fails. An internal invariant failure MUST be classified as an internal error rather than rewritten as a source type error.
 
+The finalization contract is:
+
+~~~text
+finalize(candidate, diagnostics):
+    if diagnostics contains a blocking Error:
+        discard candidate
+        return Failure(diagnostics)
+
+    validation = validate_typed_ast(candidate)
+    if validation failed:
+        record an internal validation failure
+        discard candidate
+        return Failure(diagnostics plus internal failure)
+
+    return Success(candidate, non-blocking diagnostics)
+~~~
+
+The candidate is private until finalization succeeds. No API caller or later compiler phase may observe a candidate tree on either failure path. Warnings and Notes may accompany Success because they are non-blocking under ERR-011. A failed validator result is not converted into a warning, and a source diagnostic is not converted into an internal error merely because the compiler continues checking independent constructs. This procedure defines the outcome contract; it does not require a particular result type or allocation strategy.
+
 | Rule ID | Requirement | Verification |
 | --- | --- | --- |
 | TC-001 | The type checker MUST reject an Incomplete or structurally invalid SurfaceProgram before expression checking. | Supply an Incomplete program with a recovery placeholder and a structurally invalid complete-status tree. Verify that neither enters the expression-checking operation and that no TypedProgram is returned. |
@@ -918,6 +937,7 @@ At finalization, the checker MUST validate the candidate typed tree against the 
 | TC-004 | A failed expression check MUST NOT emit a successful typed expression with a fabricated type. The checker MUST continue checking independent expressions when their checks do not depend on the failed result. | Check a program with two independent type errors and assert both diagnostics are reported, while no successful TypedProgram or error-typed expression is exposed. |
 | TC-005 | The checker MUST accumulate diagnostics deterministically and MUST NOT use hash iteration order to determine the externally visible order. | Run the same erroneous source repeatedly and with different hash seeds where supported. Compare the ordered diagnostic phase, code, primary span, and message. |
 | TC-006 | The checker MUST return a Fully Typed AST only when no blocking Error diagnostic exists and typed validation succeeds. | Exercise separately a source type error, a missing semantic reference in a candidate tree, and an invalid conversion node. Verify that each case returns failure and no Fully Typed AST. |
+| TC-007 | The finalization operation MUST keep the candidate typed tree private until all blocking-error checks and typed validation succeed. It MUST return no typed tree when diagnostics contain a blocking Error or validation fails. Non-blocking Warning and Note diagnostics MAY accompany success. | Verify success with no diagnostics and with only Warning/Note diagnostics. Verify failure with a blocking Error, a missing type reference, and a typed invariant failure. Assert that no candidate tree is observable on any failure path. |
 
 
 
@@ -1335,7 +1355,7 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | SR-001–SR-012 | Scope, shadowing, duplicate, recursion, forward-reference, custom type, and symbol-kind tests. |
 | SR-013 | Source-order visibility, direct recursion, and rejection of calls to later declarations and mutual recursion. |
 | SR-014–SR-017 | Nearest-scope lookup, declaration visibility, scope exit, and resolved SymbolId identity tests. |
-| TC-001–TC-006 | Negative and positive tests for pass input state, result types, contextual typing, diagnostic accumulation, deterministic ordering, and successful-output gating. |
+| TC-001–TC-007 | Negative and positive tests for pass input state, result types, contextual typing, diagnostic accumulation, deterministic ordering, typed-tree finalization, and successful-output gating. |
 | VAL-001–VAL-005 | Structural topology, source-span, semantic cross-reference, safe and deterministic failure reporting, no-repair, and downstream-gating tests for AST validators. |
 | SYN-002 | AST-shape tests for left associativity, assignment right associativity, and precedence for every operator class. |
 | INV-001–[INV-022](#inv-022) | One validator test per invariant. Each negative case must identify the violated invariant. |
@@ -1413,6 +1433,7 @@ The specification is implemented when all the following conditions hold:
 | ACC-018 | Context-sensitive literal typing satisfies TR-028a through TR-028d, including integer range boundaries, exact floating-point representability, peer operands, compound assignment, and the rule that F32/F64 context does not pass through an operator to two flexible operands. | Section 13.2 tests 1, 23 to 29, with expected tree shapes and diagnostics. |
 | ACC-019 | Diagnostics are reproducible in both contents and order for repeated compilations of the same input. The sequence follows phase and encounter order, including ties on the same primary span. | Section 13.2 test 38, TC-005, and ERR-014. |
 | ACC-020 | Every AST validation failure identifies the violated invariant or rule and supplies a safe node or field location when available. Reporting a validation failure never dereferences a dangling ID, repairs the AST, or permits downstream use. | VAL-001 through VAL-005 and Section 13.2 test 36. |
+| ACC-021 | A candidate TypedProgram becomes observable only after error gating and typed validation succeed. Blocking diagnostics and validation failures return failure without a TypedProgram; non-blocking diagnostics may accompany success. | TC-006, TC-007, and Section 13.2 test 37. |
 
 ## 14. Technical Examples
 
