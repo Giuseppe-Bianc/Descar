@@ -388,3 +388,18 @@ fn rejects_missing_cast_target() {
     let (_, errors) = parse("value as");
     assert_has_error(&errors, ErrorCode::E1002);
 }
+
+#[test]
+fn parses_char_and_bool_cast_targets() {
+    let (statements, errors) = parse("value as char\nvalue as bool");
+    assert_no_errors(&errors);
+    assert_eq!(statements.len(), 2);
+    assert!(matches!(
+        &statements[0],
+        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Char, .. })
+    ));
+    assert!(matches!(
+        &statements[1],
+        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Bool, .. })
+    ));
+}
