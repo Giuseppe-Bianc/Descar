@@ -17,6 +17,7 @@ fn assert_token(input: &str, expected: TokenKind) {
 
 #[test]
 fn test_display_for_covered_token_kinds() {
+    assert_eq!(TokenKind::KeywordAs.to_string(), "'as'");
     assert_eq!(TokenKind::AndEqual.to_string(), "'&='");
     assert_eq!(TokenKind::OrEqual.to_string(), "'|='");
     assert_eq!(TokenKind::ShiftLeftEqual.to_string(), "'<<='");
@@ -34,6 +35,15 @@ fn test_display_for_covered_token_kinds() {
     assert_eq!(TokenKind::UnterminatedChar.to_string(), "unterminated character literal");
     assert_eq!(TokenKind::UnterminatedComment.to_string(), "unterminated multiline comment");
     assert_eq!(TokenKind::MultilineComment.to_string(), "multiline comment");
+}
+
+#[test]
+fn test_cast_keyword_and_numeric_target_tokens() {
+    assert_token("as", KeywordAs);
+    assert!(TypeI8.is_numeric_type());
+    assert!(TypeF64.is_numeric_type());
+    assert!(!TypeBool.is_numeric_type());
+    assert!(!KeywordAs.is_numeric_type());
 }
 
 #[test]
