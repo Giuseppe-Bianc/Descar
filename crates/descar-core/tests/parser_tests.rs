@@ -384,9 +384,17 @@ fn rejects_non_type_cast_targets() {
 }
 
 #[test]
-fn rejects_missing_cast_target() {
-    let (_, errors) = parse("value as");
+fn rejects_missing_cast_target_and_no_statement() {
+    let (statements, errors) = parse("value as");
     assert_has_error(&errors, ErrorCode::E1002);
+    assert!(statements.is_empty(), "no statements should be produced when cast target missing");
+}
+
+#[test]
+fn rejects_missing_second_cast_target() {
+    let (statements, errors) = parse("value as i32 as");
+    assert_has_error(&errors, ErrorCode::E1002);
+    assert!(statements.is_empty(), "no statements should be produced when second cast target missing");
 }
 
 #[test]

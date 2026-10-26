@@ -191,7 +191,11 @@ fn snapshots_type_forms() {
 
 #[test]
 fn snapshots_parser_errors() {
-    let cases = [("invalid_assignment", "42 = 1"), ("missing_closing_brace", "if (true) {")];
+    let cases = [
+        ("invalid_assignment", "42 = 1"),
+        ("missing_closing_brace", "if (true) {"),
+        ("missing_cast_target", "value as"),
+    ];
     let mut lines = Vec::new();
 
     for (name, input) in cases {
