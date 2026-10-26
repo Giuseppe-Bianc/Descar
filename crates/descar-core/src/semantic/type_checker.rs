@@ -465,18 +465,26 @@ impl TypeChecker {
         }
     }
 
-    /// Type-checks explicit scalar casts without changing implicit assignability.
+    /// Type-checks explicit casts without changing implicit assignability.
     ///
-    /// Numeric casts may narrow or lose precision. Numeric-to-char, char-to-numeric,
-    /// numeric-to-bool, and bool-to-numeric casts are also explicit-only operations.
+    /// In addition to numeric conversions, this accepts char-to-string casts,
+    /// null-pointer-to-aggregate casts, and identity casts. String parsing,
+    /// arbitrary custom conversions, and pointer reinterpretation are unsupported.
     fn visit_cast_expr(&mut self, expr: &Expr, target_type: &Type, span: &SourceSpan) -> Option<Type> {
         let source_type = self.visit_expr(expr)?;
         let source_numeric = Self::is_numeric(&source_type);
         let target_numeric = Self::is_numeric(target_type);
+        let aggregate_target = matches!(target_type, Type::Array { .. } | Type::Vector { .. } | Type::Custom { .. });
+        let same_type = source_type == *target_type
+            || (self.is_assignable(&source_type, target_type) && self.is_assignable(target_type, &source_type));
         let supported = (source_numeric && target_numeric)
             || (source_numeric && matches!(target_type, Type::Char | Type::Bool))
-            || (matches!(source_type, Type::Char | Type::Bool) && target_numeric);
-        if supported || source_type == *target_type && matches!(source_type, Type::Char | Type::Bool) {
+            || (matches!(source_type, Type::Char | Type::Bool) && target_numeric)
+            || (matches!(source_type, Type::Char) && matches!(target_type, Type::String))
+            || (matches!(source_type, Type::NullPtr) && aggregate_target)
+            || same_type;
+
+        if supported {
             Some(target_type.clone())
         } else {
             self.type_error_with_code(
