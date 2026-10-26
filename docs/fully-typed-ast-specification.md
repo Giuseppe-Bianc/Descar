@@ -1530,6 +1530,7 @@ The test suite MUST include:
 41. Comparison failure behavior. Verify that an ordering comparison with compatible but non-numeric operands is rejected under TR-010, that equality between unrelated opaque Named types reports E2014, and that neither failure creates a successful typed comparison node.
 42. Parser recovery progress. Feed malformed input at the start of a source unit, inside a nested block, and at end of input. Verify that each recovery path consumes input or exits its current parse context, terminates without an infinite loop, produces an Incomplete SurfaceProgram, and never invokes name resolution or type checking.
 43. Array-length upper boundary. Verify that a fixed-array length equal to `MAX_U64` is accepted, but a positive integer literal equal to `MAX_U64 + 1` reports E2034 and does not create a canonical Array type entry. Use an arbitrary-precision expected value in the test fixture so the test itself does not overflow its host integer type.
+44. Static array-index bounds. For `var a: i32[2] = {1, 2}; var value: i32 = a[2]`, verify that the index expression is accepted by TR-019 and has type I32, because the base type and integer index type are valid. Do not require a compile-time bounds diagnostic or infer runtime behavior from this test; the out-of-range access remains OPEN-008.
 
 ### 13.3 Acceptance criteria
 
