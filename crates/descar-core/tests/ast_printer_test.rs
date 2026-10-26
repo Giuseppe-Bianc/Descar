@@ -674,7 +674,6 @@ fn pretty_print_main_function_with_empty_body_covers_empty_stmt_body() {
     assert_eq!(output, "└── MainFunction\n    └── (empty)\n");
 }
 
-
 #[test]
 fn pretty_print_cast_expression_shows_target_type_and_operand() {
     let expression = Expr::Cast {
