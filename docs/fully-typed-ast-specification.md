@@ -577,9 +577,23 @@ The checker uses this preference order:
 
 F64, F32, U64, I64, U32, I32, U16, I16, U8, I8.
 
-For two numeric operand types, Promote(T₁,T₂) selects the first type C in this list that is equal to either operand. The promotion is defined only when T₁ ⪯ C and T₂ ⪯ C. Otherwise the operation reports E2036 and has no result type. The current checker has no value-preservation condition (GAP-015).
+For two numeric operand types, Promote(T₁,T₂) selects the first type C in this list that is equal to either operand. The promotion is defined only when T₁ ⪯ C and T₂ ⪯ C. Otherwise the operation reports E2036 and has no result type. **Observed implementation gap:** the current checker does not yet enforce the specified value-preservation condition (GAP-015). The required behavior in this specification does enforce it.
 
 Promotion uses only the conversions in the assignment table in Section 7.2. The Fully Typed AST records each operand conversion as a NumericAssignable conversion.
+
+The required promotion procedure is deterministic:
+
+~~~text
+promote(T1, T2):
+    require T1 and T2 are numeric types
+    for C in [F64, F32, U64, I64, U32, I32, U16, I16, U8, I8]:
+        if (T1 ≡ C or T2 ≡ C) and T1 ⪯ C and T2 ⪯ C:
+            return C
+    report E2036
+    return no type
+~~~
+
+The procedure MUST use the assignability relation in Section 7.2, not host-language casts or value-dependent guesses. It MUST NOT inspect runtime values. The ordered table contains ten entries, so the procedure takes O(1) time and O(1) additional space under the specified fixed type set. These bounds describe the algorithm, not measured end-to-end compiler performance. A successful result preserves every value of both operand types because both assignability premises must hold. A failed search produces E2036 and MUST NOT produce a typed binary expression.
 
 Of the 100 ordered pairs of numeric types, 68 have a promoted type. These sixteen pairs have none, in either operand order: F32 with I32, I64, U32, or U64; F64 with I64 or U64; U64 with I64, I32, I16, or I8; U32 with I32, I16, or I8; U16 with I16 or I8; U8 with I8. No promotion rounds an operand, because every conversion in the table in Section 7.2 preserves every value.
 
