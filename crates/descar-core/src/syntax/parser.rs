@@ -596,7 +596,15 @@ impl<'a> JsavParser<'a> {
 
     /// Parses `expression as numeric_type`, requiring a numeric target type.
     fn parse_numeric_cast(&mut self, expr: Expr) -> Option<Expr> {
-        let target = self.advance()?.clone();
+        let Some(target) = self.advance().cloned() else {
+            self.errors.push(CompileError::SyntaxError {
+                code: Some(ErrorCode::E1002),
+                message: "Missing cast target, expected a numeric type".into(),
+                span: expr.span().clone(),
+                help: Some("Add one of i8, i16, i32, i64, u8, u16, u32, u64, f32, or f64 after 'as'".into()),
+            });
+            return None;
+        };
         let target_type = match target.kind {
             TokenKind::TypeI8 => Type::I8,
             TokenKind::TypeI16 => Type::I16,
