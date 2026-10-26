@@ -1659,10 +1659,9 @@ fn test_is_assignable_arrays_with_non_evaluable_sizes() {
     assert!(!tc.is_assignable(&unknown_array, &known_array));
 }
 
-
 #[test]
 fn explicit_numeric_casts_allow_narrowing_and_float_conversion() {
-    let ast = "main { var wide: i64 = 300; var small: i8 = wide as i8; var rounded: f32 = 3.5d as f32 }";
+    let ast = "main { var wide: i64 = 300\n var small: i8 = wide as i8\n var rounded: f32 = 3.5d as f32 }";
     let errors = typecheck(ast);
     assert!(errors.is_empty(), "Explicit numeric casts should be accepted: {errors:?}");
 }
