@@ -1658,3 +1658,19 @@ fn test_is_assignable_arrays_with_non_evaluable_sizes() {
     // None, Some(5) -> same branch in the opposite ordering.
     assert!(!tc.is_assignable(&unknown_array, &known_array));
 }
+
+
+#[test]
+fn explicit_numeric_casts_allow_narrowing_and_float_conversion() {
+    let ast = "main { var wide: i64 = 300i64; var small: i8 = wide as i8; var rounded: f32 = 3.5f64 as f32 }";
+    let errors = typecheck(ast);
+    assert!(errors.is_empty(), "Explicit numeric casts should be accepted: {errors:?}");
+}
+
+#[test]
+fn explicit_numeric_casts_reject_non_numeric_source_types() {
+    let ast = "main { var value: i32 = \"not numeric\" as i32 }";
+    let errors = typecheck(ast);
+    assert_eq!(errors.len(), 1);
+    assert!(errors[0].message().unwrap_or_default().contains("Explicit casts require numeric types"));
+}
