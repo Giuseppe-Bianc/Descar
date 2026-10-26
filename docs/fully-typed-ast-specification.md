@@ -882,6 +882,24 @@ The Fully Typed AST stores array length as a u64 constant. The source form must 
 
 This rule reflects the confirmed array-length decision in [DEC-007](#dec-007), defined in Section 15.1. It resolves the current parser/checker mismatch.
 
+Array length resolution MUST check the literal's exact integer value before converting it to u64. The implementation MUST NOT cast first and rely on wrapping, truncation, or host-language overflow behavior. A literal whose value exceeds MAX_U64 MUST produce E2034, even if its low 64 bits would fit. Invalid array lengths MUST NOT be interned into the TypeTable as Array types.
+
+The required length check is:
+
+~~~text
+resolve_array_length(expression):
+    if expression is not a permitted integer literal:
+        report E2034 at the length expression
+        return failure
+    value = obtain the exact non-negative integer magnitude
+    if value < 0 or value > MAX_U64:
+        report E2034 at the length expression
+        return failure
+    return the exact value represented as u64
+~~~
+
+The exact-magnitude step may use checked arithmetic or a wider representation. It MUST distinguish a representable value from a literal that exceeds MAX_U64 without first overflowing the target integer type.
+
 | Rule ID | Preconditions | Postcondition | Possible error |
 |---|---|---|---|
 | TR-027 Type syntax resolution | The TypeSyntax node is structurally valid. Primitive types use the canonical primitive entry. A named type uses its exact name and does not require declaration lookup. Vector and array element syntax resolves recursively. Array length passes TR-026. | Return the canonical TypeId for the resolved primitive, Named, Vector, or Array type. Vector element type MUST NOT be built-in Void. | E2034 for an invalid array length; parser diagnostic for invalid TypeSyntax. |
