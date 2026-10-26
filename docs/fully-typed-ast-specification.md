@@ -1365,6 +1365,7 @@ The implementation MUST NOT use hash-table iteration order to select which decla
 | ERR-006 | Internal errors MUST stop the current compilation. A source error MUST NOT cause an internal-error classification. |
 | ERR-007 | No code-generation or lowering phase may accept an Incomplete or invalid AST. |
 | ERR-010 | On a statement parse failure at the root or in a block, the parser MUST advance one token and continue. It MAY return successfully parsed statements with diagnostics. Expression recovery placeholders MUST be nullptr literals. An invalid declaration-type fallback MUST be represented as an absent annotation. Both placeholders MUST remain unusable because the parse result is Incomplete. The CLI MUST stop before type checking when parse diagnostics exist. |
+| ERR-015 | Every parser recovery path MUST guarantee progress. After a recovery attempt fails, the parser MUST consume at least one token, return from the current parse context, or terminate at end of input. It MUST NOT repeat recovery with the same token position and parser context indefinitely. The selected synchronization strategy remains implementation-dependent. Any recovered result MUST remain Incomplete and MUST NOT enter name resolution or type checking. |
 
 | ID | Requirement | Verification |
 |---|---|---|
@@ -1509,6 +1510,7 @@ The test suite MUST include:
 39. Semantic table validation. Mutate a valid TypedProgram to contain duplicate SymbolIds, duplicate TypeIds, duplicate canonical type keys, a table whose CompilationUnitId differs from the root, and a reference to a missing entry. Verify duplicate or foreign entries are rejected before use, dependent checks are skipped rather than dereferencing them, independent findings remain deterministic, and no invalid TypedProgram is returned.
 40. Non-numeric equality conversion. For compatible but non-equivalent operands, verify that `char == string` selects String and inserts a CharToString conversion on the character operand, and that `nullptr == namedValue` selects the named type and inserts NullToAggregate on the nullptr operand. Verify both expressions have type Bool. These are typed-AST checks only; do not infer runtime equality semantics, which remain OPEN-005.
 41. Comparison failure behavior. Verify that an ordering comparison with compatible but non-numeric operands is rejected under TR-010, that equality between unrelated opaque Named types reports E2014, and that neither failure creates a successful typed comparison node.
+42. Parser recovery progress. Feed malformed input at the start of a source unit, inside a nested block, and at end of input. Verify that each recovery path consumes input or exits its current parse context, terminates without an infinite loop, produces an Incomplete SurfaceProgram, and never invokes name resolution or type checking.
 
 ### 13.3 Acceptance criteria
 
