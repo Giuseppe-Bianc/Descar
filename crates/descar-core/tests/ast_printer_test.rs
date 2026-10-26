@@ -676,11 +676,7 @@ fn pretty_print_main_function_with_empty_body_covers_empty_stmt_body() {
 
 #[test]
 fn pretty_print_cast_expression_shows_target_type_and_operand() {
-    let expression = Expr::Cast {
-        expr: Box::new(variable("value")),
-        target_type: Type::I32,
-        span: span(0, 13),
-    };
+    let expression = Expr::Cast { expr: Box::new(variable("value")), target_type: Type::I32, span: span(0, 13) };
 
     let output = rendered_expr(&expression);
     assert!(output.starts_with("└── Cast to i32\n"));
