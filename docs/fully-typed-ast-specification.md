@@ -1504,6 +1504,7 @@ The specification is implemented when all the following conditions hold:
 | ACC-021 | A candidate TypedProgram becomes observable only after error gating and typed validation succeed. Blocking diagnostics and validation failures return failure without a TypedProgram; non-blocking diagnostics may accompany success. | TC-006, TC-007, and Section 13.2 test 37. |
 | ACC-022 | Each compilation unit has exactly one TypeId for every canonical type key, and failed type resolution does not leave an invalid composite type entry. | TY-17, TY-19, and Section 13.2 test 21. |
 | ACC-023 | Typed validation rejects duplicate, dangling, and foreign-unit semantic IDs without dereferencing ambiguous or invalid entries. It preserves deterministic reports for independent failures and never returns the rejected tree. | VAL-005, VAL-006, and Section 13.2 tests 36 and 39. |
+| ACC-024 | Every accepted SourceSpan uses in-range UTF-8 code-point boundaries. A span that splits a multi-byte scalar is rejected by structural validation and diagnostic rendering. | INV-004, INV-023, VAL-001, ERR-013, and Section 13.2 tests 35 and 36. |
 
 ## 14. Technical Examples
 
@@ -1776,7 +1777,7 @@ The following matrix identifies the principal sources of the normative rules. Re
 | Syntax-directed semantic construction | ARC-008, OP-004–OP-007, IF-004–IF-006 | Sections 13.1–13.3 | Aho et al., Chapter 5, syntax-directed translation; Chapter 6, Sections 6.3 and 6.5 |
 | Phase interface and failure gating | IF-001–IF-010, VAL-001–VAL-006, TC-001, TC-006–TC-007 | Sections 5.1.1, 8.9, 10.2, and 13.1–13.3 | Phase separation and semantic validation; interface identifiers and failure contracts are Descar-specific |
 | Control-flow and return validation | TR-025, GAP-008, DEC-019, OPEN-002 | Section 13.2, test 30 | Static semantic analysis associated with syntax-directed translation; the conservative rule itself is Descar-specific |
-| Error boundaries and invalid intermediate state | ERR-001–ERR-014, INV-005, INV-012, IF-001–IF-010, VAL-001–VAL-006, OPEN-007 | Sections 10.2, 11, and 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
+| Error boundaries and invalid intermediate state | ERR-001–ERR-014, INV-005, INV-012, INV-023, IF-001–IF-010, VAL-001–VAL-006, OPEN-007 | Sections 10.2, 11, and 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
 | Algorithmic expectations | CMP-001–CMP-008 | Section 12.4 plus implementation profiling when a workload is approved | Asymptotic analysis is general algorithmic methodology, not a Descar-specific textbook guarantee |
 | Numeric language decisions | DEC-016–DEC-018, OPEN-001, OPEN-006 | ADR-0001, ADR-0003, ADR-0004 and Section 13.2 tests 23–29 | The textbook supplies the type-checking framework. The exact numeric rules are project decisions. |
 
