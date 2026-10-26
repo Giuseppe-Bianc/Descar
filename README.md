@@ -54,6 +54,20 @@ cargo run -- check dr_files/simple_test.dr -v
 
 Verifies syntax without producing output.
 
+## Language syntax
+
+Explicit numeric casts use the Rust-style `expression as numeric_type` form. The target must be one of `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, or `f64`.
+
+```text
+main {
+    var wide: i64 = 300i64
+    var small: i8 = wide as i8
+    var precise: f64 = 16777217i32 as f64
+}
+```
+
+Casts are explicit. They do not change the rules for implicit numeric conversions.
+
 ## Practical examples
 
 ### Language examples
