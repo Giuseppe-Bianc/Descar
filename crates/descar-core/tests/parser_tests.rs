@@ -404,7 +404,6 @@ fn parses_char_and_bool_cast_targets() {
     ));
 }
 
-
 #[test]
 fn parses_string_array_vector_and_custom_cast_targets() {
     let (statements, errors) = parse("value as string\nvalue as i32[4]\nvalue as vector<i32>\nvalue as Record");
