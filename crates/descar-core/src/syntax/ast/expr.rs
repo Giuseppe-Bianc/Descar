@@ -23,6 +23,18 @@ pub enum Expr {
         span: SourceSpan,
     },
 
+    /// Explicit numeric conversion expression, written using the as keyword.
+    Cast {
+        /// Expression whose value is converted.
+        expr: Box<Self>,
+
+        /// Numeric type to convert to.
+        target_type: crate::syntax::ast::ast_type::Type,
+
+        /// Source extent, including the cast target.
+        span: SourceSpan,
+    },
+
     /// Unary operation expression.
     Unary {
         /// Unary operator.
@@ -117,6 +129,7 @@ impl Expr {
     pub const fn span(&self) -> &SourceSpan {
         match self {
             Self::Binary { span, .. }
+            | Self::Cast { span, .. }
             | Self::Unary { span, .. }
             | Self::Grouping { span, .. }
             | Self::Literal { span, .. }
