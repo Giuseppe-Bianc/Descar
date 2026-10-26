@@ -1838,6 +1838,7 @@ The following matrix identifies the principal sources of the normative rules. Re
 | Type identity, assignment, and conversions | TY-01–TY-19, TR-001–TR-028, TC-001–TC-007, INV-007–INV-009, INV-016–INV-020 | Sections 8.9, 13.1–13.3 and ADR-0001, ADR-0003, ADR-0004 verification vectors | Aho et al., Chapter 6, Section 6.5, type checking |
 | Comparison compatibility and typed conversions | TR-010, TY-15, ACC-025–ACC-026, OPEN-005 | Section 8.4 and Section 13.2 tests 19, 40, and 41 | Type compatibility is a static typing contract; runtime equality behavior remains a Descar-specific unresolved decision |
 | Fixed-array length resolution | TY-07, TR-026–TR-027, DEC-007, ACC-028 | Section 8.7 and Section 13.2 tests 6, 7, and 43 | Range validation is a static semantic constraint; array runtime layout remains outside this specification |
+| Array index typing and runtime bounds | TR-019, ACC-029, OPEN-008 | Section 8.5 and Section 13.2 test 44 | Static index typing is distinct from the runtime behavior of out-of-range access |
 | Operator precedence and AST shape | SYN-001–SYN-003, DEC-013, INV-003–INV-004 | Section 13.2, test 22 | Aho et al., Chapter 4, syntax analysis, and Chapter 6, Section 6.1 |
 | Syntax-directed semantic construction | ARC-008, OP-004–OP-007, IF-004–IF-006 | Sections 13.1–13.3 | Aho et al., Chapter 5, syntax-directed translation; Chapter 6, Sections 6.3 and 6.5 |
 | Phase interface and failure gating | IF-001–IF-010, VAL-001–VAL-006, TC-001, TC-006–TC-007 | Sections 5.1.1, 8.9, 10.2, and 13.1–13.3 | Phase separation and semantic validation; interface identifiers and failure contracts are Descar-specific |
@@ -1883,6 +1884,7 @@ A change to this specification is complete only when the author or reviewer has 
 | QA-013 | Comparison typing has one deterministic procedure for numeric and non-numeric operands, rejects unsupported comparisons, and does not imply runtime equality semantics that remain open. | Compare Section 8.4, TR-010, tests 19, 40, and 41 in Section 13.2, and OPEN-005. |
 | QA-014 | Every parser recovery path guarantees progress or exits and cannot pass a recovered Incomplete SurfaceProgram to semantic analysis. | Compare ERR-001, ERR-003, ERR-010, ERR-015, and Section 13.2 test 42. |
 | QA-015 | Fixed-array length boundaries, invalid positive overflow, and failure before canonical type insertion are covered by the required verification suite. | Compare TY-07, TR-026–TR-027, DEC-007, ACC-028, and Section 13.2 tests 6, 7, and 43. |
+| QA-016 | The specification distinguishes static array-index typing from undefined runtime bounds behavior and does not imply a compile-time bounds check. | Compare TR-019, test 44 in Section 13.2, ACC-029, and OPEN-008. |
 
 ### 17.4 Remaining limitations
 
