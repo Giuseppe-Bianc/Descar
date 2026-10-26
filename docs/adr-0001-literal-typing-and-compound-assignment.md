@@ -95,9 +95,9 @@ Rules:
   If the literal is compatible with T by kind and fails its test, the checker reports E2035 at the literal. A floating-point literal with an integer T is not compatible by kind. It keeps its default type, and this rule reports nothing.
 - **TR-028b. Passing.** Only a flexible expression passes its context type to its children. Grouping passes any numeric T. A Negate, a BitwiseNot and the Binary operators `+ - * / % & | ^` pass an integer T to every operand. A shift passes an integer T to its left operand only. An operator node does not pass F32 or F64. Operand and result types then follow TR-009 to TR-012 as usual.
 - **TR-028c. Peer rule.** For `+ - * / % & | ^ == != < <= > >=`, if exactly one operand is flexible and the other operand is not flexible and has numeric type S, the flexible operand receives S as its context type. This replaces any context type from the position of the Binary node. If both operands are flexible, both receive the context type of the Binary node. Shifts have no peer rule.
+- **TR-028d. No context.** A flexible expression with no context type takes default types, and operators apply TR-009 to TR-012 to those types. Index expressions, conditions, shift counts and operands of non-flexible unary operators receive no context type. A non-numeric context type has no effect.
 
 **Amendment by ADR-0004:** For current behavior, TR-028b takes precedence over TR-028c when both operands are flexible. The Binary node passes its context only when TR-028b permits it. An incoming F32 or F64 context therefore does not pass through the operator to two flexible operands.
-- **TR-028d. No context.** A flexible expression with no context type takes default types, and operators apply TR-009 to TR-012 to those types. Index expressions, conditions, shift counts and operands of non-flexible unary operators receive no context type. A non-numeric context type has no effect.
 
 Formal form, with `Γ ⊢ e ⇐ T ⇒ S` meaning that e is checked with context type T and has type S:
 
@@ -260,7 +260,7 @@ P2 is chosen. It keeps the Section 7.3 order, adds one precondition, and defines
 
 **Historical record:** This section preserves the original amendment checklist from ADR-0001's acceptance. It is not a substitute for later accepted amendments. Where this checklist conflicts with ADR-0003 or ADR-0004, apply the later decision. The current promotion matrix has 68 successful ordered pairs and 32 E2036 outcomes. The current result for `1 + 2.5` is E2036 under ADR-0003 and ADR-0004.
 
-Apply these when the ADR is accepted.
+The following items document the amendment instructions recorded when ADR-0001 was first accepted.
 
 **Section 3.** Add terms: *adaptable literal*, *flexible expression*, *context type*, *default type*, each as defined in D1 to D3.
 
