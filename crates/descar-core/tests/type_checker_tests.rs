@@ -1689,7 +1689,6 @@ fn explicit_scalar_casts_reject_unsupported_string_conversions() {
     assert!(errors[0].message().unwrap_or_default().contains("Unsupported explicit cast"));
 }
 
-
 #[test]
 fn explicit_casts_support_char_to_string_and_string_identity() {
     let ast = "main { var character: char = 'A'\n var text: string = character as string\n var same: string = text as string }";
