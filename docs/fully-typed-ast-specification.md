@@ -1566,6 +1566,7 @@ The specification is implemented when all the following conditions hold:
 | ACC-026 | Comparison typing rejects non-numeric ordering and incompatible non-numeric equality, emits the required diagnostic, and does not produce a successful typed comparison node on failure. Verification: TR-010, Section 13.2 test 41, and the procedure in Section 8.4. |
 | ACC-027 | Every parser recovery path makes progress or exits, terminates without an infinite loop, and leaves the SurfaceProgram Incomplete so semantic phases cannot consume it. Verification: ERR-001, ERR-003, ERR-010, ERR-015, and Section 13.2 test 42. |
 | ACC-028 | Fixed-array lengths accept the inclusive range from zero through MAX_U64 and reject negative, non-integer, or out-of-range values with E2034 before inserting a canonical array type. Verification: TR-026, TR-027, and Section 13.2 tests 6, 7, and 43. |
+| ACC-029 | Static index typing validates the index as an integer and derives the element type without requiring a compile-time bounds check; it does not imply runtime behavior for out-of-range access. Verification: TR-019, Section 13.2 test 44, and OPEN-008. |
 
 ## 14. Technical Examples
 
