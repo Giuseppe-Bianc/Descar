@@ -1676,7 +1676,7 @@ fn explicit_numeric_casts_reject_non_numeric_source_types() {
 
 #[test]
 fn explicit_scalar_casts_accept_numeric_char_and_bool_pairs() {
-    let ast = "main { var number: i32 = 65\n var character: char = number as char\n var same_character: char = character as char\n var again: i32 = character as i32\n var flag: bool = number as bool\n var same_flag: bool = flag as bool\n var zero: i32 = flag as i32 }";
+    let ast = "main { var number: i32 = 65i32\n var character: char = number as char\n var same_character: char = character as char\n var again: i32 = character as i32\n var flag: bool = number as bool\n var same_flag: bool = flag as bool\n var zero: i32 = flag as i32 }";
     let errors = typecheck(ast);
     assert!(errors.is_empty(), "Explicit scalar casts should be accepted: {errors:?}");
 }
