@@ -594,14 +594,14 @@ impl<'a> JsavParser<'a> {
         }
     }
 
-    /// Parses `expression as numeric_type`, requiring a numeric target type.
+    /// Parses `expression as target_type` for supported scalar cast targets.
     fn parse_numeric_cast(&mut self, expr: Expr) -> Option<Expr> {
         let Some(target) = self.advance().cloned() else {
             self.errors.push(CompileError::SyntaxError {
                 code: Some(ErrorCode::E1002),
-                message: "Missing cast target, expected a numeric type".into(),
+                message: "Missing cast target, expected a supported scalar type".into(),
                 span: expr.span().clone(),
-                help: Some("Add one of i8, i16, i32, i64, u8, u16, u32, u64, f32, or f64 after 'as'".into()),
+                help: Some("Add a numeric type, char, or bool after 'as'".into()),
             });
             return None;
         };
@@ -616,11 +616,13 @@ impl<'a> JsavParser<'a> {
             TokenKind::TypeU64 => Type::U64,
             TokenKind::TypeF32 => Type::F32,
             TokenKind::TypeF64 => Type::F64,
+            TokenKind::TypeChar => Type::Char,
+            TokenKind::TypeBool => Type::Bool,
             _ => {
                 self.syntax_error(
-                    "Invalid cast target, expected a numeric type",
+                    "Invalid cast target, expected a supported scalar type",
                     &target,
-                    Some("Use one of i8, i16, i32, i64, u8, u16, u32, u64, f32, or f64"),
+                    Some("Use a numeric type, char, or bool"),
                     Some(ErrorCode::E1002),
                 );
                 return None;
