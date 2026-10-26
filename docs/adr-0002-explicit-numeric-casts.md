@@ -18,15 +18,15 @@ Introduce the cast expression:
 expression as numeric_type
 ```
 
-The target type must be one of `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, or `f64`.
+The target type may be one of `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`, or `bool`.
 
-Both the operand type and target type must be numeric. The parser represents the syntax as a dedicated Cast expression. The type checker validates the operand, rejects non-numeric source types with E2002, and gives a valid cast the target type. A non-numeric target is rejected during parsing with E1002.
+Numeric-to-numeric casts are supported, including narrowing and precision loss. Numeric-to-char, char-to-numeric, numeric-to-bool, and bool-to-numeric conversions are also supported as explicit casts. String and pointer conversions are rejected. The parser represents the syntax as a dedicated Cast expression. Unsupported source and target combinations produce E2002; unsupported target tokens produce E1002.
 
 Explicit casts do not expand or weaken the implicit assignability table. Numeric narrowing and precision loss are only expressible through this cast syntax. An identity cast is valid and does not require a runtime conversion operation.
 
 The cast binds more tightly than multiplicative operators and less tightly than prefix operators. Chained casts associate left-to-right. Therefore, `-value as i32` means `(-value) as i32`, while `left + right as f64` means `left + (right as f64)`.
 
-This decision specifies parsing and front-end type checking only. Runtime behavior for integer overflow or narrowing, out-of-range floating-point-to-integer conversion, and floating-point rounding remains unspecified. The lowering and execution specifications must define those cases before generated code executes explicit casts.
+This decision specifies parsing and front-end type checking only. Runtime behavior for integer overflow or narrowing, out-of-range floating-point-to-integer conversion, floating-point rounding, numeric-to-char conversion, and numeric-to-bool conversion remains unspecified. The lowering and execution specifications must define those cases before generated code executes explicit casts.
 
 ## Alternatives considered
 
@@ -37,6 +37,7 @@ This decision specifies parsing and front-end type checking only. Runtime behavi
 ## Consequences
 
 - The lexer reserves `as` as a keyword.
+- `char` and `bool` are supported cast targets, but do not make string or pointer casts valid.
 - The AST, parser, semantic checker, and AST printer represent cast expressions directly.
 - Regression tests cover cast parsing, precedence, chaining, numeric conversions, and invalid source or target types.
 - The README and Fully Typed AST specification document the syntax.
