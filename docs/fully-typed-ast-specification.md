@@ -305,7 +305,7 @@ SurfaceExpr is abstract. Each node below is concrete. All required children are 
 | N-SE-07 Assignment | target: SurfaceExpr; value: SurfaceExpr; node_id; span | Simple assignment. Parser-valid targets are variables or index expressions. An index base can still be a temporary; the semantic place rule rejects it. |
 | N-SE-08 Call | callee: SurfaceExpr; arguments: Vec<SurfaceExpr>; node_id; span | Call. Arguments are in source order. |
 | N-SE-09 Index | array: SurfaceExpr; index: SurfaceExpr; node_id; span | Array or vector index. |
-| N-SE-10 Cast | operand: SurfaceExpr; target_type: NumericType; node_id; span | Explicit numeric conversion. The target must be one of the ten built-in numeric types. The full source extent includes the `as` keyword and target type. |
+| N-SE-10 Cast | operand: SurfaceExpr; target_type: TypeSyntax; node_id; span | Explicit conversion using the existing type grammar. The full source extent includes the `as` keyword and target type. Semantic rules constrain which source/target pairs are supported. |
 
 There is no ErrorExpr node. Recovery placeholders do not make a parse result valid. If parsing emits a diagnostic, SurfaceProgram.status is Incomplete.
 
