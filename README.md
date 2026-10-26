@@ -60,7 +60,7 @@ Explicit numeric casts use the Rust-style `expression as numeric_type` form. The
 
 ```text
 main {
-    var wide: i64 = 300i64
+    var wide: i64 = 300
     var small: i8 = wide as i8
     var precise: f64 = 16777217i32 as f64
 }
