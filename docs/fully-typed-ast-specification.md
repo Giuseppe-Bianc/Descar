@@ -1410,6 +1410,7 @@ The specification is implemented when all the following conditions hold:
 | ACC-016 | The implementation review or an explicit complexity argument addresses CMP-001 through CMP-008. Runtime performance thresholds are not claimed until a representative workload and measurement environment are approved. |
 | ACC-017 | The implementation exhausts all 100 ordered numeric type pairs. Exactly 68 pairs produce the specified promoted type, and the other 32 report E2036 without producing a typed binary expression. Every selected conversion satisfies the value-preservation predicate in Section 7.2. | Section 13.2 test 3 and the procedure in Section 7.3. |
 | ACC-018 | Context-sensitive literal typing satisfies TR-028a through TR-028d, including integer range boundaries, exact floating-point representability, peer operands, compound assignment, and the rule that F32/F64 context does not pass through an operator to two flexible operands. | Section 13.2 tests 1, 23 to 29, with expected tree shapes and diagnostics. |
+| ACC-019 | Diagnostics are reproducible in both contents and order for repeated compilations of the same input. The sequence follows phase and encounter order, including ties on the same primary span. | Section 13.2 test 38, TC-005, and ERR-014. |
 
 ## 14. Technical Examples
 
