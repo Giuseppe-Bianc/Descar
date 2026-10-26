@@ -288,6 +288,38 @@ Each scope stores only declarations made directly in that scope. Lookup searches
 
 TypeTable canonicalization MUST use these keys: primitive and special types use one entry per kind; named types use exact identifier spelling; vector types use the canonical element TypeId; array types use the canonical element TypeId and u64 length. Two equal keys MUST map to one TypeId in a compilation unit. TypeIds are not stable across compilation units or runs.
 
+The required canonicalization procedure is:
+
+~~~text
+resolve_type(syntax):
+    match syntax:
+        PrimitiveType(kind):
+            return intern(Primitive(kind))
+        NamedType(name):
+            return intern(Named(exact_identifier_spelling(name)))
+        VectorType(element):
+            element_id = resolve_type(element)
+            if resolved_kind(element_id) is built-in Void:
+                report the type-syntax error required by TR-027
+                return failure
+            return intern(Vector(element_id))
+        ArrayType(element, length_expr):
+            element_id = resolve_type(element)
+            length = resolve_array_length(length_expr)  // TR-026
+            if either step fails:
+                return failure
+            return intern(Array(element_id, length))
+
+intern(key):
+    if TypeTable already contains key:
+        return its existing TypeId
+    allocate one TypeId for key
+    add exactly one TypeEntry(key, TypeId)
+    return TypeId
+~~~
+
+`intern` MUST compare keys by the identity rules in Sections 3 and 7.1, not by source span or AST node identity. It MUST return the existing TypeId for an existing canonical key. When a child type or array length fails to resolve, the parent type MUST NOT be inserted. This procedure applies only to TypeSyntax variants the parser is specified to produce. It does not make the built-in Void type available as a source annotation, and it does not turn the identifier `void` into built-in Void.
+
 | ID | Requirement | Verification |
 |---|---|---|
 | SR-013 | SymbolTable, ScopeRecord, SymbolRecord, LoopRecord, TypeTable, and TypeEntry MUST use the fields and links listed above. | Validate one test table with each record kind, then corrupt every required ID link and verify rejection. |
@@ -647,6 +679,7 @@ Variable type inference is not supported. Expression type synthesis is supported
 | --- | --- | --- |
 | TY-16 | Declared types, inferred expression types, result types, and non-applicable statement types MUST use the fields in the table above. | Inspect a typed sample containing every declaration and expression category. Verify statement nodes have no type field. |
 | TY-17 | TypeTable MUST use the canonicalization keys in Section 5.3. | Intern each primitive and composite type twice. Verify the same TypeId is returned for equivalent keys and a distinct TypeId is returned for non-equivalent keys. |
+| TY-19 | Type resolution MUST recursively resolve child types before interning composite types. An invalid child type or array length MUST prevent insertion of its parent key. `intern` MUST return one canonical TypeId per key in a compilation unit and MUST NOT use source spans or AST node IDs as type identity. | Resolve repeated primitive, named, nested-array, and nested-vector syntax. Verify shared canonical IDs, distinct IDs for non-equivalent keys, and no parent entry after an invalid child or length. |
 
 ## 8. Typing Rules
 
@@ -1350,7 +1383,7 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | N-TE-01–N-TE-11 | Typed-node tests. Verify result_type and all linked IDs. |
 | N-TD-01–N-TD-02 | Typed declaration-node tests. Verify declared types, symbol links, source spans, and owner links. |
 | N-TP-01–N-TP-03 | Place tests for mutable variables, grouped places, mutable arrays, immutable targets, and invalid indexes. |
-| TY-01–TY-18 | Type identity, canonicalization, assignability, promotion, conversion, and invalid-category tests. |
+| TY-01–TY-19 | Type identity, canonicalization, assignability, promotion, conversion, and invalid-category tests. |
 | TR-001–TR-028 | Positive and negative tests for every typing rule, including primitive, named, vector, nested-array, and invalid array type syntax. |
 | SR-001–SR-012 | Scope, shadowing, duplicate, recursion, forward-reference, custom type, and symbol-kind tests. |
 | SR-013 | Source-order visibility, direct recursion, and rejection of calls to later declarations and mutual recursion. |
@@ -1387,7 +1420,7 @@ The test suite MUST include:
 18. A variable, function, type, or scope ID that is dangling or belongs to another AST. Verify typed validation rejects it.
 19. A comparison between two Void-returning calls. Verify the current type rule accepts it and assigns Bool.
 20. An array literal whose elements are Void-returning calls. Verify the current checker assigns Array(Void,n).
-21. Primitive, named, vector, and nested-array type syntax. Verify canonical type identity and reject malformed type syntax.
+21. Primitive, named, vector, and nested-array type syntax. Verify canonical type identity and reject malformed type syntax. Resolve repeated canonical keys in different source positions, verify equal keys share one TypeId, verify non-equivalent keys do not share an ID, and verify an invalid child type or length does not create a parent TypeEntry.
 22. Operator associativity. Parse each source below and verify the exact node shape: 10 - 3 - 2 as (10 - 3) - 2; 2 - 3 + 4 as (2 - 3) + 4; 100 / 10 / 5 as (100 / 10) / 5; 1 << 2 << 3 as (1 << 2) << 3; a - b *c - d as (a - (b* c)) - d; a = b = c as a = (b = c); -a *b as (-a)* b.
 23. The minimum, the maximum, and each value one outside the range, for all eight integer types, as initializers and as peer operands. Verify E2035 outside the range.
 24. F32 overflow, and integer exactness at 2^24 for F32 and 2^53 for F64 with the neighboring values. Verify E2035 for an inexact integer literal.
@@ -1434,6 +1467,7 @@ The specification is implemented when all the following conditions hold:
 | ACC-019 | Diagnostics are reproducible in both contents and order for repeated compilations of the same input. The sequence follows phase and encounter order, including ties on the same primary span. | Section 13.2 test 38, TC-005, and ERR-014. |
 | ACC-020 | Every AST validation failure identifies the violated invariant or rule and supplies a safe node or field location when available. Reporting a validation failure never dereferences a dangling ID, repairs the AST, or permits downstream use. | VAL-001 through VAL-005 and Section 13.2 test 36. |
 | ACC-021 | A candidate TypedProgram becomes observable only after error gating and typed validation succeed. Blocking diagnostics and validation failures return failure without a TypedProgram; non-blocking diagnostics may accompany success. | TC-006, TC-007, and Section 13.2 test 37. |
+| ACC-022 | Each compilation unit has exactly one TypeId for every canonical type key, and failed type resolution does not leave an invalid composite type entry. | TY-17, TY-19, and Section 13.2 test 21. |
 
 ## 14. Technical Examples
 
