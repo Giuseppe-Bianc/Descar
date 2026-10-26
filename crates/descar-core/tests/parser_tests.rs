@@ -378,8 +378,8 @@ fn parses_explicit_numeric_casts_and_preserves_precedence() {
 }
 
 #[test]
-fn rejects_non_numeric_cast_targets() {
-    let (_, errors) = parse("value as string");
+fn rejects_non_type_cast_targets() {
+    let (_, errors) = parse("value as nullptr");
     assert_has_error(&errors, ErrorCode::E1002);
 }
 
@@ -401,5 +401,34 @@ fn parses_char_and_bool_cast_targets() {
     assert!(matches!(
         &statements[1],
         Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Bool, .. })
+    ));
+}
+
+
+#[test]
+fn parses_string_array_vector_and_custom_cast_targets() {
+    let (statements, errors) = parse(
+        "value as string\nvalue as i32[4]\nvalue as vector<i32>\nvalue as Record",
+    );
+    assert_no_errors(&errors);
+    assert_eq!(statements.len(), 4);
+    assert!(matches!(
+        &statements[0],
+        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: Type::String, .. })
+    ));
+    assert!(matches!(
+        &statements[1],
+        Stmt::Expression { expr }
+            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Array { .. }, .. })
+    ));
+    assert!(matches!(
+        &statements[2],
+        Stmt::Expression { expr }
+            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Vector { .. }, .. })
+    ));
+    assert!(matches!(
+        &statements[3],
+        Stmt::Expression { expr }
+            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Custom { name }, .. } if name.as_ref() == "Record")
     ));
 }
