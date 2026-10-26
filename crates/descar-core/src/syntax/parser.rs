@@ -577,7 +577,7 @@ impl<'a> JsavParser<'a> {
             // Assignment
             TokenKind::Equal => self.parse_assignment(left, &token),
             // Explicit numeric cast
-            TokenKind::KeywordAs => self.parse_numeric_cast(left),
+            TokenKind::KeywordAs => self.parse_cast(left),
             // Function call
             TokenKind::OpenParen => self.parse_call(left, &token),
             // Array access
@@ -594,41 +594,30 @@ impl<'a> JsavParser<'a> {
         }
     }
 
-    /// Parses `expression as target_type` for supported scalar cast targets.
-    fn parse_numeric_cast(&mut self, expr: Expr) -> Option<Expr> {
-        let Some(target) = self.advance().cloned() else {
+    /// Parses `expression as type`, accepting the same type syntax as declarations.
+    fn parse_cast(&mut self, expr: Expr) -> Option<Expr> {
+        let Some(target_start) = self.peek().cloned() else {
             self.errors.push(CompileError::SyntaxError {
                 code: Some(ErrorCode::E1002),
-                message: "Missing cast target, expected a supported scalar type".into(),
+                message: "Missing cast target type".into(),
                 span: expr.span().clone(),
-                help: Some("Add a numeric type, char, or bool after 'as'".into()),
+                help: Some("Add a supported type after 'as'".into()),
             });
             return None;
         };
-        let target_type = match target.kind {
-            TokenKind::TypeI8 => Type::I8,
-            TokenKind::TypeI16 => Type::I16,
-            TokenKind::TypeI32 => Type::I32,
-            TokenKind::TypeI64 => Type::I64,
-            TokenKind::TypeU8 => Type::U8,
-            TokenKind::TypeU16 => Type::U16,
-            TokenKind::TypeU32 => Type::U32,
-            TokenKind::TypeU64 => Type::U64,
-            TokenKind::TypeF32 => Type::F32,
-            TokenKind::TypeF64 => Type::F64,
-            TokenKind::TypeChar => Type::Char,
-            TokenKind::TypeBool => Type::Bool,
-            _ => {
-                self.syntax_error(
-                    "Invalid cast target, expected a supported scalar type",
-                    &target,
-                    Some("Use a numeric type, char, or bool"),
-                    Some(ErrorCode::E1002),
-                );
-                return None;
-            }
-        };
-        let span = expr.span().merge(&target.span);
+        if self.is_at_end() {
+            self.syntax_error(
+                "Missing cast target type",
+                &target_start,
+                Some("Add a supported type after 'as'"),
+                Some(ErrorCode::E1002),
+            );
+            return None;
+        }
+
+        let target_type = self.parse_type()?;
+        let target_end = self.previous().map_or_else(|| target_start.span.clone(), |token| token.span.clone());
+        let span = expr.span().merge(&target_start.span.merge(&target_end));
         Some(Expr::Cast { expr: Box::new(expr), target_type, span })
     }
 
