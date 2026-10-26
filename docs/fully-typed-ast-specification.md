@@ -1511,6 +1511,7 @@ The test suite MUST include:
 40. Non-numeric equality conversion. For compatible but non-equivalent operands, verify that `char == string` selects String and inserts a CharToString conversion on the character operand, and that `nullptr == namedValue` selects the named type and inserts NullToAggregate on the nullptr operand. Verify both expressions have type Bool. These are typed-AST checks only; do not infer runtime equality semantics, which remain OPEN-005.
 41. Comparison failure behavior. Verify that an ordering comparison with compatible but non-numeric operands is rejected under TR-010, that equality between unrelated opaque Named types reports E2014, and that neither failure creates a successful typed comparison node.
 42. Parser recovery progress. Feed malformed input at the start of a source unit, inside a nested block, and at end of input. Verify that each recovery path consumes input or exits its current parse context, terminates without an infinite loop, produces an Incomplete SurfaceProgram, and never invokes name resolution or type checking.
+43. Array-length upper boundary. Verify that a fixed-array length equal to `MAX_U64` is accepted, but a positive integer literal equal to `MAX_U64 + 1` reports E2034 and does not create a canonical Array type entry. Use an arbitrary-precision expected value in the test fixture so the test itself does not overflow its host integer type.
 
 ### 13.3 Acceptance criteria
 
