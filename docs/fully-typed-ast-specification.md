@@ -299,8 +299,10 @@ resolve_type(syntax):
             return intern(Named(exact_identifier_spelling(name)))
         VectorType(element):
             element_id = resolve_type(element)
+            if element_id is failure:
+                return failure
             if resolved_kind(element_id) is built-in Void:
-                report the type-syntax error required by TR-027
+                report an internal type-syntax invariant failure
                 return failure
             return intern(Vector(element_id))
         ArrayType(element, length_expr):
