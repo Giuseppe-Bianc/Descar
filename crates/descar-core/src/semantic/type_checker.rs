@@ -477,8 +477,7 @@ impl TypeChecker {
         let aggregate_target = matches!(target_type, Type::Array { .. } | Type::Vector { .. } | Type::Custom { .. });
         let same_type = source_type == *target_type
             || (self.is_assignable(&source_type, target_type) && self.is_assignable(target_type, &source_type));
-        let supported = (source_numeric && target_numeric)
-            || (source_numeric && matches!(target_type, Type::Char | Type::Bool))
+        let supported = (source_numeric && (target_numeric || matches!(target_type, Type::Char | Type::Bool)))
             || (matches!(source_type, Type::Char | Type::Bool) && target_numeric)
             || (matches!(source_type, Type::Char) && matches!(target_type, Type::String))
             || (matches!(source_type, Type::NullPtr) && aggregate_target)
