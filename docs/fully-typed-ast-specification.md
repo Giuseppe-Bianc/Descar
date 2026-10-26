@@ -1818,7 +1818,7 @@ The following matrix identifies the principal sources of the normative rules. Re
 | Syntax-directed semantic construction | ARC-008, OP-004–OP-007, IF-004–IF-006 | Sections 13.1–13.3 | Aho et al., Chapter 5, syntax-directed translation; Chapter 6, Sections 6.3 and 6.5 |
 | Phase interface and failure gating | IF-001–IF-010, VAL-001–VAL-006, TC-001, TC-006–TC-007 | Sections 5.1.1, 8.9, 10.2, and 13.1–13.3 | Phase separation and semantic validation; interface identifiers and failure contracts are Descar-specific |
 | Control-flow and return validation | TR-025, GAP-008, DEC-019, OPEN-002 | Section 13.2, test 30 | Static semantic analysis associated with syntax-directed translation; the conservative rule itself is Descar-specific |
-| Error boundaries and invalid intermediate state | ERR-001–ERR-014, INV-005, INV-012, INV-023, IF-001–IF-010, VAL-001–VAL-006, OPEN-007 | Sections 10.2, 11, and 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
+| Error boundaries and invalid intermediate state | ERR-001–ERR-015, INV-005, INV-012, INV-023, IF-001–IF-010, VAL-001–VAL-006, OPEN-007 | Sections 10.2, 11, and 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
 | Algorithmic expectations | CMP-001–CMP-008 | Section 12.4 plus implementation profiling when a workload is approved | Asymptotic analysis is general algorithmic methodology, not a Descar-specific textbook guarantee |
 | Numeric language decisions | DEC-016–DEC-018, OPEN-001, OPEN-006 | ADR-0001, ADR-0003, ADR-0004 and Section 13.2 tests 23–29 | The textbook supplies the type-checking framework. The exact numeric rules are project decisions. |
 
@@ -1857,6 +1857,7 @@ A change to this specification is complete only when the author or reviewer has 
 | QA-011 | Current numeric behavior agrees across this specification and ADR-0001, ADR-0003, and ADR-0004. Historical ADR examples and counts are clearly distinguished from current normative results. | Review TR-009 through TR-013 and TR-028, DEC-016 through DEC-018, OPEN-006, Section 13.2 tests 3 and 28 to 29, and the ADR consequence and verification tables. |
 | QA-012 | The traceability matrix uses current requirement ranges and connects newly added canonicalization, diagnostic, validator, and finalization requirements to their acceptance evidence. | Compare the entries in Section 17.1 with Sections 5, 8, 10, 11, 13, and 15.2. |
 | QA-013 | Comparison typing has one deterministic procedure for numeric and non-numeric operands, rejects unsupported comparisons, and does not imply runtime equality semantics that remain open. | Compare Section 8.4, TR-010, tests 19, 40, and 41 in Section 13.2, and OPEN-005. |
+| QA-014 | Every parser recovery path guarantees progress or exits and cannot pass a recovered Incomplete SurfaceProgram to semantic analysis. | Compare ERR-001, ERR-003, ERR-010, ERR-015, and Section 13.2 test 42. |
 
 ### 17.4 Remaining limitations
 
