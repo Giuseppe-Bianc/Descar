@@ -350,3 +350,35 @@ fn unary_binding_power_returns_expected_value_for_unary_operator() {
     assert_eq!(precedence.left, 24);
     assert_eq!(precedence.right, 23);
 }
+
+#[test]
+fn parses_explicit_numeric_casts_and_preserves_precedence() {
+    let (statements, errors) = parse("value as i32\nleft + right as f64\nvalue as i32 as f64");
+    assert_no_errors(&errors);
+    assert_eq!(statements.len(), 3);
+
+    assert!(matches!(
+        &statements[0],
+        Stmt::Expression { expr }
+            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::I32, expr: inner, .. }
+                if matches!(inner.as_ref(), Expr::Variable { name, .. } if name == "value"))
+    ));
+    assert!(matches!(
+        &statements[1],
+        Stmt::Expression { expr }
+            if matches!(expr.as_ref(), Expr::Binary { op: BinaryOp::Add, right, .. }
+                if matches!(right.as_ref(), Expr::Cast { target_type: Type::F64, .. }))
+    ));
+    assert!(matches!(
+        &statements[2],
+        Stmt::Expression { expr }
+            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::F64, expr: inner, .. }
+                if matches!(inner.as_ref(), Expr::Cast { target_type: Type::I32, .. }))
+    ));
+}
+
+#[test]
+fn rejects_non_numeric_cast_targets() {
+    let (_, errors) = parse("value as string");
+    assert_has_error(&errors, ErrorCode::E1002);
+}
