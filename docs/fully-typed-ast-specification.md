@@ -1460,7 +1460,7 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | VAL-001–VAL-006 | Structural topology, source-span, semantic cross-reference, safe table indexing, deterministic failure reporting, no-repair, and downstream-gating tests for AST validators. |
 | SYN-002 | AST-shape tests for left associativity, assignment right associativity, and precedence for every operator class. |
 | INV-001–[INV-023](#inv-023) | One validator test per invariant. Each negative case must identify the violated invariant. |
-| ERR-001–ERR-014 | Parser recovery, blocking errors, accumulated diagnostics, diagnostic fields, deterministic ordering and locations, error codes, severity, CLI phase boundary, and internal-error separation tests. |
+| ERR-001–ERR-015 | Parser recovery progress, blocking errors, accumulated diagnostics, diagnostic fields, deterministic ordering and locations, error codes, severity, CLI phase boundary, and internal-error separation tests. |
 | OP-001–OP-009 | Interface tests for each mandatory operation, transformation, and cloning. |
 | OP-010–OP-011 | Comparison tests only if an optional comparison utility is implemented. |
 
@@ -1544,6 +1544,7 @@ The specification is implemented when all the following conditions hold:
 | ACC-024 | Every accepted SourceSpan uses in-range UTF-8 code-point boundaries. A span that splits a multi-byte scalar is rejected by structural validation and diagnostic rendering. Verification: INV-004, INV-023, VAL-001, ERR-013, and Section 13.2 test 35. |
 | ACC-025 | Non-numeric equality between compatible, non-equivalent operand types selects the defined common type, inserts the required conversion on the correct operand, and returns Bool without implying runtime equality behavior. Verification: TR-010, TY-15, Section 13.2 tests 19 and 40, and OPEN-005. |
 | ACC-026 | Comparison typing rejects non-numeric ordering and incompatible non-numeric equality, emits the required diagnostic, and does not produce a successful typed comparison node on failure. Verification: TR-010, Section 13.2 test 41, and the procedure in Section 8.4. |
+| ACC-027 | Every parser recovery path makes progress or exits, terminates without an infinite loop, and leaves the SurfaceProgram Incomplete so semantic phases cannot consume it. Verification: ERR-001, ERR-003, ERR-010, ERR-015, and Section 13.2 test 42. |
 
 ## 14. Technical Examples
 
