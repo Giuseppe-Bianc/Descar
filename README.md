@@ -63,6 +63,11 @@ main {
     var wide: i64 = 300
     var small: i8 = wide as i8
     var precise: f64 = 16777217i32 as f64
+    var character: char = 65i32 as char
+    var text: string = character as string
+    var items: vector<i32> = nullptr as vector<i32>
+    var record: Record = nullptr as Record
+    var same_text: string = text as string
 }
 ```
 
