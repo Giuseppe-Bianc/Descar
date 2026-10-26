@@ -1506,6 +1506,7 @@ The specification is implemented when all the following conditions hold:
 | ACC-022 | Each compilation unit has exactly one TypeId for every canonical type key, and failed type resolution does not leave an invalid composite type entry. Verification: TY-17, TY-19, and Section 13.2 test 21. |
 | ACC-023 | Typed validation rejects duplicate, dangling, and foreign-unit semantic IDs without dereferencing ambiguous or invalid entries. It preserves deterministic reports for independent failures and never returns the rejected tree. Verification: VAL-005, VAL-006, and Section 13.2 tests 36 and 39. |
 | ACC-024 | Every accepted SourceSpan uses in-range UTF-8 code-point boundaries. A span that splits a multi-byte scalar is rejected by structural validation and diagnostic rendering. Verification: INV-004, INV-023, VAL-001, ERR-013, and Section 13.2 test 35. |
+| ACC-025 | Non-numeric equality between compatible, non-equivalent operand types selects the defined common type, inserts the required conversion on the correct operand, and returns Bool without implying runtime equality behavior. Verification: TR-010, TY-15, Section 13.2 tests 19 and 40, and OPEN-005. |
 
 ## 14. Technical Examples
 
