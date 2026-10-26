@@ -35,6 +35,7 @@ fn summarize_expr(expression: &Expr) -> String {
         Expr::Binary { left, op, right, .. } => {
             format!("Binary({op:?}, {}, {})", summarize_expr(left), summarize_expr(right))
         }
+        Expr::Cast { expr, target_type, .. } => format!("Cast({}, {target_type})", summarize_expr(expr)),
         Expr::Unary { op, side, expr, .. } => {
             format!("Unary({op:?}, {side:?}, {})", summarize_expr(expr))
         }
