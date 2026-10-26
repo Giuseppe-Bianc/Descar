@@ -1224,8 +1224,13 @@ The normative diagnostic field set is defined by ERR-008. Every diagnostic MUST 
 | ERR-011 | DiagnosticId MUST be unique in one compiler run. Phase and Severity MUST use the enumerations in Section 3. Every Error is blocking. A Warning or Note does not block Fully Typed AST output. | Generate diagnostics in each phase and verify ID uniqueness, enum values, and blocking behavior by severity. |
 | ERR-012 | A diagnostic's primary span MUST identify the source construct responsible for the immediate error. An unresolved identifier or wrong-kind reference MUST point to the identifier token. A duplicate declaration MUST point to the later declaration and include the earlier declaration as a related span when available. An invalid operator or operand combination MUST point to the complete expression span. | Trigger each listed error and assert the primary span boundaries and, for duplicates, the related declaration span. |
 | ERR-013 | A diagnostic span MUST refer to an existing SourceId in the SourceMap and use valid half-open byte offsets within that source. A renderer encountering an invalid span record MUST report an internal reporting failure and MUST NOT misclassify the source program as invalid. | Render diagnostics at byte offset zero, at end of file where an empty span is permitted, and on multi-byte UTF-8 text. Inject an out-of-range span and an unknown SourceId and verify internal reporting failure. |
+| ERR-014 | Diagnostic order MUST follow pipeline phase order and deterministic phase encounter order as defined in Section 11.2. The order MUST NOT depend on hash iteration, diagnostic code values, or DiagnosticId values. | Compile the same input repeatedly and with different hash seeds where supported. Compare the complete ordered diagnostic list, including phase, code, primary span, related spans, and message. Include multiple diagnostics with the same primary span. |
 
 The existing CompileError model provides a phase-specific variant, optional code, message, span, and optional help. Related spans and NodeId are specified additions. The span-selection rules above define the diagnostic contract; the visual formatting of rendered messages remains implementation-dependent.
+
+Diagnostic ordering is observable compiler output and MUST be deterministic. The compiler MUST preserve the phase execution order in Section 5.1. Within one phase, the encounter order MUST follow the phase's deterministic traversal: source/token order for lexical and parser diagnostics, source-ordered declarations and statements for name resolution and type checking, and declared AST field order for validation. When one node triggers more than one diagnostic, the implementation MUST emit them in the order in which the applicable rule checks are performed. Diagnostic codes and DiagnosticId numeric values MUST NOT be used as ordering keys. DiagnosticId MUST remain unique within the compiler run, but the ID value does not convey diagnostic severity or precedence.
+
+The implementation MUST NOT use hash-table iteration order to select which declaration, node, or diagnostic is visited first. If an implementation uses a collection whose iteration order is unspecified, it MUST impose a deterministic order at the point where that collection affects diagnostics or semantic output.
 
 ### 11.3 Recovery and stopping rules
 
@@ -1333,7 +1338,7 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | VAL-001–VAL-004 | Structural topology, source-span, semantic cross-reference, no-repair, and downstream-gating tests for AST validators. |
 | SYN-002 | AST-shape tests for left associativity, assignment right associativity, and precedence for every operator class. |
 | INV-001–[INV-022](#inv-022) | One validator test per invariant. Each negative case must identify the violated invariant. |
-| ERR-001–ERR-013 | Parser recovery, blocking errors, accumulated diagnostics, diagnostic fields and locations, error codes, severity, CLI phase boundary, and internal-error separation tests. |
+| ERR-001–ERR-014 | Parser recovery, blocking errors, accumulated diagnostics, diagnostic fields, deterministic ordering and locations, error codes, severity, CLI phase boundary, and internal-error separation tests. |
 | OP-001–OP-009 | Interface tests for each mandatory operation, transformation, and cloning. |
 | OP-010–OP-011 | Comparison tests only if an optional comparison utility is implemented. |
 
