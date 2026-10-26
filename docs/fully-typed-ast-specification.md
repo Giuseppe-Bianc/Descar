@@ -802,6 +802,39 @@ For a non-numeric comparison, choose the common operand type as follows: if T₁
 
 Ordering operators accept numeric operands only. The checker MUST reject non-numeric operands for <, <=, >, and >=, even when their types are compatible. This restriction prevents the Fully Typed AST from containing ordering operations without defined runtime semantics. Equality operators retain the existing compatibility rule for non-numeric operands.
 
+The required comparison-type procedure is deterministic:
+
+~~~text
+comparison_type(operator, T1, T2):
+    if operator is <, <=, >, or >=:
+        if T1 or T2 is not numeric:
+            report the applicable invalid-operand diagnostic
+            return failure
+        C = Promote(T1, T2)
+        if C does not exist:
+            report E2036
+            return failure
+        return C with NumericAssignable conversions on operands not already C
+
+    if operator is == or !=:
+        if T1 and T2 are numeric:
+            C = Promote(T1, T2)
+            if C does not exist:
+                report E2036
+                return failure
+            return C with NumericAssignable conversions on operands not already C
+        if T1 ≡ T2:
+            return T1 with no conversion
+        if T1 ⪯ T2:
+            return T2 with a conversion on the left operand
+        if T2 ⪯ T1:
+            return T1 with a conversion on the right operand
+        report E2014
+        return failure
+~~~
+
+The procedure determines only static operand compatibility, explicit conversion nodes, and the Bool result type. It does not define how equality or ordering is executed at runtime. For non-numeric equality, the listed branch order is normative: equivalent types take precedence, then left-to-right assignability, then right-to-left assignability. A failed comparison MUST NOT produce a successful typed comparison node.
+
 TR-013 requires the value to be assignable to the place type. For example, an I16 value cannot be applied to an I8 target. It also requires a valid mutable place.
 
 The checker reports E2011 for invalid bitwise operands, E2012 or E2017 for invalid logical operands, E2013 or E2016 for invalid arithmetic operands, and E2014 for incompatible comparison operands. It reports E2024 for an immutable compound-assignment target, E2033 for a non-place target under [DEC-008](#dec-008), defined in Section 15.1, E2002 when the value cannot convert to the place type, E2035 when a literal does not fit its context type, and E2036 when numeric operands have no common type.
