@@ -1215,23 +1215,6 @@ The checker reports E2035 for `a` and E2035 for `b`, because each value is outsi
 
 
 
-### 14.10 Explicit numeric casts
-
-Source:
-
-~~~text
-main {
-    var wide: i64 = 300i64
-    var small: i8 = wide as i8
-    var precise: f64 = 16777217i32 as f64
-    var narrower_float: f32 = 3.5f64 as f32
-}
-~~~
-
-The parser constructs a Cast node for each `as` expression. The type checker requires both operand and target types to be numeric, then gives the cast the target type. This permits an explicit narrowing conversion without adding that conversion to implicit assignability. For example, I64 to I8 is accepted only because the source uses `as i8`.
-
-The current compiler front end does not define runtime behavior for integer overflow, out-of-range floating-point-to-integer conversions, or floating-point rounding. The execution and lowering specification must define those cases before the conversion can be executed.
-
 ### 14.9 Operator context boundaries
 
 #### Integer variable with a floating-point literal
@@ -1269,6 +1252,25 @@ Required semantic result:
 2. The left literal and shift-count literal both use their default type I64. The shift count receives no context under TR-028d.
 3. TR-012 assigns the shift expression the left operand type, I64.
 4. I64 is not assignable to F64 under Section 7.2. TR-015 reports E2002 for the initializer.
+
+
+### 14.10 Explicit numeric casts
+
+Source:
+
+~~~text
+main {
+    var wide: i64 = 300
+    var small: i8 = wide as i8
+    var precise: f64 = 16777217i32 as f64
+    var narrower_float: f32 = 3.5d as f32
+}
+~~~
+
+The parser constructs a Cast node for each `as` expression. The type checker requires both operand and target types to be numeric, then gives the cast the target type. This permits an explicit narrowing conversion without adding that conversion to implicit assignability. For example, I64 to I8 is accepted only because the source uses `as i8`.
+
+The current compiler front end does not define runtime behavior for integer overflow, out-of-range floating-point-to-integer conversions, or floating-point rounding. The execution and lowering specification must define those cases before the conversion can be executed.
+
 
 ## 15. Open Issues and Design Decisions
 
