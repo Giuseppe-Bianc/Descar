@@ -1673,3 +1673,18 @@ fn explicit_numeric_casts_reject_non_numeric_source_types() {
     assert_eq!(errors.len(), 1);
     assert!(errors[0].message().unwrap_or_default().contains("Explicit casts require numeric types"));
 }
+
+#[test]
+fn explicit_scalar_casts_accept_numeric_char_and_bool_pairs() {
+    let ast = "main { var number: i32 = 65; var character: char = number as char; var again: i32 = character as i32; var flag: bool = number as bool; var zero: i32 = flag as i32 }";
+    let errors = typecheck(ast);
+    assert!(errors.is_empty(), "Explicit scalar casts should be accepted: {errors:?}");
+}
+
+#[test]
+fn explicit_scalar_casts_reject_string_conversions() {
+    let ast = "main { var value: i32 = \"text\" as i32 }";
+    let errors = typecheck(ast);
+    assert_eq!(errors.len(), 1);
+    assert!(errors[0].message().unwrap_or_default().contains("Unsupported explicit cast"));
+}
