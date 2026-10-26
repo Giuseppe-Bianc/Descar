@@ -176,6 +176,7 @@ fn test_keyword_nullptr() {
 #[test]
 fn test_all_keywords() {
     let mapping = vec![
+        TokenKind::KeywordAs,
         TokenKind::KeywordFun,
         TokenKind::KeywordIf,
         TokenKind::KeywordElse,
