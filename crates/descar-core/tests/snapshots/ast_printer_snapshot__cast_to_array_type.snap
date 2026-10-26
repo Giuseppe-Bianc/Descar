@@ -1,0 +1,7 @@
+---
+source: crates/descar-core/tests/ast_printer_snapshot.rs
+expression: strip_ansi_codes(&pretty_print(&expression))
+---
+└── Cast to [i32; 4]
+    └── Expr:
+        └── Variable 'arr'
