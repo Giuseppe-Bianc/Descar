@@ -56,7 +56,7 @@ Verifies syntax without producing output.
 
 ## Language syntax
 
-Explicit numeric casts use the Rust-style `expression as numeric_type` form. The target must be one of `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, or `f64`.
+Explicit numeric casts use the Rust-style `expression as numeric_type` form. The target may be one of `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`, or `bool`. Numeric values can be explicitly cast to `char` or `bool`, and `char` or `bool` values can be cast to numeric types. String and pointer casts are not supported.
 
 ```text
 main {
