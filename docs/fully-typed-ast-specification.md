@@ -1508,6 +1508,7 @@ The test suite MUST include:
 38. Diagnostic ordering. Run the same source with multiple errors repeatedly and under different hash seeds where supported. Verify phase order, diagnostic code, primary span, and message order remain stable and do not depend on hash-map traversal.
 39. Semantic table validation. Mutate a valid TypedProgram to contain duplicate SymbolIds, duplicate TypeIds, duplicate canonical type keys, a table whose CompilationUnitId differs from the root, and a reference to a missing entry. Verify duplicate or foreign entries are rejected before use, dependent checks are skipped rather than dereferencing them, independent findings remain deterministic, and no invalid TypedProgram is returned.
 40. Non-numeric equality conversion. For compatible but non-equivalent operands, verify that `char == string` selects String and inserts a CharToString conversion on the character operand, and that `nullptr == namedValue` selects the named type and inserts NullToAggregate on the nullptr operand. Verify both expressions have type Bool. These are typed-AST checks only; do not infer runtime equality semantics, which remain OPEN-005.
+41. Comparison failure behavior. Verify that an ordering comparison with compatible but non-numeric operands is rejected under TR-010, that equality between unrelated opaque Named types reports E2014, and that neither failure creates a successful typed comparison node.
 
 ### 13.3 Acceptance criteria
 
