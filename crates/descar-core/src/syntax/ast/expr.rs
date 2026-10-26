@@ -24,7 +24,7 @@ pub enum Expr {
         span: SourceSpan,
     },
 
-    /// Explicit numeric conversion expression, written using the as keyword.
+    /// Explicit conversion expression, written using the as keyword.
     Cast {
         /// Expression whose value is converted.
         expr: Box<Self>,
