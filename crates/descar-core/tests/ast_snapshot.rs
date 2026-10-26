@@ -23,11 +23,7 @@ fn snapshots_expression_variants() {
             right: Box::new(number.clone()),
             span: SourceSpan::default(),
         },
-        Expr::Cast {
-            expr: Box::new(variable.clone()),
-            target_type: Type::I32,
-            span: SourceSpan::default(),
-        },
+        Expr::Cast { expr: Box::new(variable.clone()), target_type: Type::I32, span: SourceSpan::default() },
         Expr::Unary {
             op: UnaryOp::Increment,
             side: UnaryOpSide::Postfix,
