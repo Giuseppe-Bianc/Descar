@@ -294,7 +294,7 @@ The required canonicalization procedure is:
 resolve_type(syntax):
     match syntax:
         PrimitiveType(kind):
-            return intern(Primitive(kind))
+            return intern(kind)
         NamedType(name):
             return intern(Named(exact_identifier_spelling(name)))
         VectorType(element):
@@ -310,11 +310,11 @@ resolve_type(syntax):
                 return failure
             return intern(Array(element_id, length))
 
-intern(key):
-    if TypeTable already contains key:
-        return its existing TypeId
-    allocate one TypeId for key
-    add exactly one TypeEntry(key, TypeId)
+intern(canonical_kind):
+    if TypeTable contains an entry with this canonical kind:
+        return that entry's TypeId
+    allocate one TypeId
+    append TypeEntry { id: TypeId, kind: canonical_kind }
     return TypeId
 ~~~
 
