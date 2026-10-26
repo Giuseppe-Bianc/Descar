@@ -258,6 +258,8 @@ P2 is chosen. It keeps the Section 7.3 order, adds one precondition, and defines
 
 ## Spec Amendments
 
+**Historical record:** This section preserves the original amendment checklist from ADR-0001's acceptance. It is not a substitute for later accepted amendments. Where this checklist conflicts with ADR-0003 or ADR-0004, apply the later decision. The current promotion matrix has 68 successful ordered pairs and 32 E2036 outcomes. The current result for `1 + 2.5` is E2036 under ADR-0003 and ADR-0004.
+
 Apply these when the ADR is accepted.
 
 **Section 3.** Add terms: *adaptable literal*, *flexible expression*, *context type*, *default type*, each as defined in D1 to D3.
