@@ -56,7 +56,7 @@ Verifies syntax without producing output.
 
 ## Language syntax
 
-Explicit numeric casts use the Rust-style `expression as numeric_type` form. The target may be one of `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`, or `bool`. Numeric values can be explicitly cast to `char` or `bool`, and `char` or `bool` values can be cast to numeric types. String and pointer casts are not supported.
+Explicit casts use the Rust-style `expression as type` form. Targets may be numeric types, `char`, `bool`, `string`, array types such as `i32[4]`, vector types such as `vector<i32>`, or a custom type identifier. The supported conversions are numeric-to-numeric, numeric-to-`char` or `bool`, `char` or `bool` to numeric, `char` to `string`, `nullptr` to arrays, vectors, or custom types, and identity casts. Arbitrary string conversions, unrelated aggregate conversions, and pointer reinterpretation are rejected.
 
 ```text
 main {
@@ -66,7 +66,7 @@ main {
 }
 ```
 
-Casts are explicit. They do not change the rules for implicit numeric conversions.
+Casts are explicit. They do not change the rules for implicit numeric conversions. A cast to an array type includes the length, for example `nullptr as i32[4]`. Runtime behavior for narrowing, floating-point conversions, numeric-to-character or Boolean conversions, and null-to-aggregate casts still requires an execution-level definition.
 
 ## Practical examples
 
