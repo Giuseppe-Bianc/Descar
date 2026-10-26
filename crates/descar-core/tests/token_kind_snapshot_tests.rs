@@ -36,7 +36,7 @@ fn test_operators() {
 #[test]
 fn test_keywords() {
     let input = r"
-		fun if else return while for main var const nullptr 
+		as fun if else return while for main var const nullptr
 		break continue true false
 	";
     let tokens = tokenize(input);
