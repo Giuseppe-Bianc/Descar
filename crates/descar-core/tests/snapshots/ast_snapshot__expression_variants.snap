@@ -3,6 +3,7 @@ source: crates/descar-core/tests/ast_snapshot.rs
 expression: rendered
 ---
 Binary::Add
+Cast::i32
 Unary::Increment::Postfix
 Grouping
 Literal::Numeric(Integer(42))

@@ -54,6 +54,25 @@ cargo run -- check dr_files/simple_test.dr -v
 
 Verifies syntax without producing output.
 
+## Language syntax
+
+Explicit casts use the Rust-style `expression as type` form. Targets may be numeric types, `char`, `bool`, `string`, array types such as `i32[4]`, vector types such as `vector<i32>`, or a custom type identifier. The supported conversions are numeric-to-numeric, numeric-to-`char` or `bool`, `char` or `bool` to numeric, `char` to `string`, `nullptr` to arrays, vectors, or custom types, and identity casts. Arbitrary string conversions, unrelated aggregate conversions, and pointer reinterpretation are rejected.
+
+```text
+main {
+    var wide: i64 = 300
+    var small: i8 = wide as i8
+    var precise: f64 = 16777217i32 as f64
+    var character: char = 65i32 as char
+    var text: string = character as string
+    var items: vector<i32> = nullptr as vector<i32>
+    var record: Record = nullptr as Record
+    var same_text: string = text as string
+}
+```
+
+Casts are explicit. They do not change the rules for implicit numeric conversions. A cast to an array type includes the length, for example `nullptr as i32[4]`. Runtime behavior for narrowing, floating-point conversions, numeric-to-character or Boolean conversions, and null-to-aggregate casts still requires an execution-level definition.
+
 ## Practical examples
 
 ### Language examples

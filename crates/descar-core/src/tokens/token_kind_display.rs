@@ -42,6 +42,7 @@ impl fmt::Display for TokenKind {
             Self::Colon => f.write_str("':'"),
             Self::Comma => f.write_str("','"),
             Self::Dot => f.write_str("'.'"),
+            Self::KeywordAs => f.write_str("'as'"),
             Self::KeywordFun => f.write_str("'fun'"),
             Self::KeywordIf => f.write_str("'if'"),
             Self::KeywordElse => f.write_str("'else'"),

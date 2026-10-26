@@ -23,6 +23,7 @@ fn snapshots_expression_variants() {
             right: Box::new(number.clone()),
             span: SourceSpan::default(),
         },
+        Expr::Cast { expr: Box::new(variable.clone()), target_type: Type::I32, span: SourceSpan::default() },
         Expr::Unary {
             op: UnaryOp::Increment,
             side: UnaryOpSide::Postfix,
@@ -57,6 +58,7 @@ fn snapshots_expression_variants() {
         .iter()
         .map(|expression| match expression {
             Expr::Binary { op, .. } => format!("Binary::{op:?}"),
+            Expr::Cast { target_type, .. } => format!("Cast::{target_type}"),
             Expr::Unary { op, side, .. } => format!("Unary::{op:?}::{side:?}"),
             Expr::Grouping { .. } => String::from("Grouping"),
             Expr::Literal { value, .. } => format!("Literal::{value:?}"),

@@ -4,6 +4,10 @@ expression: input_result
 ---
 [
     (
+        KeywordAs,
+        "'as'",
+    ),
+    (
         KeywordFun,
         "'fun'",
     ),
