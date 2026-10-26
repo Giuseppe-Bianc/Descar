@@ -1733,14 +1733,14 @@ The following matrix identifies the principal sources of the normative rules. Re
 
 | Specification area | Requirement or decision references | Verification location | Primary theoretical relationship |
 | --- | --- | --- | --- |
-| Surface and typed tree separation | BAS-006–BAS-009, ARC-001–ARC-011, INV-001–INV-005, VAL-001–VAL-004 | Sections 10.2 and 13.1–13.3 | Aho et al., Chapter 6, Section 6.1, syntax-tree representations |
+| Surface and typed tree separation | BAS-006–BAS-009, ARC-001–ARC-011, INV-001–INV-005, VAL-001–VAL-005 | Sections 10.2 and 13.1–13.3 | Aho et al., Chapter 6, Section 6.1, syntax-tree representations |
 | Lexical scope and resolved references | SR-001–SR-017, INV-006, INV-013, DEC-009–DEC-012 | Sections 9.3, 13.1–13.2 | Aho et al., Chapter 2, Section 2.7, symbol tables; Chapter 6, Section 6.3, types and declarations |
-| Type identity, assignment, and conversions | TY-01–TY-17, TR-001–TR-028, TC-001–TC-006, INV-007–INV-009, INV-016–INV-020 | Sections 8.9, 13.1–13.3 and ADR-0001, ADR-0003, ADR-0004 verification vectors | Aho et al., Chapter 6, Section 6.5, type checking |
+| Type identity, assignment, and conversions | TY-01–TY-19, TR-001–TR-028, TC-001–TC-007, INV-007–INV-009, INV-016–INV-020 | Sections 8.9, 13.1–13.3 and ADR-0001, ADR-0003, ADR-0004 verification vectors | Aho et al., Chapter 6, Section 6.5, type checking |
 | Operator precedence and AST shape | SYN-001–SYN-003, DEC-013, INV-003–INV-004 | Section 13.2, test 22 | Aho et al., Chapter 4, syntax analysis, and Chapter 6, Section 6.1 |
 | Syntax-directed semantic construction | ARC-008, OP-004–OP-007, IF-004–IF-006 | Sections 13.1–13.3 | Aho et al., Chapter 5, syntax-directed translation; Chapter 6, Sections 6.3 and 6.5 |
-| Phase interface and failure gating | IF-001–IF-010, VAL-001–VAL-004, TC-001, TC-006 | Sections 5.1.1, 8.9, 10.2, and 13.1–13.3 | Phase separation and semantic validation; interface identifiers and failure contracts are Descar-specific |
+| Phase interface and failure gating | IF-001–IF-010, VAL-001–VAL-005, TC-001, TC-006–TC-007 | Sections 5.1.1, 8.9, 10.2, and 13.1–13.3 | Phase separation and semantic validation; interface identifiers and failure contracts are Descar-specific |
 | Control-flow and return validation | TR-025, GAP-008, DEC-019, OPEN-002 | Section 13.2, test 30 | Static semantic analysis associated with syntax-directed translation; the conservative rule itself is Descar-specific |
-| Error boundaries and invalid intermediate state | ERR-001–ERR-013, INV-005, INV-012, IF-001–IF-010, VAL-001–VAL-004 | Sections 10.2, 11, and 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
+| Error boundaries and invalid intermediate state | ERR-001–ERR-014, INV-005, INV-012, IF-001–IF-010, VAL-001–VAL-005, OPEN-007 | Sections 10.2, 11, and 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
 | Algorithmic expectations | CMP-001–CMP-008 | Section 12.4 plus implementation profiling when a workload is approved | Asymptotic analysis is general algorithmic methodology, not a Descar-specific textbook guarantee |
 | Numeric language decisions | DEC-016–DEC-018, OPEN-001, OPEN-006 | ADR-0001, ADR-0003, ADR-0004 and Section 13.2 tests 23–29 | The textbook supplies the type-checking framework. The exact numeric rules are project decisions. |
 
@@ -1777,6 +1777,7 @@ A change to this specification is complete only when the author or reviewer has 
 | QA-009 | Every remaining limitation is recorded rather than silently resolved. | Section 15.2. |
 | QA-010 | Any substantive change to established behavior is linked to an explicit design decision and its verification vectors. | Section 15.1 and the applicable ADR. |
 | QA-011 | Current numeric behavior agrees across this specification and ADR-0001, ADR-0003, and ADR-0004. Historical ADR examples and counts are clearly distinguished from current normative results. | Review TR-009 through TR-013 and TR-028, DEC-016 through DEC-018, OPEN-006, Section 13.2 tests 3 and 28 to 29, and the ADR consequence and verification tables. |
+| QA-012 | The traceability matrix uses current requirement ranges and connects newly added canonicalization, diagnostic, validator, and finalization requirements to their acceptance evidence. | Compare the entries in Section 17.1 with Sections 5, 8, 10, 11, 13, and 15.2. |
 
 ### 17.4 Remaining limitations
 
