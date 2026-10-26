@@ -4,6 +4,9 @@ expression: tokens
 ---
 [
     Ok(
+        KeywordAs,
+    ),
+    Ok(
         KeywordFun,
     ),
     Ok(
