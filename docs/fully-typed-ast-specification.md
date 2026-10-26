@@ -2,7 +2,7 @@
 
 **Status:** Normative design specification for the implemented Descar language subset.
 
-**Revision:** 2026-10-26. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0002 defines explicit numeric casts. Decision DEC-020 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change. ADR-0004 clarifies operator context propagation. Decision DEC-018 records the change. DEC-019 defines conservative non-void return-path validation.
+**Revision:** 2026-10-26. This revision expands phase-boundary contracts, symbol resolution, type-checking pass behavior, diagnostic source locations, AST validation, complexity expectations, traceability, and acceptance criteria while retaining the established language scope and leaving runtime and IR semantics unspecified. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0002 defines explicit numeric casts. Decision DEC-020 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change. ADR-0004 clarifies operator context propagation. Decision DEC-018 records the change. DEC-019 defines conservative non-void return-path validation.
 
 Repository facts are marked **Observed**. Requirements for the new model are marked **Specified**. A requirement marked **Gap** requires an implementation change. Open issues are listed in Section 15.
 
@@ -220,6 +220,25 @@ The type checker MAY use temporary symbol tables and side tables. The returned F
 | ARC-009 | Abstract categories in Section 5.2 MUST NOT be constructible as standalone nodes. Only concrete records and variants in Section 6 can be instantiated. | Compile-time API test or constructor test verifies that no abstract category has a public constructor. |
 | ARC-010 | Source locations MUST use the SourceSpan definition in Section 3. A concrete node MUST have one span. | Span validation tests check source identity, range bounds, and zero-length spans. |
 | ARC-011 | The Fully Typed AST MUST replace TypeSyntax nodes with canonical TypeIds and resolved constants. It MUST NOT own duplicate Surface TypeSyntax children. Declaration and symbol spans MUST continue to identify each source declaration. | Typed-tree tests verify type annotations resolve to TypeIds, array lengths become u64 constants, and declaration spans remain available. |
+
+### 5.1.1 Phase interface contract
+
+The pipeline in Section 5.1 defines ordering. The following table defines the minimum information contract at each boundary. It does not assert that a corresponding implementation module currently exists.
+
+| Boundary ID | Producer | Consumer | Required input state | Required output or failure behavior |
+| --- | --- | --- | --- | --- |
+| IF-001 | Lexer | Parser | Source bytes associated with one SourceId. | Tokens are ordered by source position and carry valid half-open spans. Lexical diagnostics prevent successful compilation. |
+| IF-002 | Parser | Structural validator | Tokens and lexer status. | A SurfaceProgram preserves source order and full-construct spans. Any parser diagnostic makes the program Incomplete. |
+| IF-003 | Structural validator | Resolver | A complete, structurally valid SurfaceProgram. | The resolver must not receive recovery placeholders or invalid required children. Structural implementation defects are internal errors. |
+| IF-004 | Resolver | Type checker and typed-AST builder | Surface nodes, lexical scope information, and resolved declaration identities. | Each valid name reference identifies exactly one declaration of the required kind. A blocking name-resolution error prevents successful typed output. |
+| IF-005 | Type checker | Typed-AST builder | Resolved names, canonical type information, source constructs, and context types where TR-028 requires them. | Each successfully checked expression has one result TypeId. Each required implicit conversion is explicit in the typed representation. |
+| IF-006 | Typed-AST builder | Typed-AST validator | A candidate TypedProgram and its compilation-unit symbol and type tables. | All invariants in Section 10 pass before the candidate is exposed as a successful Fully Typed AST. |
+| IF-007 | Typed-AST validator | Later lowering phase | A Fully Typed AST that passes all applicable invariants. | The consumer may rely on resolved references, canonical types, explicit conversions, and valid control-flow references. Lowering semantics remain outside this specification. |
+| IF-008 | Any phase | Diagnostic renderer | Diagnostics with phase, severity, source span when applicable, and stable diagnostic identity. | Rendering must not change diagnostic meaning or treat an internal error as a source-language error. |
+| IF-009 | Each phase consumer | The preceding phase's output for the applicable boundary. | The consumer MUST check each incoming-boundary precondition in this table that is not guaranteed by the input type. | Reject missing required fields, inconsistent records, and invalid or dangling semantic IDs before invoking phase processing. Classify the failure according to Section 11. Verification: for each applicable invariant, supply a malformed boundary value and assert rejection before processing starts. |
+| IF-010 | Each phase boundary | The producer's result, diagnostics, and boundary-validation result. | The result has no blocking diagnostic and passes boundary validation. | A blocking diagnostic or failed validation MUST prevent the result from being passed as valid input to the next phase and MUST prevent successful Fully Typed AST output. Parser recovery is permitted only for diagnostic collection; its Incomplete SurfaceProgram MUST be rejected before resolution under IF-003. Verification: supply a blocking diagnostic and a failed boundary-validation result separately, then assert the downstream phase is not invoked and no successful TypedProgram is returned. |
+
+**Explanatory note:** IF-009 and IF-010 define the common validation and failure-gating rules for the boundaries listed in IF-001 through IF-008.
 
 ### 5.2 Abstract and concrete categories
 
@@ -822,6 +841,72 @@ The following forms state the premises and conclusion for every rule in TR-001 t
 
 `MAX_U64` means the largest value representable by an unsigned 64-bit integer. A type-resolution error or a false premise has the diagnostic listed for that rule.
 
+### 8.9 Type-checking pass procedure
+
+This section defines the required pass behavior that connects the local rules in Sections 7 and 8. It specifies the observable contract, not a required class hierarchy, visitor framework, or implementation language.
+
+#### 8.9.1 Pass inputs and output states
+
+The type-checking operation accepts only a complete, structurally valid SurfaceProgram with no parser diagnostics, the current CompilationUnitId, the canonical TypeTable, and the symbol-resolution result required by Sections 5 and 9. A type checker MUST reject an Incomplete SurfaceProgram before checking any source expression (TC-001).
+
+The pass has two externally observable outcomes:
+
+- **Success:** a Fully Typed AST whose nodes satisfy the node definitions in Section 6 and all applicable invariants in Section 10.
+- **Failure:** diagnostics and no successful Fully Typed AST.
+
+The checker MAY retain private intermediate state while it checks a program. Such state MAY include an internal failure marker, temporary inferred types, a partially built typed node, and a diagnostic accumulator. These are implementation details. A failure marker MUST NOT be represented as a source-language TypeId or exposed as a successful Typed AST node (TC-004, TC-006, INV-012).
+
+#### 8.9.2 Expression checking operation
+
+The following pseudocode illustrates the expression-checking sequence governed by TC-001 through TC-004 and the typing rules in Sections 7 and 8. It is an implementation guide, not a separate interface requirement.
+
+```text
+check_expression(surface_expr, optional_context_type, environment):
+    validate that surface_expr is a complete, structurally valid node
+    determine child contexts only from TR-028 and the applicable typing rule
+    check required child expressions in deterministic field/source order
+    apply the typing rule's preconditions to the child results
+    if a required child failed or a rule precondition is false:
+        record the rule's source diagnostic when applicable
+        return failure state, not a typed expression
+    determine the canonical result TypeId
+    insert each conversion required by the rule
+    construct the specified typed node with resolved IDs and source span
+    validate the constructed node's local invariants
+    return the typed expression
+```
+
+A rule MUST NOT infer a context merely because a destination type exists elsewhere in the AST (TC-003). Context is passed only in positions identified by TR-028 and the rule tables. In particular, the restriction in TR-028b on forwarding an incoming F32 or F64 context, the distinct peer behavior in TR-028c, and the no-context cases in TR-028d are normative.
+
+A successful expression node MUST have exactly one result TypeId. A conversion node MUST have a source child whose result type equals its `from` type, and its result type MUST equal its `to` type. An identity conversion MUST NOT create a Convert node. A rule that requires a conversion MUST NOT leave that conversion implicit (TC-002).
+
+When an expression cannot be checked, the checker MUST NOT manufacture a plausible result type to allow the parent node to appear valid (TC-004). It MUST continue checking independent sibling expressions when doing so does not depend on the failed result (TC-004). Any such additional diagnostics do not turn the failed expression into a valid node.
+
+#### 8.9.3 Statement and declaration checking
+
+The checker MUST process statements in their specified order and establish lexical scope, function context, and loop context in accordance with Sections 8.6 and 9 (TR-020–TR-025, SR-001–SR-008, TC-004). A statement that does not produce an expression value MUST NOT receive an expression TypeId (TC-002, TY-16).
+
+For each declaration, the checker MUST resolve required type syntax, validate declaration constraints, and check initializers or function bodies under the applicable declared types and lexical environment (TR-015–TR-017, SR-002–SR-004). A variable declaration MUST NOT acquire its own binding before its initializer is checked, as required by SR-004. A function MUST be registered at the point required by SR-002 and SR-013 before its body is checked, so direct recursion can resolve without making later functions visible (SR-002, SR-013).
+
+The checker MUST apply the specified return-path analysis to every non-Void function (TR-025). Finding a Return node somewhere in a function body is not sufficient. The condition for acceptance is the `MayCompleteNormally` result defined by TR-025 and Section 8.6.
+
+#### 8.9.4 Diagnostic accumulation and finalization
+
+The checker MUST accumulate diagnostics from independent expressions when their checks do not depend on a failed result. It MUST preserve a deterministic diagnostic order based on phase order and deterministic traversal or rule order. It MUST NOT depend on hash-table iteration order for externally visible diagnostics (TC-004, TC-005).
+
+At finalization, the checker MUST validate the candidate typed tree against the invariants in Section 10 (TC-006, VAL-002). The checker MUST return no Fully Typed AST if any blocking Error diagnostic exists, if a required type or semantic reference is missing, or if typed validation fails. An internal invariant failure MUST be classified as an internal error rather than rewritten as a source type error.
+
+| Rule ID | Requirement | Verification |
+| --- | --- | --- |
+| TC-001 | The type checker MUST reject an Incomplete or structurally invalid SurfaceProgram before expression checking. | Supply an Incomplete program with a recovery placeholder and a structurally invalid complete-status tree. Verify that neither enters the expression-checking operation and that no TypedProgram is returned. |
+| TC-002 | Every successfully checked expression MUST receive one canonical result TypeId, and every non-identity implicit conversion required by its rule MUST be explicit in the typed tree. | Check representative literals, variable references, binary expressions, assignments, call arguments, and return values. Assert result types and conversion source/target types. |
+| TC-003 | Context types MUST be propagated only according to TR-028a through TR-028d and the consuming typing rule. | Verify initializer, argument, return, assignment, array-element, compound-assignment, peer-operand, shift, and non-flexible operand cases. Include the operator boundaries in test 29 of Section 13.2. |
+| TC-004 | A failed expression check MUST NOT emit a successful typed expression with a fabricated type. The checker MUST continue checking independent expressions when their checks do not depend on the failed result. | Check a program with two independent type errors and assert both diagnostics are reported, while no successful TypedProgram or error-typed expression is exposed. |
+| TC-005 | The checker MUST accumulate diagnostics deterministically and MUST NOT use hash iteration order to determine the externally visible order. | Run the same erroneous source repeatedly and with different hash seeds where supported. Compare the ordered diagnostic phase, code, primary span, and message. |
+| TC-006 | The checker MUST return a Fully Typed AST only when no blocking Error diagnostic exists and typed validation succeeds. | Exercise separately a source type error, a missing semantic reference in a candidate tree, and an invalid conversion node. Verify that each case returns failure and no Fully Typed AST. |
+
+
+
 ## 9. Symbol Resolution and Semantic References
 
 ### 9.1 Symbol records
@@ -856,6 +941,111 @@ There is no type-alias symbol in the supported language. A custom type name is a
 The current checker visits top-level declarations in source order. It does not perform a whole-unit declaration prepass. Therefore, direct recursion is supported because the current function is registered before its body is checked. Mutual recursion between distinct functions is not supported: the earlier function cannot resolve a call to a later declaration. This restriction is explicit in SR-013. Reordering declarations can make a call to an already declared function valid, but does not enable a mutually recursive pair.
 
 The function body uses a function scope. The checker does not add a second block scope for the outer function body. A standalone block creates a block scope. Each if branch creates the scope of its block. A while condition is checked in the surrounding scope. The checker then creates a loop scope for the body; a block body creates a nested block scope. A for statement creates a loop scope before its initializer. This scope covers the initializer, condition, increment, and body. If the body is a block, that block creates a nested scope.
+
+### 9.3 Required symbol-resolution procedure
+
+The rules in this section define the behavior that a resolver must produce. They do not require a specific map implementation or traversal library. The algorithm uses exact identifier spelling, the lexical scope tree, and source order.
+
+#### 9.3.1 Resolution state
+
+At the start of resolution, the compiler MUST create one SymbolTable and one global ScopeRecord for the current CompilationUnitId (SR-001, DEC-012). The resolver MUST maintain the following state (SR-001, SR-011, SR-017, INV-014):
+
+- An active scope, represented by a ScopeId.
+- The source-ordered declaration position currently being processed.
+- A mapping from each successfully registered declaration to one SymbolId.
+- A mapping from each resolved variable or call reference to its SymbolId.
+- The active function context and loop context required by the semantic rules.
+
+The resolver MUST NOT reuse a SymbolId for two declarations in one compilation unit (ARC-005, SR-017). A failed declaration or reference MUST NOT produce a successful Fully Typed AST (ERR-004, TC-006). Error recovery may continue to collect independent diagnostics, but a recovery result is not a resolved program.
+
+#### 9.3.2 Scope lookup
+
+The required name lookup operation is:
+
+```text
+lookup(name, starting_scope):
+    scope = starting_scope
+    while scope exists:
+        if scope contains a declaration whose identifier equals name:
+            return that declaration
+        scope = parent(scope)
+    return NOT_FOUND
+```
+
+Identifier equality uses the exact spelling rule in Section 3. The lookup operation returns the nearest declaration regardless of symbol kind. The caller then validates the required kind.
+
+The following variable-reference and call cases operationalize SR-014 and are subject to the expression and call rules TR-003 and TR-017.
+
+For a variable reference:
+1. Call `lookup` from the active scope.
+2. If no declaration is found, report the undefined-variable diagnostic defined by TR-003.
+3. If the nearest declaration is not a variable or parameter, report E2022. Do not continue searching an outer scope.
+4. Otherwise, attach the declaration's SymbolId to the reference and use its canonical TypeId as the expression type.
+
+For a call:
+1. Call `lookup` from the active scope.
+2. If no declaration is found, report the undefined-function diagnostic defined by the call rule.
+3. If the nearest declaration is not a function, report E2027. Do not continue searching an outer scope.
+4. Otherwise, attach the function SymbolId, check argument count and each argument against the ordered signature, and use the signature's result TypeId for the call result.
+
+A source-level identifier reference MUST NOT retain only a name when resolution succeeds. Later phases MUST use the resolved SymbolId and MUST NOT repeat lexical lookup (SR-011, SR-017).
+
+#### 9.3.3 Source-ordered declaration processing
+
+The resolver MUST process root declarations in source order (SR-002, SR-003, SR-013). It MUST NOT pre-register all functions in the compilation unit, because SR-003 and SR-013 prohibit references to later functions. For each function declaration, however, it MUST resolve the function signature and register that function in the containing scope before checking the function body. This order permits direct self-recursion without permitting calls to later declarations.
+
+The required conceptual procedure is:
+
+```text
+resolve_program(items):
+    create global scope
+    for item in source order:
+        if item is a function:
+            reject a duplicate name in the current scope
+            resolve its parameter and result types
+            register the function symbol
+            enter the function scope
+            register parameters in declaration order
+            check the body using that function scope
+            leave the function scope
+        else if item is main:
+            validate the required main signature
+            register the main symbol according to the root declaration rules
+            check the body in the main function scope
+        else:
+            resolve or validate the item under the root grammar
+    return diagnostics and semantic records
+```
+
+This pseudocode defines observable ordering, not a required code structure. A main declaration MUST be processed under the root-only and signature constraints in BAS-017, SR-006, and INV-019. Whether main is exposed as a callable source-level name must follow the existing call rules and MUST NOT be inferred from the fact that its internal symbol uses a function record (INV-019, TR-017).
+
+Before a variable declaration becomes visible, its initializer MUST be checked in the environment that exists before that declaration (SR-004, SR-015). The declaration itself MUST NOT be used to resolve a self-reference in its initializer. A declaration that conflicts with a name already present in the same scope MUST produce a duplicate-declaration diagnostic and MUST NOT replace the existing symbol (SR-005, SR-015). An inner-scope declaration may shadow a declaration in an outer scope, subject to the nearest-declaration lookup behavior above.
+
+#### 9.3.4 Scope entry and exit
+
+The scope behavior below elaborates SR-007, SR-008, and SR-016. The resolver MUST enter and leave scopes according to those rules:
+
+| Construct | Scope rule |
+| --- | --- |
+| Function body | Use the function scope containing its parameters. Do not introduce an additional outer-body block scope. |
+| Standalone block | Enter a child block scope before processing its statements. Leave that scope when the block ends. |
+| If branch | Process the branch block in its block scope. Declarations in one branch are not visible in the other branch or after the conditional. |
+| While statement | Resolve the condition in the surrounding scope. Process the body under the loop context and the required loop/body scope arrangement in SR-007 and SR-008. Leave all scopes introduced for the body when it ends. |
+| For statement | Enter one for-scope before its initializer. Keep it active for the initializer, condition, increment, and body. If the body is a block, enter its nested block scope. Leave the for-scope after the complete statement. |
+| Nested standalone block | Enter a child scope and leave it at the end of the block. |
+
+Scope entry and exit MUST be balanced on both successful processing and recoverable diagnostic paths (SR-016). A declaration introduced in a scope MUST NOT remain visible after that scope is left (SR-016). Loop context is separate from lexical visibility: entering or leaving a lexical scope MUST NOT by itself change the active loop stack (SR-016, INV-014).
+
+#### 9.3.5 Additional requirements and verification
+
+| Rule ID | Requirement | Verification |
+| --- | --- | --- |
+| SR-014 | Name lookup MUST search the active scope and then each lexical parent, returning the first exact-name match regardless of symbol kind. A kind mismatch at that match MUST be diagnosed without searching outer scopes. | Reference a top-level function name in variable-expression position and verify E2022. Then shadow a top-level function name with a local variable and call that name; verify E2027 and confirm lookup does not fall back to the outer function. |
+| SR-015 | A declaration MUST become visible only at the point specified by SR-002 through SR-004 and the source-ordered procedure in Section 9.3.3. A failed duplicate declaration MUST NOT replace an existing symbol. | Verify variable initializer self-reference does not resolve to the variable being declared, an initializer may resolve an outer binding that the new declaration will shadow, and duplicate declarations leave the original SymbolId intact. |
+| SR-016 | Scope entry and exit MUST match Section 9.3.4. No declaration may remain visible after its declaring scope ends. | Verify branch-local and block-local names are unavailable after the block, for-initializer names are visible throughout the for statement but unavailable after it, and nested shadowing does not alter the outer declaration after scope exit. |
+| SR-017 | Every successfully resolved variable reference and call MUST store the exact SymbolId selected by lookup. The symbol must belong to the same CompilationUnitId as the typed program. | Resolve shadowed references and direct recursive calls, then assert each reference points to the expected declaration. Mutate a resolved reference to a dangling or cross-unit SymbolId and verify typed validation rejects it. |
+
+
 
 ## 10. Invariants and Validity Criteria
 
@@ -899,6 +1089,93 @@ The AST validator must report the first failed invariant category and continue w
 
 An AST with an error is not semantically valid. Diagnostics do not convert an invalid source program into a valid AST.
 
+### 10.2 AST validation procedure
+
+Structural validation and typed-AST validation have separate responsibilities. Structural validation determines whether the node graph is a well-formed instance of its declared AST representation. Typed-AST validation additionally determines whether the semantic metadata and cross-references satisfy the invariants of a successful Fully Typed AST.
+
+#### 10.2.1 Structural validation
+
+The validator MUST visit every owned node and every owned child edge (VAL-001). It MUST check the following conditions before accepting a Surface AST or Typed AST:
+
+1. The root node has the expected root kind and belongs to one AstId.
+2. Every NodeId is unique within that AstId.
+3. Every non-root node has exactly one owning parent. Owned child edges form an acyclic tree.
+4. Every required child exists and has a node kind allowed by its parent field.
+5. Ordered child lists preserve the order required by the node definition and source syntax.
+6. Every SourceSpan refers to a registered SourceId. Its half-open byte range satisfies `start_byte <= end_byte <= source_length`.
+7. A composite node span covers its complete source construct, as required by INV-004.
+8. A parser-recovered program or a program with parser diagnostics is Incomplete and cannot be accepted as complete semantic input.
+
+A conceptual traversal that satisfies VAL-001 is:
+
+```text
+validate_structure(root):
+    if root is absent:
+        return invalid-root result
+    expected_ast_id = root.ast_id
+    pending = [(root, root_parent, root_field)]
+    seen_node_ids = empty set
+    valid = true
+
+    while pending is not empty:
+        node, parent, parent_field = remove next pending item
+        if node.ast_id != expected_ast_id:
+            record cross-AST ownership failure
+            valid = false
+            continue
+        if node.node_id is in seen_node_ids:
+            record duplicate NodeId or repeated-owned-node failure
+            valid = false
+            continue
+        add node.node_id to seen_node_ids
+        validate node kind, field types, and required fields
+        validate node span against SourceMap
+        for each owned child field in declared field order:
+            if a required child is absent:
+                record missing-child failure
+                valid = false
+            for each present child in that field:
+                add (child, node, field) to pending in reverse order
+
+    return valid only if no structural failure was recorded
+```
+
+This is an illustrative iterative walk, not a mandated implementation. The
+validity conditions and failure behavior remain those in INV-001 through
+INV-005 and VAL-001. An implementation MAY use a different traversal
+strategy, but it must detect repeated owned nodes and cycles without
+unbounded traversal.
+
+The validator MUST distinguish a malformed source result from a compiler-created invalid node (INV-005, ERR-001–ERR-003, VAL-001, VAL-004). Parser-produced invalidity must be represented by parser diagnostics and an Incomplete state. A constructed node that violates the node model or identity invariants is an internal error.
+
+#### 10.2.2 Typed-AST validation
+
+After structural validation succeeds, the typed validator MUST check all applicable semantic invariants in Section 10 (VAL-002). At minimum, it MUST establish:
+
+- Every expression has one TypeId that resolves to the canonical TypeTable entry in the same CompilationUnitId.
+- Every declaration and function signature agrees with its SymbolRecord.
+- Every successfully resolved variable and call reference points to the correct SymbolRecord and has the type required by that record.
+- Every Convert node uses an allowed ConversionKind, its child type equals `from`, and its result type equals `to`.
+- Every compound assignment has a valid mutable Place, uses the operation type required by TR-013, and has result_type equal to the place type.
+- Every array node has a resolved length and every function call agrees with the resolved signature's arity and parameter types.
+- Every break and continue reference identifies the nearest valid loop in the same function.
+- No error marker, placeholder, unresolved type, dangling ID, unsupported type category, or diagnostic sentinel appears in a successful tree.
+
+Validation MUST use the same canonical type and assignability definitions as semantic analysis (TY-12, TY-13, TY-17, VAL-002). It MUST NOT silently repair a malformed typed tree by inventing a type, rebinding a reference by name, or inserting an unrequested conversion (VAL-003).
+
+#### 10.2.3 Failure behavior and validation result
+
+A validator MUST return a successful validity result only if all required checks pass (VAL-002, VAL-004). It MAY accumulate multiple independent validation failures where this is safe, but it MUST stop following a branch when doing so would require dereferencing an invalid or dangling reference (VAL-002). Any typed-tree invariant failure is an internal error, not a source-language type diagnostic (INV-001–INV-022, VAL-002, ERR-006). An invalid tree MUST NOT be passed to a lowering or other downstream phase (VAL-004).
+
+| Rule ID | Requirement | Verification |
+| --- | --- | --- |
+| VAL-001 | Structural validation MUST check root kind, node identity, owned-child topology, required child kinds, source order, and source-span validity before accepting an AST. | Mutate a valid tree separately to introduce a duplicate NodeId, repeated child, missing child, invalid child kind, reversed child order, and out-of-range span. Verify each mutation is rejected with the corresponding invariant or internal-error result. |
+| VAL-002 | Typed-AST validation MUST verify semantic IDs, canonical types, declaration/signature consistency, conversion metadata, mutable places, array lengths, call signatures, and loop references against the invariants in Section 10. It MUST classify typed-tree invariant failures as internal errors and MUST NOT dereference invalid or dangling references while continuing validation. | Create one invalid typed tree per applicable invariant, including multiple invalid references, and assert rejection as an internal error without a crash or downstream use. |
+| VAL-003 | A validator MUST NOT repair an invalid AST by resolving names again, inventing missing type information, inserting conversions, or changing source spans. | Remove a type ID, replace a valid symbol ID with a dangling ID, and alter a conversion target. Verify failure without tree mutation or substituted metadata. |
+| VAL-004 | An Incomplete SurfaceProgram and any typed tree that fails validation MUST be rejected as downstream phase input. | Attempt semantic processing on an Incomplete SurfaceProgram and lowering on an invalid TypedProgram. Verify the next phase is not entered. |
+
+
+
 ## 11. Error Handling
 
 ### 11.1 Error categories
@@ -915,7 +1192,7 @@ An AST with an error is not semantically valid. Diagnostics do not convert an in
 
 ### 11.2 Diagnostic record
 
-Every diagnostic MUST contain:
+The normative diagnostic field set is defined by ERR-008. Every diagnostic MUST contain:
 
 - DiagnosticId.
 - Phase.
@@ -931,8 +1208,10 @@ Every diagnostic MUST contain:
 | --- | --- | --- |
 | ERR-008 | Every diagnostic MUST contain the fields listed above. A source-caused diagnostic MUST include its primary SourceSpan. A diagnostic MUST link to its affected NodeId when that node exists. | Generate one diagnostic from each error category and validate all required fields and the source-node link. |
 | ERR-011 | DiagnosticId MUST be unique in one compiler run. Phase and Severity MUST use the enumerations in Section 3. Every Error is blocking. A Warning or Note does not block Fully Typed AST output. | Generate diagnostics in each phase and verify ID uniqueness, enum values, and blocking behavior by severity. |
+| ERR-012 | A diagnostic's primary span MUST identify the source construct responsible for the immediate error. An unresolved identifier or wrong-kind reference MUST point to the identifier token. A duplicate declaration MUST point to the later declaration and include the earlier declaration as a related span when available. An invalid operator or operand combination MUST point to the complete expression span. | Trigger each listed error and assert the primary span boundaries and, for duplicates, the related declaration span. |
+| ERR-013 | A diagnostic span MUST refer to an existing SourceId in the SourceMap and use valid half-open byte offsets within that source. A renderer encountering an invalid span record MUST report an internal reporting failure and MUST NOT misclassify the source program as invalid. | Render diagnostics at byte offset zero, at end of file where an empty span is permitted, and on multi-byte UTF-8 text. Inject an out-of-range span and an unknown SourceId and verify internal reporting failure. |
 
-The existing CompileError model provides a phase-specific variant, optional code, message, span, and optional help. Related spans and NodeId are specified additions.
+The existing CompileError model provides a phase-specific variant, optional code, message, span, and optional help. Related spans and NodeId are specified additions. The span-selection rules above define the diagnostic contract; the visual formatting of rendered messages remains implementation-dependent.
 
 ### 11.3 Recovery and stopping rules
 
@@ -983,6 +1262,31 @@ A transformation MUST preserve source spans for retained constructs. A transform
 
 A clone of a Surface AST or Typed AST is a new AST instance. It receives a new AstId and new NodeIds. Symbol and type tables may be shared only as immutable data within the same compilation unit.
 
+### 12.4 Algorithmic complexity and resource expectations
+
+This subsection defines asymptotic expectations for the required operations. These expectations describe algorithmic growth. They are not wall-clock performance guarantees. No maximum source size, latency target, or memory budget is confirmed by BAS-016.
+
+Let:
+- V be the number of AST nodes visited by an operation.
+- E be the number of owned child edges in the AST.
+- D be the maximum lexical-scope nesting depth.
+- S be the number of symbol records in the compilation unit.
+- T be the number of canonical types in the type table.
+- L be the number of source bytes.
+
+| ID | Operation | Complexity requirement | Assumptions and verification |
+| --- | --- | --- | --- |
+| CMP-001 | Full AST traversal and structural validation | Time O(V + E), auxiliary space O(H) for an iterative traversal, where H is the maximum pending traversal frontier. A recursive implementation may use O(D_ast) call-stack space, where D_ast is maximum AST depth. | Each node and child edge is examined a bounded number of times. Verify with instrumentation on generated trees of increasing size. Do not treat recursion depth as unbounded. |
+| CMP-002 | Source-span validation | O(1) per span, excluding source-map lookup. Whole-tree validation is O(V + E). | Span checks compare byte offsets and source identity. Validate boundary spans at byte offset zero and at the source length. |
+| CMP-003 | Lexical name lookup | The result must be equivalent to searching the current scope and then its lexical parents. A hash-based scope table commonly gives expected O(1) lookup per scope, and O(D) across D scopes; an ordered map commonly gives O(log S_scope) per scope. The chosen data structure remains implementation-dependent. | Correct shadowing takes precedence over a specific map implementation. Measure the selected implementation before making performance claims. |
+| CMP-004 | Type canonicalization and equivalence lookup | The TypeTable must return one canonical TypeId for each type key. Lookup complexity depends on the selected map and key representation and is not fixed by this specification. | Verify uniqueness and repeat lookup identity for primitive, named, array, and vector keys. Do not claim constant-time lookup without an implementation and data-structure basis. |
+| CMP-005 | Type checking and typed-AST construction | For a tree with V nodes, the pass must not repeatedly traverse an unchanged subtree solely to recompute information already available from that subtree. A single-pass implementation with constant work per node, excluding symbol/type lookups, has O(V + E) traversal work. | The exact bound includes the costs of symbol and type lookup, diagnostics, and any required contextual rechecking. Profile representative programs before setting a numeric performance threshold. |
+| CMP-006 | Diagnostic accumulation | Appending one diagnostic must not require copying all previously accumulated diagnostics. Total accumulation should be O(K), excluding message construction and sorting, for K diagnostics. | Verify that a sequence of K diagnostics does not trigger a quadratic append strategy. Diagnostic ordering must follow the defined phase and traversal behavior, not hash iteration order. |
+| CMP-007 | Return-path validation | The conservative analysis in TR-025 must inspect each statement in the function body a bounded number of times, giving O(V_f + E_f) time for a function subtree of V_f nodes and E_f child edges. | Loops are treated as potentially completing normally. The analysis must not recursively reanalyze a loop body without a defined bound. Verify nested blocks, conditionals, and loops. |
+| CMP-008 | Resource exhaustion | Allocation failure, excessive nesting, and source-size limits must not be reported as ordinary source type errors. The implementation must use the repository's established failure mechanism or document a new one before claiming recovery behavior. | No specific maximum size or recovery guarantee is established. Tests must distinguish a controlled failure from a panic, process abort, or invalid Fully Typed AST. |
+
+The complexity rows are normative design constraints on avoidable algorithmic work. They do not select hash maps, ordered maps, recursion, or an allocation strategy. A performance acceptance threshold requires a separately approved workload, execution environment, and measurement method.
+
 ## 13. Verification and Acceptance Criteria
 
 ### 13.1 Verification methods
@@ -997,6 +1301,7 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | ARC-001–ARC-011 | Node ID uniqueness, tree shape, clone identity, semantic reference, pipeline, abstract-node, span, and resolved-type representation tests. |
 | SYN-001 | Parser-conformance tests for each grammar production and optional clause. |
 | SYN-003 | Parser tests verify root-only `fun` and `main` declarations, E1004 diagnostics, incomplete status, and the semantic phase boundary. |
+| IF-001–IF-010 | Interface input-state, output-invariant, diagnostics, validation, and blocking-failure tests at each compiler phase boundary. |
 | N-ROOT-01–N-ROOT-02 | Root construction tests for empty and non-empty source units. |
 | N-SE-01–N-SE-09 | One constructor and one structural-validation test per expression variant. |
 | N-SS-01–N-SS-11 | One constructor and one structural-validation test per statement variant. |
@@ -1008,10 +1313,13 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | TY-01–TY-18 | Type identity, canonicalization, assignability, promotion, conversion, and invalid-category tests. |
 | TR-001–TR-028 | Positive and negative tests for every typing rule, including primitive, named, vector, nested-array, and invalid array type syntax. |
 | SR-001–SR-012 | Scope, shadowing, duplicate, recursion, forward-reference, custom type, and symbol-kind tests. |
-| SR-013 | Record-shape, link-integrity, and type-canonicalization tests. |
+| SR-013 | Source-order visibility, direct recursion, and rejection of calls to later declarations and mutual recursion. |
+| SR-014–SR-017 | Nearest-scope lookup, declaration visibility, scope exit, and resolved SymbolId identity tests. |
+| TC-001–TC-006 | Negative and positive tests for pass input state, result types, contextual typing, diagnostic accumulation, deterministic ordering, and successful-output gating. |
+| VAL-001–VAL-004 | Structural topology, source-span, semantic cross-reference, no-repair, and downstream-gating tests for AST validators. |
 | SYN-002 | AST-shape tests for left associativity, assignment right associativity, and precedence for every operator class. |
 | INV-001–[INV-022](#inv-022) | One validator test per invariant. Each negative case must identify the violated invariant. |
-| ERR-001–ERR-011 | Parser recovery, blocking errors, accumulated diagnostics, diagnostic fields, error codes, severity, CLI phase boundary, and internal-error separation tests. |
+| ERR-001–ERR-013 | Parser recovery, blocking errors, accumulated diagnostics, diagnostic fields and locations, error codes, severity, CLI phase boundary, and internal-error separation tests. |
 | OP-001–OP-009 | Interface tests for each mandatory operation, transformation, and cloning. |
 | OP-010–OP-011 | Comparison tests only if an optional comparison utility is implemented. |
 
@@ -1050,6 +1358,15 @@ The test suite MUST include:
 29. Operator context boundaries. Verify that `var i: i32 = 1; var mixed: f64 = i + 1.5` has type F64 and a NumericAssignable conversion from I32 to F64, because `1.5` remains F64 after receiving the peer context I32 and I32 is assignable to F64. Also verify that `var wide: i64 = 1; var rejected: f64 = wide + 1.5` reports E2036 because I64 is not assignable to F64. Verify that `var shifted: f64 = 1 << 3` reports E2002 because the shift result is I64. Verify the enclosing rule reports E2002 for `var value: i32 = 1.5`, even though TR-028a reports no leaf-adaptation error.
 30. Non-void return-path analysis. Verify that `fun f(): i32 { while (false) { return 1 } }` and the equivalent `for` loop report E2003. Verify that a return after a possibly completing loop passes, and that an `if/else` with a return in both branches passes. Verify that an `if` without `else` does not satisfy the check.
 
+31. Nearest-scope name lookup. Declare a top-level function and then shadow its name with a local variable in a function body. Verify a call through that name reports E2027 for a non-function nearest declaration and does not resolve to the outer function. Verify a variable reference whose nearest declaration is a function reports E2022.
+32. Initializer visibility and same-scope duplicates. In a nested block, declare an outer variable and declare an inner variable with the same name whose initializer references that name. Verify the initializer resolves to the outer SymbolId and subsequent references in the inner scope resolve to the inner SymbolId. Declare the same name twice in one scope and verify E2032; the rejected duplicate must not replace the first SymbolId.
+33. Scope exit. Declare a variable in a nested block and reference it after the block. Verify E2023. Declare a for-loop initializer variable, reference it in the condition, increment, and body, then reference it after the loop. Verify all in-loop references resolve and the post-loop reference reports E2023.
+34. Function source order. Verify a function can call itself recursively because its symbol is registered before its body is checked. Verify a call to a function declared later reports E2023. Verify declaration order that places the callee first allows the call, and does not create support for mutual recursion.
+35. Diagnostic source locations. Trigger an unresolved identifier, a duplicate declaration, and a numeric expression whose operands have no common promotion type. Verify the unresolved identifier diagnostic points to the identifier token, the duplicate diagnostic points to the later declaration and links the original declaration span, and the invalid binary diagnostic points to the complete expression span. Test source spans at byte offset zero, a permitted empty end-of-file span, and a multi-byte UTF-8 source sequence.
+36. AST validation failures. Starting from a valid typed tree, separately introduce a duplicate NodeId, a missing required child, a dangling SymbolId, an invalid conversion target, an immutable SymbolRecord used as an assignment target, and a break/continue link to a loop in another function. Verify the validator rejects each tree, identifies the failed invariant, does not repair the input, and prevents downstream lowering.
+37. Type-checking failure gating. Supply an Incomplete SurfaceProgram, a source program with two independent type errors, and a candidate typed tree with a missing TypeId. Verify the first is rejected before semantic analysis, the second produces both independent diagnostics and no Fully Typed AST, and the third fails typed validation without synthesizing a replacement type.
+38. Diagnostic ordering. Run the same source with multiple errors repeatedly and under different hash seeds where supported. Verify phase order, diagnostic code, primary span, and message order remain stable and do not depend on hash-map traversal.
+
 ### 13.3 Acceptance criteria
 
 The specification is implemented when all the following conditions hold:
@@ -1066,6 +1383,12 @@ The specification is implemented when all the following conditions hold:
 | ACC-008 | The complete test suite covers every operator, type category, semantic reference, and error category in this document. |
 | ACC-009 | No unsupported type category or language feature can be inserted into a successful Fully Typed AST. |
 | ACC-010 | The final document review confirms that each requirement has an ID and a verification method. |
+| ACC-011 | Every phase boundary in IF-001 through IF-010 rejects inputs that fail its required preconditions, and no blocking result reaches a downstream phase as valid input. |
+| ACC-012 | The type-checking pass satisfies TC-001 through TC-006, including contextual typing under TR-028, explicit required conversions, deterministic diagnostics, and the absence of a successful Fully Typed AST on failure. |
+| ACC-013 | Symbol resolution satisfies SR-001 through SR-017, including exact nearest-scope lookup, declaration visibility, scope exit, direct recursion, and rejection of later-function references. |
+| ACC-014 | Diagnostic locations satisfy ERR-012 and ERR-013 for unresolved identifiers, duplicate declarations, numeric promotion failures, valid source-map references, and invalid-span handling. |
+| ACC-015 | The validators satisfy VAL-001 through VAL-004 by rejecting malformed trees and invalid semantic metadata without silently repairing the input or allowing downstream processing. |
+| ACC-016 | The implementation review or an explicit complexity argument addresses CMP-001 through CMP-008. Runtime performance thresholds are not claimed until a representative workload and measurement environment are approved. |
 
 ## 14. Technical Examples
 
@@ -1321,3 +1644,63 @@ The current front end does not define runtime behavior for integer overflow, out
 
 1. Alfred V. Aho, Monica S. Lam, Ravi Sethi, and Jeffrey D. Ullman. *Compilers: Principles, Techniques, and Tools*. 2nd ed. Addison-Wesley, 2006. ISBN 978-0-321-48681-3. Relevant sections: 2.7, “Symbol Tables”; 6.1, “Variants of Syntax Trees”; 6.3, “Types and Declarations”; 6.5, “Type Checking.” The section titles and publication details are available from [Pearson's book page](https://www.informit.com/store/compilers-principles-techniques-and-tools-9780321486813).
 2. Aerospace, Security and Defence Industries Association of Europe. *ASD-STE100 Simplified Technical English*. Issue 9, January 15, 2025. Official issue information is available from the [ASD-STE100 website](https://www.asd-ste100.org/) and its [downloads page](https://www.asd-ste100.org/STE_downloads.html).
+
+## 17. Traceability and Specification Review
+
+### 17.1 Requirement and decision traceability
+
+The following matrix identifies the principal sources of the normative rules. Requirement identifiers remain the stable references for implementation and tests. A design decision or textbook reference does not replace a requirement's acceptance criteria.
+
+| Specification area | Requirement or decision references | Verification location | Primary theoretical relationship |
+| --- | --- | --- | --- |
+| Surface and typed tree separation | BAS-006–BAS-009, ARC-001–ARC-011, INV-001–INV-005, VAL-001–VAL-004 | Sections 10.2 and 13.1–13.3 | Aho et al., Chapter 6, Section 6.1, syntax-tree representations |
+| Lexical scope and resolved references | SR-001–SR-017, INV-006, INV-013, DEC-009–DEC-012 | Sections 9.3, 13.1–13.2 | Aho et al., Chapter 2, Section 2.7, symbol tables; Chapter 6, Section 6.3, types and declarations |
+| Type identity, assignment, and conversions | TY-01–TY-17, TR-001–TR-028, TC-001–TC-006, INV-007–INV-009, INV-016–INV-020 | Sections 8.9, 13.1–13.3 and ADR-0001, ADR-0003, ADR-0004 verification vectors | Aho et al., Chapter 6, Section 6.5, type checking |
+| Operator precedence and AST shape | SYN-001–SYN-003, DEC-013, INV-003–INV-004 | Section 13.2, test 22 | Aho et al., Chapter 4, syntax analysis, and Chapter 6, Section 6.1 |
+| Syntax-directed semantic construction | ARC-008, OP-004–OP-007, IF-004–IF-006 | Sections 13.1–13.3 | Aho et al., Chapter 5, syntax-directed translation; Chapter 6, Sections 6.3 and 6.5 |
+| Phase interface and failure gating | IF-001–IF-010, VAL-001–VAL-004, TC-001, TC-006 | Sections 5.1.1, 8.9, 10.2, and 13.1–13.3 | Phase separation and semantic validation; interface identifiers and failure contracts are Descar-specific |
+| Control-flow and return validation | TR-025, GAP-008, DEC-019, OPEN-002 | Section 13.2, test 30 | Static semantic analysis associated with syntax-directed translation; the conservative rule itself is Descar-specific |
+| Error boundaries and invalid intermediate state | ERR-001–ERR-013, INV-005, INV-012, IF-001–IF-010, VAL-001–VAL-004 | Sections 10.2, 11, and 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
+| Algorithmic expectations | CMP-001–CMP-008 | Section 12.4 plus implementation profiling when a workload is approved | Asymptotic analysis is general algorithmic methodology, not a Descar-specific textbook guarantee |
+| Numeric language decisions | DEC-016–DEC-018, OPEN-001, OPEN-006 | ADR-0001, ADR-0003, ADR-0004 and Section 13.2 tests 23–29 | The textbook supplies the type-checking framework. The exact numeric rules are project decisions. |
+
+### 17.2 Theoretical scope boundaries
+
+The specification applies compiler theory only where it informs the Fully Typed AST contract. It does not define a complete lexer, source grammar, intermediate representation, runtime system, optimizer, or target-code generator.
+
+| Textbook topic | Applicability to this document | Required follow-up if the project implements that phase |
+| --- | --- | --- |
+| Chapter 3, lexical analysis | Token and source-span interfaces are referenced, but token patterns and scanner algorithms are not specified here. | Define the lexical grammar, token priority, escape handling, invalid-token behavior, and lexer tests in a lexer specification. |
+| Chapter 4, syntax analysis | Parser output, precedence, associativity, and incomplete parse behavior are in scope where recorded in Sections 5, 6, and 11. | Maintain a complete grammar and parser strategy in the parser specification. Do not infer a parser algorithm from this AST contract. |
+| Chapter 5, syntax-directed translation | Relevant to constructing semantic information from source constructs. | Specify translation actions and their invariants if construction is implemented through syntax-directed translation. The current contract does not require a particular implementation technique. |
+| Chapter 6, intermediate-code generation | The Fully Typed AST is an input boundary before IR lowering. IR form and lowering rules are explicitly out of scope. | Define IR instructions, control-flow representation, temporary values, lowering rules, and semantic-preservation tests before implementing the consumer described by IF-007. |
+| Chapter 7, run-time environments | Runtime storage, activation records, parameter passing, and procedure-call implementation are out of scope. | Specify runtime layout and calling conventions when a concrete execution model is selected. |
+| Chapter 8, code generation | Target instructions, register allocation, instruction selection, and target calling conventions are out of scope. | Define target architecture assumptions and code-generation correctness criteria in a separate specification. |
+| Chapter 9, machine-independent optimizations | Optimization passes and data-flow analyses are out of scope. | Define each optimization's preconditions, semantic-preservation condition, and verification strategy before adding it to the pipeline. |
+
+The chapter mapping identifies topics for further specification. It does not claim that every described technique is required by Descar or that the textbook prescribes the project's data structures.
+
+### 17.3 Final consistency review
+
+A change to this specification is complete only when the author or reviewer has checked each applicable item below.
+
+| Review ID | Review condition | Evidence |
+| --- | --- | --- |
+| QA-001 | Every normative requirement has a unique identifier and an objective verification method. | Requirement tables and Section 13. |
+| QA-002 | Every numeric typing rule agrees with ADR-0001, ADR-0003, and ADR-0004. | Compare TR-001, TR-009–TR-013, TR-028, and DEC-016–DEC-018 against the ADR decisions and verification vectors. |
+| QA-003 | Observed implementation facts are distinguishable from specified behavior and proposed future work. | Status labels in Sections 1 and 4, GAP records, and OPEN records. |
+| QA-004 | Every interface identifies its required input state and failure behavior. | Sections 5.1.1 and 12. |
+| QA-005 | AST identity, type identity, symbol resolution, spans, conversions, and control-flow references satisfy the invariants in Section 10. | Structural and typed-AST validator tests. |
+| QA-006 | Tests cover valid programs, invalid programs, boundary values, and cross-phase behavior described by the requirements. | Section 13.2 test vectors and the acceptance criteria in Section 13.3. |
+| QA-007 | Complexity statements distinguish asymptotic expectations from measured performance claims. | Section 12.4 and BAS-016. |
+| QA-008 | No unsupported runtime or target-code behavior is implied by type checking or the Fully Typed AST. | Sections 1, 7, 12, and OPEN-001, OPEN-004, OPEN-005. |
+| QA-009 | Every remaining limitation is recorded rather than silently resolved. | Section 15.2. |
+| QA-010 | Any substantive change to established behavior is linked to an explicit design decision and its verification vectors. | Section 15.1 and the applicable ADR. |
+
+### 17.4 Remaining limitations
+
+The document is a target contract, not evidence that all specified components exist. In particular, OPEN-004 records that the Fully Typed AST implementation and its consumer are not present in the inspected repository state. The specification does not establish that the tests in Section 13 have been implemented or pass.
+
+The execution semantics for overflow, division by zero, shift counts outside the operand width, floating-point literal rounding, and accepted non-numeric equality remain unresolved as listed in OPEN-001 and OPEN-005. Mixed flexible numeric operands remain governed by OPEN-006 and ADR-0004. No quantitative resource limits or performance acceptance thresholds have been approved.
+
+These limitations must be resolved in the relevant implementation or follow-up specification before the project claims behavior beyond the defined AST and static semantic contract.

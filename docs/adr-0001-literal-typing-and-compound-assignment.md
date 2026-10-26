@@ -40,6 +40,21 @@ Every numeric literal used as a value in Examples 14.1 to 14.4 carries a width s
 - DEC-007 excludes a constant-expression evaluator. BAS-014 excludes inference state from the typed tree. DEC-014 requires every conversion to be explicit.
 - OPEN-001 leaves run-time behavior undefined. A rule that changes the width at which an operation runs changes its overflow behavior, so Consequences lists each such change.
 
+## Theoretical relationship and scope
+
+The typing decisions in this ADR apply compiler type-checking principles to
+Descar's numeric literal and compound-assignment rules. Aho et al.,
+*Compilers: Principles, Techniques, and Tools*, 2nd edition, Chapter 6,
+Sections 6.3, “Types and Declarations,” and 6.5, “Type Checking,” provide
+the relevant conceptual foundation for associating types with declarations
+and checking whether operators accept their operands.
+
+Context adaptation of unsuffixed literals, the exact numeric promotion
+preference, the lossless-conversion condition, shift typing, and the rule
+that compound assignment operates in the place type are Descar-specific
+decisions. They are not presented as algorithms mandated by the textbook.
+This ADR's verification vectors define the expected project behavior.
+
 ## Decision
 
 Unsuffixed numeric literals take their type from context. Numeric promotion is limited to pairs that preserve every integer value. A shift takes the type of its left operand. A compound assignment runs in the type of its place.

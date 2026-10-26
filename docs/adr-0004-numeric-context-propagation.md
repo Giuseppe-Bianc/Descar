@@ -21,6 +21,21 @@ The ambiguity obscures these results:
 | `var value: i32 = 1.5` | E2002. Leaf adaptation does not diagnose the kind mismatch, but the initializer rule checks assignability. |
 | `var f: f64 = 1 + 2.5` | E2036 under the current rules. The two flexible literals do not receive the incoming F64 context through the operator. |
 
+## Theoretical relationship and scope
+
+This ADR specifies how Descar's context-sensitive literal typing interacts
+with expression typing at operator boundaries. Aho et al.,
+*Compilers: Principles, Techniques, and Tools*, 2nd edition, Chapter 5,
+“Syntax-Directed Translation,” and Chapter 6, Section 6.5, “Type Checking,”
+are relevant to the general process of attaching semantic information to
+syntax and checking expression types.
+
+The precedence between TR-028b and TR-028c, including the rule that an
+incoming floating-point context does not pass through an operator, is a
+Descar-specific decision. The textbook is a theoretical reference, not
+the source of these exact propagation rules. The examples and
+specification amendments in this ADR define the required behavior.
+
 ## Decision
 
 TR-028b controls whether a Binary node passes its incoming context to its operands. The peer rule in TR-028c is separate and remains active when exactly one operand is flexible and the other operand is non-flexible and numeric. This peer rule may supply F32 or F64 as the flexible operand's context.

@@ -31,6 +31,20 @@ TR-028a requires a literal to be exactly representable in an F32 or F64 context.
 
 The boundary between the last two rows follows no value-preservation rule. OPEN-001 listed the conversion of a non-exact integer to a floating-point type as undefined run-time behavior. That entry records the defect and does not resolve it.
 
+## Theoretical relationship and scope
+
+This ADR defines a Descar-specific restriction on implicit numeric
+conversions. Aho et al., *Compilers: Principles, Techniques, and Tools*,
+2nd edition, Chapter 6, Sections 6.3, “Types and Declarations,” and 6.5,
+“Type Checking,” provide the relevant framework for type compatibility and
+checking conversions between operand and destination types.
+
+The requirement that every implicit numeric conversion preserve every
+value of the source type is a project design decision. The textbook
+reference does not establish Descar's conversion table or guarantee that
+a particular conversion is lossless. The conversion table and verification
+vectors in this ADR remain the normative source for this language rule.
+
 ## Decision
 
 An implicit numeric conversion MUST preserve every value of the source type. TY-13 loses the four rows above. Section 7.2 states the test for each source and target category. The exactness test in TR-028a is the same rule applied to one literal, and it does not change.
