@@ -369,18 +369,19 @@ vector-type   = "vector" "<" type ">"
 array-literal = "{" expressions? "}"
 expression    = literal | identifier | "(" expression ")" | array-literal
               | prefix-op expression | expression infix-op expression
-              | expression "as" numeric-type
+              | expression "as" cast-target
               | expression postfix-op | expression "(" arguments? ")"
               | expression "[" expression "]"
 numeric-type  = "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64"
               | "f32" | "f64"
+cast-target   = numeric-type | "char" | "bool"
 ~~~
 
 In this grammar, `block = "{" statement* "}"`; `parameter = identifier ":" type`; `parameters = parameter ("," parameter)*`; `identifiers = identifier ("," identifier)*`; `initializers = expression ("," expression)*`; `expressions = expression ("," expression)*`; and `arguments = expression ("," expression)*`. An array literal may have zero expressions. The parser reports E2001 if a declaration has different counts of identifiers and initializers.
 
 For a for-statement, `initializer = declaration | expression`; `condition = expression`; and `increment = expression`. `break = "break"` and `continue = "continue"`. The `initializer`, `condition`, and `increment` clauses can be absent.
 
-`literal` includes numeric, string, character, Boolean, and nullptr forms. `primitive-type` includes the type names in N-ST-01. `numeric-type` is limited to `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, and `f64`. `prefix-op` includes `!`, unary `-`, `~`, `++`, and `--`. `infix-op` includes the operators in the precedence table, including `=`, but excludes dot and `as`. The cast production requires a numeric type token after `as`. `postfix-op` includes `++` and `--`. The parser permits any expression as a call callee or index base. Semantic rules then restrict calls and mutable places.
+`literal` includes numeric, string, character, Boolean, and nullptr forms. `primitive-type` includes the type names in N-ST-01. `numeric-type` is limited to `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, and `f64`. `cast-target` also permits `char` and `bool`. `prefix-op` includes `!`, unary `-`, `~`, `++`, and `--`. `infix-op` includes the operators in the precedence table, including `=`, but excludes dot and `as`. The cast production requires a numeric type token after `as`. `postfix-op` includes `++` and `--`. The parser permits any expression as a call callee or index base. Semantic rules then restrict calls and mutable places.
 
 An array suffix applies to a primitive type or identifier type. Multiple suffixes are valid. The parser does not accept an array suffix after a `vector-type`. A vector type can contain an array type or another vector type as its element type.
 
@@ -400,7 +401,7 @@ Expression parsing uses the following binding powers. A larger binding power bin
 | 10 | Additive | +, - | Left | 20 | 21 |
 | 11 | Multiplicative | *, /, % | Left | 22 | 23 |
 | n/a | Prefix | !, -, ~, ++, -- | n/a | 24 | 23 |
-| n/a | Cast | as numeric-type | Left | 23 | 24 |
+| n/a | Cast | as cast-target | Left | 23 | 24 |
 | n/a | Call, index, postfix update | (), [], ++, -- | n/a | 27 | 26 |
 
 The parser's binding-power table also lists dot at power 27, but the parser has no dot-expression handler. A dot token in expression position is a syntax error. Member access is outside this subset.
@@ -410,7 +411,7 @@ The parser's binding-power table also lists dot at power 27, but the parser has 
 | SYN-001 | The Surface AST grammar and documented clause constraints MUST match the syntax profile in this section. | Parser-conformance tests cover every production, each optional clause, and each stated parser restriction. |
 | SYN-002 | Expression AST shape MUST follow the binding powers and associativity in this table. | For every left-associative row, parse x op y op z and verify the shape (x op y) op z. For the assignment row, parse x op y op z and verify the shape x op (y op z). Verify that every infix table entry satisfies the power derivation rule in this section. |
 | SYN-003 | A `fun` or `main` declaration MUST be a direct child of the program root. The parser MUST reject either declaration in a block or other statement position with syntax diagnostic E1004. The SurfaceProgram status MUST be Incomplete. | Parse declarations at the root and inside blocks, branches, and loop bodies. Verify root declarations pass, nested declarations report E1004, and semantic analysis does not run. |
-| SYN-004 | A cast MUST use the form `expression as numeric-type`, where numeric-type is one of the ten built-in numeric types. Casts MUST bind more tightly than multiplicative operators and less tightly than prefix operators, and chained casts MUST associate left-to-right. | Parse each target type, reject non-numeric target tokens, and assert AST shape for casts in arithmetic expressions and chained casts. |
+| SYN-004 | A cast MUST use the form `expression as cast-target`, where cast-target is one of the ten numeric types, `char`, or `bool`. Casts MUST bind more tightly than multiplicative operators and less tightly than prefix operators, and chained casts MUST associate left-to-right. | Parse each target type, reject non-numeric target tokens, and assert AST shape for casts in arithmetic expressions and chained casts. |
 
 Each declaration name has one initializer. The initializer count must equal the name count. Ordinary statements do not require a semicolon. Semicolons delimit the three for-loop clauses. A for-loop initializer is empty, a declaration, or an expression statement. Function and main declarations are top-level items. A block or other statement cannot contain either declaration.
 
@@ -576,18 +577,18 @@ ConversionKind has these variants:
 | Kind | Requirement |
 | --- | --- |
 | NumericAssignable | Source and target are numeric, and the pair is in the assignment table in Section 7.2. The kind covers assignment conversions and the operand conversions of Section 7.3. Every conversion of this kind preserves every value of the source type (DEC-017). |
-| ExplicitNumericCast | Source and target are numeric. Unlike NumericAssignable, this kind permits narrowing and precision loss only when requested by source syntax `expression as numeric-type` (DEC-020). Runtime value semantics are not defined by the current front-end specification and MUST be specified before lowering executes this conversion. |
+| ExplicitCast | Numeric-to-numeric, numeric-to-char, char-to-numeric, numeric-to-bool, and bool-to-numeric conversions are allowed only when requested by source syntax `expression as target-type` (DEC-020). String and pointer conversions are not supported. Runtime value semantics are not defined by the current front-end specification and MUST be specified before lowering executes this conversion. |
 | CharToString | Source is Char and target is String. |
 | NullToAggregate | Source is NullPtr and target is Array, Vector, or Named. |
 | ArrayElementConversion | Source and target arrays have equal length, and source element is assignable to target element. |
 | VectorElementConversion | Source and target vectors have assignable element types. |
 
-Identity conversion does not create a Convert node. An explicit numeric cast becomes an ExplicitNumericCast conversion when source and target types differ. Non-numeric source or target types MUST be rejected during type checking. Explicit casts do not modify the implicit assignability table in Section 7.2.
+Identity conversion does not create a Convert node. An explicit cast becomes an ExplicitCast conversion when source and target types differ. Supported pairs are numeric-to-numeric, numeric-to-char, char-to-numeric, numeric-to-bool, and bool-to-numeric. String and pointer conversions MUST be rejected during type checking. Explicit casts do not modify the implicit assignability table in Section 7.2.
 
 | ID | Requirement | Verification |
 |---|---|---|
 | TY-15 | A non-identity implicit conversion MUST use one of the conversion kinds above and MUST satisfy that kind's source and target conditions. | Construct each allowed implicit conversion and one invalid source/target pair for every implicit conversion kind. |
-| TY-16 | ExplicitNumericCast MUST accept numeric source and target types, including narrowing pairs excluded from the implicit assignment table. A cast MUST NOT make a non-numeric source or target valid. | Test all numeric source/target categories for acceptance and verify that a string source or a non-numeric target reports a type or syntax diagnostic. |
+| TY-16 | ExplicitCast MUST accept numeric source and target types, numeric-to-char, char-to-numeric, numeric-to-bool, and bool-to-numeric pairs, including narrowing pairs excluded from implicit assignment. String and pointer conversions MUST remain invalid. | Test all numeric source/target categories for acceptance and verify that a string source or a non-numeric target reports a type or syntax diagnostic. |
 
 ### 7.5 Declared, inferred, and result types
 
@@ -1297,13 +1298,13 @@ The current compiler front end does not define runtime behavior for integer over
 | DEC-017 | An implicit numeric conversion MUST preserve every value of the source type. TY-13 loses four rows: I32 and U32 to F32, and I64 and U64 to F64. The exactness test in TR-028a is the literal case of the same rule. ADR-0003 lists the alternatives considered. | The table converted four integer types to a floating-point type that cannot hold all their values. A literal above 2^24 was rejected for F32, while an I32 variable with the same value converted without a diagnostic. ADR-0001 chose promotion that defines no run-time conversion, and a rounding conversion needs a run-time definition. | TY-13, TY-14, TR-009, TR-010, TR-013, TR-028a, GAP-015, OPEN-001, Section 13.2 tests 2, 3 and 28 | 32 ordered numeric pairs have no promotion instead of 24. The implicit conversions I32 and U32 to F32, and I64 and U64 to F64, are rejected. I64 and U64 can be converted to floating-point types only through an explicit numeric cast under DEC-020. A mixed integer and floating-point literal expression such as `1 + 2.5` has no promotion (OPEN-006). |
 | DEC-018 | TR-028b controls whether a Binary node passes its incoming context to operands. The peer rule in TR-028c is separate. When both operands are flexible, the Binary node passes its context only when TR-028b permits it. An incoming F32 or F64 context is not passed through an operator. | The former TR-028c wording could be read to override TR-028b for two flexible operands. Explicit precedence fixes the type and diagnostic for operator expressions without adding a numeric conversion. | TR-028b, TR-028c, TR-009, TR-012, TR-015, Section 13.2 test 29, Section 14.9, OPEN-006 | `x + 1.5` has type F64 when `x` is I32, because I32 is assignable to F64. It reports E2036 when `x` is I64 or U64, because neither type is assignable to F64. `var x: f64 = 1 << 3` reports E2002 because the shift result is I64 and I64 is not assignable to F64. |
 | DEC-019 | Non-void functions are rejected when conservative statement analysis says their bodies can complete normally. Blocks are analyzed in order, if/else requires both branches to avoid fall-through, and all loops are treated as potentially completing normally. | A recursive search for a return can accept a return nested inside a loop that may execute zero times or exit. | TR-025, GAP-008, OPEN-002, Section 13.2 test 30 | A return inside a loop is insufficient by itself. A return after the loop or returns in both branches of an if/else satisfy the check. |
-| DEC-020 | Explicit numeric casts use `expression as numeric-type`; source and target must be numeric. The cast permits narrowing and precision loss without expanding the implicit assignability table. Runtime behavior is deferred to the execution and lowering specifications. ADR-0002 records this decision. | ADR-0003 preserves implicit conversions but consequently rules out some value conversions that programs must be able to request explicitly. | SYN-004, N-SE-10, TY-16, Section 14.10, OPEN-001 | Casts are parsed and type-checked. Runtime conversion behavior remains to be specified before the compiler executes such conversions. |
+| DEC-020 | Explicit casts use `expression as cast-target`; supported targets are numeric types, `char`, and `bool`. Supported conversions are numeric-to-numeric, numeric-to-char, char-to-numeric, numeric-to-bool, and bool-to-numeric, without expanding the implicit assignability table. Runtime behavior is deferred to the execution and lowering specifications. ADR-0002 records this decision. | ADR-0003 preserves implicit conversions but consequently rules out some value conversions that programs must be able to request explicitly. | SYN-004, N-SE-10, TY-16, Section 14.10, OPEN-001 | Casts are parsed and type-checked. Runtime conversion behavior remains to be specified before the compiler executes such conversions. |
 
 ### 15.2 Open issues and pending clarification
 
 | ID | Issue or question | Evidence or rationale | Requirement affected | Consequence |
 | --- | --- | --- | --- | --- |
-| OPEN-001 | Runtime behavior is not defined for arithmetic overflow, division by zero, shift counts outside the operand width, rounding of a floating-point literal to F32, narrowing integer conversions, out-of-range floating-point-to-integer casts, or floating-point rounding in ExplicitNumericCast. Implicit conversions remain lossless, but an explicit cast may change or lose value information. | The checker selects types but does not define execution behavior or generated instructions for explicit conversions. | Sections 7.3 and 7.4, DEC-020 | IR, lowering, and runtime specifications must define these behaviors before executable cast semantics are claimed. |
+| OPEN-001 | Runtime behavior is not defined for arithmetic overflow, division by zero, shift counts outside the operand width, rounding of a floating-point literal to F32, narrowing integer conversions, out-of-range floating-point-to-integer casts, floating-point rounding, or numeric-to-char and numeric-to-bool conversions in ExplicitCast. Implicit conversions remain lossless, but an explicit cast may change or lose value information. | The checker selects types but does not define execution behavior or generated instructions for explicit conversions. | Sections 7.3 and 7.4, DEC-020 | IR, lowering, and runtime specifications must define these behaviors before executable cast semantics are claimed. |
 | OPEN-002 | The return-path analysis is conservative and does not prove arbitrary loop termination or unreachable-code properties. | Loops are treated as potentially completing normally, even when their conditions may be constant. | TR-025, INV-015 | This may reject some functions whose loop is in fact non-terminating, but it prevents a return inside a possibly skipped or exited loop from satisfying the non-void return requirement. |
 | OPEN-003 | Custom names have no declarations or member access. | The parser accepts names, but the checker does not resolve declarations for them. | TY-09, SR-012 | A future user-defined type feature requires type declarations, name resolution, and new tests. |
 | OPEN-004 | The repository has no Fully Typed AST implementation or typed-tree consumer. | Source inspection found no typed-AST or IR-lowering module. | OP-005, OP-006 | This document defines a target contract. Integration design remains future work. |
