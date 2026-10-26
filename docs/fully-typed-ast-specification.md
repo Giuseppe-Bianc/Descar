@@ -1504,7 +1504,7 @@ The specification is implemented when all the following conditions hold:
 | ACC-021 | A candidate TypedProgram becomes observable only after error gating and typed validation succeed. Blocking diagnostics and validation failures return failure without a TypedProgram; non-blocking diagnostics may accompany success. | TC-006, TC-007, and Section 13.2 test 37. |
 | ACC-022 | Each compilation unit has exactly one TypeId for every canonical type key, and failed type resolution does not leave an invalid composite type entry. | TY-17, TY-19, and Section 13.2 test 21. |
 | ACC-023 | Typed validation rejects duplicate, dangling, and foreign-unit semantic IDs without dereferencing ambiguous or invalid entries. It preserves deterministic reports for independent failures and never returns the rejected tree. | VAL-005, VAL-006, and Section 13.2 tests 36 and 39. |
-| ACC-024 | Every accepted SourceSpan uses in-range UTF-8 code-point boundaries. A span that splits a multi-byte scalar is rejected by structural validation and diagnostic rendering. | INV-004, INV-023, VAL-001, ERR-013, and Section 13.2 tests 35 and 36. |
+| ACC-024 | Every accepted SourceSpan uses in-range UTF-8 code-point boundaries. A span that splits a multi-byte scalar is rejected by structural validation and diagnostic rendering. | INV-004, INV-023, VAL-001, ERR-013, and Section 13.2 test 35. |
 
 ## 14. Technical Examples
 
