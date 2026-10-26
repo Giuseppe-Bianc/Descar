@@ -1682,8 +1682,31 @@ fn explicit_scalar_casts_accept_numeric_char_and_bool_pairs() {
 }
 
 #[test]
-fn explicit_scalar_casts_reject_string_conversions() {
+fn explicit_scalar_casts_reject_unsupported_string_conversions() {
     let ast = "main { var value: i32 = \"text\" as i32 }";
+    let errors = typecheck(ast);
+    assert_eq!(errors.len(), 1);
+    assert!(errors[0].message().unwrap_or_default().contains("Unsupported explicit cast"));
+}
+
+
+#[test]
+fn explicit_casts_support_char_to_string_and_string_identity() {
+    let ast = "main { var character: char = 'A'; var text: string = character as string; var same: string = text as string }";
+    let errors = typecheck(ast);
+    assert!(errors.is_empty(), "Char-to-string and identity casts should be accepted: {errors:?}");
+}
+
+#[test]
+fn explicit_nullptr_casts_support_arrays_vectors_and_custom_types() {
+    let ast = "main { var array: i32[4] = nullptr as i32[4]; var items: vector<i32> = nullptr as vector<i32>; var record: Record = nullptr as Record }";
+    let errors = typecheck(ast);
+    assert!(errors.is_empty(), "nullptr-to-aggregate casts should be accepted: {errors:?}");
+}
+
+#[test]
+fn explicit_casts_reject_unrelated_aggregate_conversions() {
+    let ast = "main { var text: string = \"hello\"; var value: i32 = text as i32 }";
     let errors = typecheck(ast);
     assert_eq!(errors.len(), 1);
     assert!(errors[0].message().unwrap_or_default().contains("Unsupported explicit cast"));
