@@ -1,6 +1,6 @@
 # ADR-0001: Literal typing and compound assignment
 
-**Status:** Accepted. Amended in part by ADR-0003: the I32 and U32 to F32 rows and the I64 and U64 to F64 rows leave TY-13, and the pair counts in D6 become 68 and 32.
+**Status:** Accepted. ADR-0003 removes the four lossy numeric conversions and changes the current promotion counts to 68 successful and 32 rejected ordered pairs. ADR-0004 amends the interpretation of TR-028b and TR-028c. The current result for `1 + 2.5` is E2036 under ADR-0003 and ADR-0004, as recorded in OPEN-006.
 **Date:** 2026-10-18
 **Deciders:** Descar language owner; implementer of the parser and type checker
 **Applies to:** Descar Fully Typed Abstract Syntax Tree Specification
@@ -95,6 +95,8 @@ Rules:
   If the literal is compatible with T by kind and fails its test, the checker reports E2035 at the literal. A floating-point literal with an integer T is not compatible by kind. It keeps its default type, and this rule reports nothing.
 - **TR-028b. Passing.** Only a flexible expression passes its context type to its children. Grouping passes any numeric T. A Negate, a BitwiseNot and the Binary operators `+ - * / % & | ^` pass an integer T to every operand. A shift passes an integer T to its left operand only. An operator node does not pass F32 or F64. Operand and result types then follow TR-009 to TR-012 as usual.
 - **TR-028c. Peer rule.** For `+ - * / % & | ^ == != < <= > >=`, if exactly one operand is flexible and the other operand is not flexible and has numeric type S, the flexible operand receives S as its context type. This replaces any context type from the position of the Binary node. If both operands are flexible, both receive the context type of the Binary node. Shifts have no peer rule.
+
+**Amendment by ADR-0004:** For current behavior, TR-028b takes precedence over TR-028c when both operands are flexible. The Binary node passes its context only when TR-028b permits it. An incoming F32 or F64 context therefore does not pass through the operator to two flexible operands.
 - **TR-028d. No context.** A flexible expression with no context type takes default types, and operators apply TR-009 to TR-012 to those types. Index expressions, conditions, shift counts and operands of non-flexible unary operators receive no context type. A non-numeric context type has no effect.
 
 Formal form, with `Γ ⊢ e ⇐ T ⇒ S` meaning that e is checked with context type T and has type S:
@@ -282,7 +284,7 @@ Apply these when the ADR is accepted.
 
 **Section 7.3.** Replace the paragraphs after the preference order with: "For two numeric operand types, Promote(T1,T2) selects the first type C in this list that is equal to either operand. The promotion is defined only when T1 ⪯ C and T2 ⪯ C. Otherwise the operation reports E2036. Promotion uses only conversions in TY-13. The order does not define arithmetic overflow, shift-count range or floating-point rounding."
 
-**TY-14 verification.** "Exhaust all 100 ordered numeric type pairs. Assert the selected TypeId for 76 pairs and E2036 for the 24 ordered pairs listed in D6."
+**Initial TY-14 verification, superseded by ADR-0003.** "Exhaust all 100 ordered numeric type pairs. The initial ADR-0001 table selected a TypeId for 76 pairs and reported E2036 for 24. ADR-0003 changes the current result to 68 selected types and 32 E2036 results."
 
 **Section 7.4.** Delete the NumericPromotion row. NumericAssignable: "Source and target are numeric and the pair is in TY-13. The kind is used for assignment conversions and for operand conversions under D6."
 
@@ -359,7 +361,7 @@ The checker reports E2035 for `a`, E2035 for `b`, and E2002 for `c`. It returns 
 
 1. Every numeric type in literal typing, with and without a suffix, with and without a context type.
 2. Every assignment conversion in TY-13, including the six added rows, and the adjacent disallowed conversion in both directions.
-3. All 100 ordered numeric type pairs: the selected type for 76 and E2036 for 24.
+3. Initial ADR-0001 baseline, superseded by ADR-0003: all 100 ordered numeric type pairs, with 76 selected types and 24 E2036 results. The current acceptance counts are 68 selected types and 32 E2036 results.
 16. Compound assignment with each vector in the Compound table below.
 23. The minimum, the maximum, and each value one outside the range, for all eight integer types, as initializers and as peer operands.
 24. F32 overflow, and integer exactness at 2^24 and 2^53 with the neighboring values.
@@ -423,7 +425,7 @@ Types in the Result column are typed-tree types. A bare diagnostic code means th
 | `x * 2`, `x: f32` | F32 |
 | `x * 2.0`, `x: f32` | F32 |
 | `x * (2 + 3)`, `x: f32` | E2036 |
-| `1 + 2.5` | F64 |
+| `1 + 2.5` | E2036 under ADR-0003 and ADR-0004; see OPEN-006 |
 | `1u32 + 2u64` | U64 with conversion on the left operand |
 | `1i32 + 2u64` | E2036 |
 | `a + b`, `a: u32`, `b: i64` | I64 with conversion on `a` |
