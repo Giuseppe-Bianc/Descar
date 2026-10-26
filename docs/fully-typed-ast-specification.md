@@ -132,7 +132,7 @@ The AST-specific record definitions are:
 | AstId, NodeId, SymbolId, TypeId, ScopeId, LoopId, SourceId, CompilationUnitId, DiagnosticId | Distinct newtype wrappers over u64. Zero is a valid ID. An ID is meaningful only in its declared AST, source, compilation-unit, or compiler-run domain. IDs are not interchangeable. |
 | CompilationUnitId | Identity of one source file processed as one semantic unit in one compiler run. This subset has no module or multi-file symbol-resolution rule. |
 | NodeId | A monotonically allocated u64 unique within one AstId. A node key is the pair (AstId, NodeId). |
-| SourceSpan | A record `{ source_id: SourceId, start_byte: u64, end_byte: u64 }`. The range is half-open. `start_byte <= end_byte` and `end_byte` is within the source file. |
+| SourceSpan | A record `{ source_id: SourceId, start_byte: u64, end_byte: u64 }`. The range is half-open. `start_byte <= end_byte` and `end_byte` is within the source file. Both offsets MUST be UTF-8 code-point boundaries. A span MUST NOT split a multi-byte Unicode scalar value. |
 | Token | Lexer output with `kind: TokenKind` and `span: SourceSpan`. TokenKind belongs to the lexer interface and is outside the AST model. |
 | Tokens | `Vec<Token>` in source order. |
 | Diagnostics | `Vec<Diagnostic>` in report order. |
@@ -328,7 +328,7 @@ intern(canonical_kind):
 
 ### 5.4 Source locations
 
-SourceSpan uses a half-open byte range [start_byte, end_byte) in one source file. Every concrete node MUST have a span. The span MUST refer to a registered source file. The span of a composite expression or statement MUST cover its complete source construct. A point span is valid when start_byte equals end_byte.
+SourceSpan uses a half-open byte range [start_byte, end_byte) in one source file. Every concrete node MUST have a span. The span MUST refer to a registered source file. Both offsets MUST be UTF-8 code-point boundaries, and the range MUST satisfy `start_byte <= end_byte <= source_length`. The span of a composite expression or statement MUST cover its complete source construct. A point span is valid when start_byte equals end_byte.
 
 ## 6. Node Model
 
@@ -1125,7 +1125,7 @@ The AST validator must report the first failed invariant category and continue w
 | INV-001 | Every node ID is unique in its AST instance. | Construction and structural validation | Internal error. Do not run semantic analysis. |
 | INV-002 | Owned children form a tree with one parent per non-root node. | Structural validation | Internal error. Do not run later phases. |
 | INV-003 | Every required child exists and every child list follows source order. | Structural validation | Internal error for constructed nodes; parser diagnostic for malformed source. |
-| INV-004 | Every span refers to one source file and uses valid half-open byte positions. Composite spans cover the full construct. | Parser output and typed AST validation | Internal error if a constructed node violates it. |
+| INV-004 | Every span refers to one source file, uses valid half-open byte positions whose boundaries are UTF-8 code-point boundaries, and covers the full construct when composite. | Parser output and typed AST validation | Internal error if a constructed node violates it. |
 | INV-005 | A SurfaceProgram is Complete only when parsing produced no diagnostics and no recovery placeholder. | After parsing | Mark Incomplete. Stop before type checking. |
 | INV-006 | Every identifier reference resolves to one declaration of the required kind. | Name resolution | Source semantic error. Do not construct a Fully Typed AST. |
 | INV-007 | Every expression in the Fully Typed AST has a valid TypeId. | Type checking and typed validation | Source semantic error if the source operation is invalid; internal error if the checker omitted a type. |
@@ -1144,6 +1144,7 @@ The AST validator must report the first failed invariant category and continue w
 | INV-020 | TypeTable contains exactly one TypeId for each canonical type key. | Type resolution and typed validation | Internal error for duplicate or missing canonical entries. |
 | INV-021 | Surface and typed FunctionDecl and MainDecl nodes occur only as direct children of their program root. No block or other statement contains either declaration. | Parser output and typed validation | Report E1004 and mark SurfaceProgram Incomplete for source nesting. Treat a nested declaration in a typed tree as an internal error. |
 | <a id="inv-022"></a>INV-022 | A numeric Literal has a Number variant that corresponds to its result_type and a value that is representable in that type. | Typed AST validation | Internal error. |
+| <a id="inv-023"></a>INV-023 | Every SourceSpan start and end offset is a UTF-8 code-point boundary within its registered source, in addition to satisfying the half-open range bounds. | Structural and typed-AST validation; diagnostic rendering | Internal error for a constructed invalid span or reporting failure if the renderer receives one. |
 
 ### 10.1 Validity states
 
@@ -1153,7 +1154,7 @@ The AST validator must report the first failed invariant category and continue w
 | Incomplete Surface AST | Parser recovery occurred or parser diagnostics exist. | Diagnostic display and AST debugging only. |
 | Semantically valid | All names, types, operations, declarations, and control constraints pass the rules in Sections 7–9. | Fully Typed AST construction. |
 | Fully typed | Semantically valid; all expressions and declarations have resolved type data; all references use IDs; all conversions are explicit; all loop-control references are valid in the current function. | Typed AST validation. |
-| Ready for lowering | Fully typed and INV-001 through [INV-022](#inv-022) pass. No blocking design question remains for the program's constructs. | A later lowering phase that implements this contract. |
+| Ready for lowering | Fully typed and INV-001 through [INV-023](#inv-023) pass. No blocking design question remains for the program's constructs. | A later lowering phase that implements this contract. |
 | Invalid AST | Any structural or typed invariant fails. | No compiler phase after the failing validator. |
 
 An AST with an error is not semantically valid. Diagnostics do not convert an invalid source program into a valid AST.
@@ -1234,11 +1235,11 @@ Validation MUST use the same canonical type and assignability definitions as sem
 
 #### 10.2.3 Failure behavior and validation result
 
-A validator MUST return a successful validity result only if all required checks pass (VAL-002, VAL-004). It MAY accumulate multiple independent validation failures where this is safe, but it MUST stop following a branch when doing so would require dereferencing an invalid or dangling reference (VAL-002). Any typed-tree invariant failure is an internal error, not a source-language type diagnostic (INV-001–INV-022, VAL-002, ERR-006). An invalid tree MUST NOT be passed to a lowering or other downstream phase (VAL-004).
+A validator MUST return a successful validity result only if all required checks pass (VAL-002, VAL-004). It MAY accumulate multiple independent validation failures where this is safe, but it MUST stop following a branch when doing so would require dereferencing an invalid or dangling reference (VAL-002). Any typed-tree invariant failure is an internal error, not a source-language type diagnostic (INV-001–INV-023, VAL-002, ERR-006). An invalid tree MUST NOT be passed to a lowering or other downstream phase (VAL-004).
 
 | Rule ID | Requirement | Verification |
 | --- | --- | --- |
-| VAL-001 | Structural validation MUST check root kind, node identity, owned-child topology, required child kinds, source order, and source-span validity before accepting an AST. | Mutate a valid tree separately to introduce a duplicate NodeId, repeated child, missing child, invalid child kind, reversed child order, and out-of-range span. Verify each mutation is rejected with the corresponding invariant or internal-error result. |
+| VAL-001 | Structural validation MUST check root kind, node identity, owned-child topology, required child kinds, source order, and source-span validity before accepting an AST. | Mutate a valid tree separately to introduce a duplicate NodeId, repeated child, missing child, invalid child kind, reversed child order, out-of-range span, and a span boundary inside a multi-byte UTF-8 character. Verify each mutation is rejected with the corresponding invariant or internal-error result. |
 | VAL-002 | Typed-AST validation MUST verify semantic IDs, canonical types, declaration/signature consistency, conversion metadata, mutable places, array lengths, call signatures, and loop references against the invariants in Section 10. It MUST classify typed-tree invariant failures as internal errors and MUST NOT dereference invalid or dangling references while continuing validation. | Create one invalid typed tree per applicable invariant, including multiple invalid references, and assert rejection as an internal error without a crash or downstream use. |
 | VAL-003 | A validator MUST NOT repair an invalid AST by resolving names again, inventing missing type information, inserting conversions, or changing source spans. | Remove a type ID, replace a valid symbol ID with a dangling ID, and alter a conversion target. Verify failure without tree mutation or substituted metadata. |
 | VAL-004 | An Incomplete SurfaceProgram and any typed tree that fails validation MUST be rejected as downstream phase input. | Attempt semantic processing on an Incomplete SurfaceProgram and lowering on an invalid TypedProgram. Verify the next phase is not entered. |
@@ -1393,7 +1394,7 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | TC-001–TC-007 | Negative and positive tests for pass input state, result types, contextual typing, diagnostic accumulation, deterministic ordering, typed-tree finalization, and successful-output gating. |
 | VAL-001–VAL-005 | Structural topology, source-span, semantic cross-reference, safe and deterministic failure reporting, no-repair, and downstream-gating tests for AST validators. |
 | SYN-002 | AST-shape tests for left associativity, assignment right associativity, and precedence for every operator class. |
-| INV-001–[INV-022](#inv-022) | One validator test per invariant. Each negative case must identify the violated invariant. |
+| INV-001–[INV-023](#inv-023) | One validator test per invariant. Each negative case must identify the violated invariant. |
 | ERR-001–ERR-014 | Parser recovery, blocking errors, accumulated diagnostics, diagnostic fields, deterministic ordering and locations, error codes, severity, CLI phase boundary, and internal-error separation tests. |
 | OP-001–OP-009 | Interface tests for each mandatory operation, transformation, and cloning. |
 | OP-010–OP-011 | Comparison tests only if an optional comparison utility is implemented. |
@@ -1437,7 +1438,7 @@ The test suite MUST include:
 32. Initializer visibility and same-scope duplicates. In a nested block, declare an outer variable and declare an inner variable with the same name whose initializer references that name. Verify the initializer resolves to the outer SymbolId and subsequent references in the inner scope resolve to the inner SymbolId. Declare the same name twice in one scope and verify E2032; the rejected duplicate must not replace the first SymbolId.
 33. Scope exit. Declare a variable in a nested block and reference it after the block. Verify E2023. Declare a for-loop initializer variable, reference it in the condition, increment, and body, then reference it after the loop. Verify all in-loop references resolve and the post-loop reference reports E2023.
 34. Function source order. Verify a function can call itself recursively because its symbol is registered before its body is checked. Verify a call to a function declared later reports E2023. Verify declaration order that places the callee first allows the call, and does not create support for mutual recursion.
-35. Diagnostic source locations. Trigger an unresolved identifier, a duplicate declaration, and a numeric expression whose operands have no common promotion type. Verify the unresolved identifier diagnostic points to the identifier token, the duplicate diagnostic points to the later declaration and links the original declaration span, and the invalid binary diagnostic points to the complete expression span. Test source spans at byte offset zero, a permitted empty end-of-file span, and a multi-byte UTF-8 source sequence.
+35. Diagnostic source locations. Trigger an unresolved identifier, a duplicate declaration, and a numeric expression whose operands have no common promotion type. Verify the unresolved identifier diagnostic points to the identifier token, the duplicate diagnostic points to the later declaration and links the original declaration span, and the invalid binary diagnostic points to the complete expression span. Test source spans at byte offset zero, a permitted empty end-of-file span, and valid boundaries around a multi-byte UTF-8 source sequence. Verify that a boundary inside a multi-byte scalar is rejected.
 36. AST validation failures. Starting from a valid typed tree, separately introduce a duplicate NodeId, a missing required child, a dangling SymbolId, an invalid conversion target, an immutable SymbolRecord used as an assignment target, and a break/continue link to a loop in another function. Verify the validator rejects each tree, identifies the violated invariant or validation rule, reports a safe node or field location when available, does not dereference invalid IDs or repair the input, and prevents downstream lowering.
 37. Type-checking failure gating. Supply an Incomplete SurfaceProgram, a source program with two independent type errors, and a candidate typed tree with a missing TypeId. Verify the first is rejected before semantic analysis, the second produces both independent diagnostics and no Fully Typed AST, and the third fails typed validation without synthesizing a replacement type.
 38. Diagnostic ordering. Run the same source with multiple errors repeatedly and under different hash seeds where supported. Verify phase order, diagnostic code, primary span, and message order remain stable and do not depend on hash-map traversal.
@@ -1454,7 +1455,7 @@ The specification is implemented when all the following conditions hold:
 | ACC-004 | Every implicit conversion is represented by a Convert node with the same source and target TypeIds. |
 | ACC-005 | Invalid source programs produce diagnostics and no Fully Typed AST. |
 | ACC-006 | Incomplete parser output is rejected by type checking. |
-| ACC-007 | The typed validator rejects each single-invariant mutation in INV-001 through [INV-022](#inv-022). |
+| ACC-007 | The typed validator rejects each single-invariant mutation in INV-001 through [INV-023](#inv-023). |
 | ACC-008 | The complete test suite covers every operator, type category, semantic reference, and error category in this document. |
 | ACC-009 | No unsupported type category or language feature can be inserted into a successful Fully Typed AST. |
 | ACC-010 | The final document review confirms that each requirement has an ID and a verification method. |
