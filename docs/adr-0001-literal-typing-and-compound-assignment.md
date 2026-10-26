@@ -8,9 +8,11 @@
 
 ## Context
 
-TR-001 gives every unsuffixed numeric literal a 64-bit type: I64, U64 or F64. TY-13 has no edge from I64 to a narrower integer, from I64 to F32, or from F64 to F32. TR-014, TR-015, TR-017 and TR-023 require the value type to be assignable to the target type. DEC-006 and TR-013 require the result of a compound operation to be assignable to its place. That last rule is correct and stays. Together these rules reject ordinary programs and accept programs that change values.
+**Historical baseline:** The following context tables describe the behavior before ADR-0001 was accepted on 2026-10-18. ADR-0003 and ADR-0004 later amended the numeric conversion and context-propagation rules. The tables are retained to explain the original decision and must not be used as the current normative behavior.
 
-### Programs rejected by the current rules
+TR-001 gave every unsuffixed numeric literal a 64-bit type: I64, U64 or F64. TY-13 has no edge from I64 to a narrower integer, from I64 to F32, or from F64 to F32. TR-014, TR-015, TR-017 and TR-023 require the value type to be assignable to the target type. DEC-006 and TR-013 require the result of a compound operation to be assignable to its place. That last rule is correct and stays. Together these rules reject ordinary programs and accept programs that change values.
+
+### Programs rejected by the pre-ADR-0001 rules
 
 | Program | Rule chain | Result |
 |---|---|---|
@@ -23,7 +25,7 @@ TR-001 gives every unsuffixed numeric literal a 64-bit type: I64, U64 or F64. TY
 | `var m: u64 = 1 << 40` | TR-012 gives I64. TY-13 has no I64 to U64 edge. | E2002 |
 | `b <<= k`, `b: i8`, `k: u64` | TR-012 promotes both operands to U64. The store needs U64 ⪯ I8. | E2002 |
 
-### Programs accepted by the current rules that change values
+### Programs accepted by the pre-ADR-0003 rules that could change values
 
 | Program | Rule chain |
 |---|---|
@@ -117,7 +119,7 @@ TR-009, the numeric branch of TR-010, and TR-012 for `& | ^` select C = Promote(
 
 TY-13 receives six rows that preserve every value: U8 to I16, I32 and I64; U16 to I32 and I64; U32 to I64. Without them no assignment or promotion converts an unsigned value to a signed type.
 
-After D6 these twelve pairs have no promotion, in either operand order: F32 with I64; F32 with U64; U64 with I64, I32, I16 or I8; U32 with I32, I16 or I8; U16 with I16 or I8; U8 with I8. The other 76 ordered pairs of the 100 have the result that Section 7.3 selects. Every promotion is now a pair in TY-13, so NumericPromotion is removed from Section 7.4.
+**Original ADR-0001 baseline, superseded by ADR-0003:** the initial D6 table had twelve unordered pairs without promotion and 76 promotable ordered pairs. ADR-0003 later removed four lossy implicit conversions. The current table has 16 unordered pairs without promotion and 68 promotable ordered pairs, as specified in Section 7.3 of the Fully Typed AST specification. That section is the current normative source for the complete set of pairs. Every permitted current promotion is a pair in TY-13, so NumericPromotion is removed from Section 7.4.
 
 ### D7. Shifts
 
@@ -228,7 +230,7 @@ P2 is chosen. It keeps the Section 7.3 order, adds one precondition, and defines
 2. **Error, not fallback, for an out-of-range literal.** `x_i8 + 300` reports E2035. The earlier checker accepted it and widened to I64. In Rust and Go the same source is a compile error. A fallback would make the type of `300` depend on whether it fits, which is the behavior D3 removes.
 3. **Float contexts do not pass through operators.** With `var f: f64 = 7 / 2`, passing F64 to the literals would turn integer division into float division and give 3.5 where the earlier rules give 3.0. The cost is that `var f: f32 = 0.5 * 2.0` stays rejected, as it is today. A bare literal still adapts, so `var f: f32 = 1` and `x_f32 *= 2` are accepted.
 4. **No constant evaluation.** `var x: i8 = 100 + 100` is accepted because each literal fits I8. The sum overflows at run time. Detecting it needs Option C.
-5. **Narrowing stays impossible for values.** D6 rejects 24 ordered pairs. A program can widen with an assignment to a wider variable, which works because of the six new table rows. No program can narrow a non-literal value. This limit exists today and needs ADR-0002.
+5. **Narrowing stays impossible for values.** In the original ADR-0001 baseline, D6 rejected 24 ordered pairs. ADR-0003 later restricted implicit conversion further to preserve every source value. A program can widen with an assignment to a wider variable, which works because of the six lossless table rows. No program can narrow a non-literal value. This limit remains and requires an explicit cast under ADR-0002.
 6. **Tree shape.** D4 removes one Unary node per negated literal. `-128i8` stays unwritable because the Number variant I8(i8) cannot hold 128.
 
 ## Consequences
@@ -246,7 +248,7 @@ P2 is chosen. It keeps the Section 7.3 order, adds one precondition, and defines
 
 **Migration, programs whose result changes:**
 
-- Rejected after the change: the 12 pairs in D6; `x_f32 * (2 + 3)`, which reports E2036; `x_i8 + 300`; `var f: f64 = 9007199254740993`; Example 14.2 as written.
+- Rejected by the original ADR-0001 baseline: the 12 unordered pairs listed in D6; `x_f32 * (2 + 3)`, which reports E2036; `x_i8 + 300`; `var f: f64 = 9007199254740993`; and Example 14.2 as originally written. The current promotion matrix has 16 unordered pairs without a promoted type after ADR-0003.
 - Typed differently after the change: `x_i32 + 1` has type I32; `x_u8 == 5` compares in U8.
 - Accepted after the change: every program in the first table.
 
