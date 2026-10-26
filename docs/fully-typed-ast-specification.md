@@ -1403,6 +1403,8 @@ The specification is implemented when all the following conditions hold:
 | ACC-014 | Diagnostic locations satisfy ERR-012 and ERR-013 for unresolved identifiers, duplicate declarations, numeric promotion failures, valid source-map references, and invalid-span handling. |
 | ACC-015 | The validators satisfy VAL-001 through VAL-004 by rejecting malformed trees and invalid semantic metadata without silently repairing the input or allowing downstream processing. |
 | ACC-016 | The implementation review or an explicit complexity argument addresses CMP-001 through CMP-008. Runtime performance thresholds are not claimed until a representative workload and measurement environment are approved. |
+| ACC-017 | The implementation exhausts all 100 ordered numeric type pairs. Exactly 68 pairs produce the specified promoted type, and the other 32 report E2036 without producing a typed binary expression. Every selected conversion satisfies the value-preservation predicate in Section 7.2. | Section 13.2 test 3 and the procedure in Section 7.3. |
+| ACC-018 | Context-sensitive literal typing satisfies TR-028a through TR-028d, including integer range boundaries, exact floating-point representability, peer operands, compound assignment, and the rule that F32/F64 context does not pass through an operator to two flexible operands. | Section 13.2 tests 1, 23 to 29, with expected tree shapes and diagnostics. |
 
 ## 14. Technical Examples
 
@@ -1710,6 +1712,7 @@ A change to this specification is complete only when the author or reviewer has 
 | QA-008 | No unsupported runtime or target-code behavior is implied by type checking or the Fully Typed AST. | Sections 1, 7, 12, and OPEN-001, OPEN-004, OPEN-005. |
 | QA-009 | Every remaining limitation is recorded rather than silently resolved. | Section 15.2. |
 | QA-010 | Any substantive change to established behavior is linked to an explicit design decision and its verification vectors. | Section 15.1 and the applicable ADR. |
+| QA-011 | Current numeric behavior agrees across this specification and ADR-0001, ADR-0003, and ADR-0004. Historical ADR examples and counts are clearly distinguished from current normative results. | Review TR-009 through TR-013 and TR-028, DEC-016 through DEC-018, OPEN-006, Section 13.2 tests 3 and 28 to 29, and the ADR consequence and verification tables. |
 
 ### 17.4 Remaining limitations
 
