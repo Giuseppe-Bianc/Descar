@@ -465,19 +465,23 @@ impl TypeChecker {
         }
     }
 
-    /// Type-checks an explicit numeric cast without changing implicit assignability.
+    /// Type-checks explicit scalar casts without changing implicit assignability.
     ///
-    /// Explicit casts may narrow integers or lose floating-point precision. Both
-    /// the source and target must be numeric; non-numeric conversions remain
-    /// rejected instead of silently changing the language's conversion rules.
+    /// Numeric casts may narrow or lose precision. Numeric-to-char, char-to-numeric,
+    /// numeric-to-bool, and bool-to-numeric casts are also explicit-only operations.
     fn visit_cast_expr(&mut self, expr: &Expr, target_type: &Type, span: &SourceSpan) -> Option<Type> {
         let source_type = self.visit_expr(expr)?;
-        if Self::is_numeric(&source_type) && Self::is_numeric(target_type) {
+        let source_numeric = Self::is_numeric(&source_type);
+        let target_numeric = Self::is_numeric(target_type);
+        let supported = (source_numeric && target_numeric)
+            || (source_numeric && matches!(target_type, Type::Char | Type::Bool))
+            || (matches!(source_type, Type::Char | Type::Bool) && target_numeric);
+        if supported || source_type == *target_type && matches!(source_type, Type::Char | Type::Bool) {
             Some(target_type.clone())
         } else {
             self.type_error_with_code(
                 Some(ErrorCode::E2002),
-                format!("Explicit casts require numeric types, found {source_type} as {target_type}"),
+                format!("Unsupported explicit cast from {source_type} to {target_type}"),
                 span,
             );
             None
