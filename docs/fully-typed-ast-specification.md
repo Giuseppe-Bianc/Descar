@@ -1231,6 +1231,36 @@ After structural validation succeeds, the typed validator MUST check all applica
 - Every break and continue reference identifies the nearest valid loop in the same function.
 - No error marker, placeholder, unresolved type, dangling ID, unsupported type category, or diagnostic sentinel appears in a successful tree.
 
+The validator MUST apply checks in an order that prevents unsafe reference access:
+
+~~~text
+validate_typed_ast(program):
+    structural_report = validate_structure(program)
+    if structural_report has failures:
+        return Invalid(structural_report)
+
+    validate SymbolTable and TypeTable record shapes, compilation-unit IDs,
+        ID uniqueness, and canonical type-key uniqueness
+    record table failures before using affected IDs
+    prepare lookups only from entries whose IDs are unique and in-unit
+
+    for node in deterministic preorder, using declared child-field order:
+        for each semantic reference field in declared field order:
+            if its ID has no unique, valid in-unit entry:
+                record the applicable invariant failure
+                mark dependent checks as unavailable
+            else:
+                validate the reference's expected kind and relation
+        validate node-specific semantic invariants only when their required
+            references have been resolved safely
+
+    if any structural, table, or semantic failure exists:
+        return Invalid(failures in deterministic encounter order)
+    return Valid
+~~~
+
+An ambiguous duplicate ID MUST NOT be resolved by selecting the first or last entry. A dangling, duplicate, or foreign-unit reference MUST NOT be dereferenced. The validator MAY continue with independent records and nodes after recording such a failure, but it MUST skip checks that require the invalid reference. This procedure defines required behavior, not a required map, indexing structure, or error-reporting data type.
+
 Validation MUST use the same canonical type and assignability definitions as semantic analysis (TY-12, TY-13, TY-17, VAL-002). It MUST NOT silently repair a malformed typed tree by inventing a type, rebinding a reference by name, or inserting an unrequested conversion (VAL-003).
 
 #### 10.2.3 Failure behavior and validation result
@@ -1244,6 +1274,7 @@ A validator MUST return a successful validity result only if all required checks
 | VAL-003 | A validator MUST NOT repair an invalid AST by resolving names again, inventing missing type information, inserting conversions, or changing source spans. | Remove a type ID, replace a valid symbol ID with a dangling ID, and alter a conversion target. Verify failure without tree mutation or substituted metadata. |
 | VAL-004 | An Incomplete SurfaceProgram and any typed tree that fails validation MUST be rejected as downstream phase input. | Attempt semantic processing on an Incomplete SurfaceProgram and lowering on an invalid TypedProgram. Verify the next phase is not entered. |
 | VAL-005 | Each validation failure MUST identify the violated invariant or validation rule and classify the failure as structural or typed-semantic. It MUST identify the affected field and node when they can be established safely. The report MUST NOT dereference a dangling ID or use an ambiguous duplicate NodeId as a unique reference. Multiple independent failures MAY be reported in deterministic traversal order. | Mutate separate nodes to violate different invariants and verify each report identifies the rule and safe location. Include duplicate IDs and dangling references, and verify report generation does not crash or dereference invalid data. |
+| VAL-006 | Typed-AST validation MUST establish uniqueness and compilation-unit ownership of semantic table entries before it dereferences their IDs. It MUST NOT resolve an ambiguous duplicate ID by entry order. Checks that depend on a dangling, duplicate, or foreign-unit ID MUST be skipped, while independent checks MAY continue in deterministic traversal order. | Introduce duplicate SymbolIds, duplicate TypeIds, duplicate canonical type keys, a foreign CompilationUnitId, and dangling references. Verify safe rejection, no arbitrary entry selection, no invalid dereference, and deterministic independent findings. |
 
 
 
@@ -1392,7 +1423,7 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | SR-013 | Source-order visibility, direct recursion, and rejection of calls to later declarations and mutual recursion. |
 | SR-014–SR-017 | Nearest-scope lookup, declaration visibility, scope exit, and resolved SymbolId identity tests. |
 | TC-001–TC-007 | Negative and positive tests for pass input state, result types, contextual typing, diagnostic accumulation, deterministic ordering, typed-tree finalization, and successful-output gating. |
-| VAL-001–VAL-005 | Structural topology, source-span, semantic cross-reference, safe and deterministic failure reporting, no-repair, and downstream-gating tests for AST validators. |
+| VAL-001–VAL-006 | Structural topology, source-span, semantic cross-reference, safe table indexing, deterministic failure reporting, no-repair, and downstream-gating tests for AST validators. |
 | SYN-002 | AST-shape tests for left associativity, assignment right associativity, and precedence for every operator class. |
 | INV-001–[INV-023](#inv-023) | One validator test per invariant. Each negative case must identify the violated invariant. |
 | ERR-001–ERR-014 | Parser recovery, blocking errors, accumulated diagnostics, diagnostic fields, deterministic ordering and locations, error codes, severity, CLI phase boundary, and internal-error separation tests. |
@@ -1442,6 +1473,7 @@ The test suite MUST include:
 36. AST validation failures. Starting from a valid typed tree, separately introduce a duplicate NodeId, a missing required child, a dangling SymbolId, an invalid conversion target, an immutable SymbolRecord used as an assignment target, and a break/continue link to a loop in another function. Verify the validator rejects each tree, identifies the violated invariant or validation rule, reports a safe node or field location when available, does not dereference invalid IDs or repair the input, and prevents downstream lowering.
 37. Type-checking failure gating. Supply an Incomplete SurfaceProgram, a source program with two independent type errors, and a candidate typed tree with a missing TypeId. Verify the first is rejected before semantic analysis, the second produces both independent diagnostics and no Fully Typed AST, and the third fails typed validation without synthesizing a replacement type.
 38. Diagnostic ordering. Run the same source with multiple errors repeatedly and under different hash seeds where supported. Verify phase order, diagnostic code, primary span, and message order remain stable and do not depend on hash-map traversal.
+39. Semantic table validation. Mutate a valid TypedProgram to contain duplicate SymbolIds, duplicate TypeIds, duplicate canonical type keys, a table whose CompilationUnitId differs from the root, and a reference to a missing entry. Verify duplicate or foreign entries are rejected before use, dependent checks are skipped rather than dereferencing them, independent findings remain deterministic, and no invalid TypedProgram is returned.
 
 ### 13.3 Acceptance criteria
 
@@ -1471,6 +1503,7 @@ The specification is implemented when all the following conditions hold:
 | ACC-020 | Every AST validation failure identifies the violated invariant or rule and supplies a safe node or field location when available. Reporting a validation failure never dereferences a dangling ID, repairs the AST, or permits downstream use. | VAL-001 through VAL-005 and Section 13.2 test 36. |
 | ACC-021 | A candidate TypedProgram becomes observable only after error gating and typed validation succeed. Blocking diagnostics and validation failures return failure without a TypedProgram; non-blocking diagnostics may accompany success. | TC-006, TC-007, and Section 13.2 test 37. |
 | ACC-022 | Each compilation unit has exactly one TypeId for every canonical type key, and failed type resolution does not leave an invalid composite type entry. | TY-17, TY-19, and Section 13.2 test 21. |
+| ACC-023 | Typed validation rejects duplicate, dangling, and foreign-unit semantic IDs without dereferencing ambiguous or invalid entries. It preserves deterministic reports for independent failures and never returns the rejected tree. | VAL-005, VAL-006, and Section 13.2 tests 36 and 39. |
 
 ## 14. Technical Examples
 
@@ -1736,14 +1769,14 @@ The following matrix identifies the principal sources of the normative rules. Re
 
 | Specification area | Requirement or decision references | Verification location | Primary theoretical relationship |
 | --- | --- | --- | --- |
-| Surface and typed tree separation | BAS-006–BAS-009, ARC-001–ARC-011, INV-001–INV-005, VAL-001–VAL-005 | Sections 10.2 and 13.1–13.3 | Aho et al., Chapter 6, Section 6.1, syntax-tree representations |
+| Surface and typed tree separation | BAS-006–BAS-009, ARC-001–ARC-011, INV-001–INV-005, VAL-001–VAL-006 | Sections 10.2 and 13.1–13.3 | Aho et al., Chapter 6, Section 6.1, syntax-tree representations |
 | Lexical scope and resolved references | SR-001–SR-017, INV-006, INV-013, DEC-009–DEC-012 | Sections 9.3, 13.1–13.2 | Aho et al., Chapter 2, Section 2.7, symbol tables; Chapter 6, Section 6.3, types and declarations |
 | Type identity, assignment, and conversions | TY-01–TY-19, TR-001–TR-028, TC-001–TC-007, INV-007–INV-009, INV-016–INV-020 | Sections 8.9, 13.1–13.3 and ADR-0001, ADR-0003, ADR-0004 verification vectors | Aho et al., Chapter 6, Section 6.5, type checking |
 | Operator precedence and AST shape | SYN-001–SYN-003, DEC-013, INV-003–INV-004 | Section 13.2, test 22 | Aho et al., Chapter 4, syntax analysis, and Chapter 6, Section 6.1 |
 | Syntax-directed semantic construction | ARC-008, OP-004–OP-007, IF-004–IF-006 | Sections 13.1–13.3 | Aho et al., Chapter 5, syntax-directed translation; Chapter 6, Sections 6.3 and 6.5 |
-| Phase interface and failure gating | IF-001–IF-010, VAL-001–VAL-005, TC-001, TC-006–TC-007 | Sections 5.1.1, 8.9, 10.2, and 13.1–13.3 | Phase separation and semantic validation; interface identifiers and failure contracts are Descar-specific |
+| Phase interface and failure gating | IF-001–IF-010, VAL-001–VAL-006, TC-001, TC-006–TC-007 | Sections 5.1.1, 8.9, 10.2, and 13.1–13.3 | Phase separation and semantic validation; interface identifiers and failure contracts are Descar-specific |
 | Control-flow and return validation | TR-025, GAP-008, DEC-019, OPEN-002 | Section 13.2, test 30 | Static semantic analysis associated with syntax-directed translation; the conservative rule itself is Descar-specific |
-| Error boundaries and invalid intermediate state | ERR-001–ERR-014, INV-005, INV-012, IF-001–IF-010, VAL-001–VAL-005, OPEN-007 | Sections 10.2, 11, and 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
+| Error boundaries and invalid intermediate state | ERR-001–ERR-014, INV-005, INV-012, IF-001–IF-010, VAL-001–VAL-006, OPEN-007 | Sections 10.2, 11, and 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
 | Algorithmic expectations | CMP-001–CMP-008 | Section 12.4 plus implementation profiling when a workload is approved | Asymptotic analysis is general algorithmic methodology, not a Descar-specific textbook guarantee |
 | Numeric language decisions | DEC-016–DEC-018, OPEN-001, OPEN-006 | ADR-0001, ADR-0003, ADR-0004 and Section 13.2 tests 23–29 | The textbook supplies the type-checking framework. The exact numeric rules are project decisions. |
 
