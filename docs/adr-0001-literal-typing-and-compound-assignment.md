@@ -25,7 +25,7 @@ TR-001 gave every unsuffixed numeric literal a 64-bit type: I64, U64 or F64. TY-
 | `var m: u64 = 1 << 40` | TR-012 gives I64. TY-13 has no I64 to U64 edge. | E2002 |
 | `b <<= k`, `b: i8`, `k: u64` | TR-012 promotes both operands to U64. The store needs U64 ⪯ I8. | E2002 |
 
-### Programs accepted by the pre-ADR-0003 rules that could change values
+### Programs accepted by the pre-ADR-0001 rules that could change values
 
 | Program | Rule chain |
 |---|---|
