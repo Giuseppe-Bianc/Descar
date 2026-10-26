@@ -2,7 +2,7 @@
 
 **Status:** Normative design specification for the implemented Descar language subset.
 
-**Revision:** 2026-10-22. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change. ADR-0004 clarifies operator context propagation. Decision DEC-018 records the change. DEC-019 defines conservative non-void return-path validation.
+**Revision:** 2026-10-26. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0002 defines explicit numeric casts. Decision DEC-020 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change. ADR-0004 clarifies operator context propagation. Decision DEC-018 records the change. DEC-019 defines conservative non-void return-path validation.
 
 Repository facts are marked **Observed**. Requirements for the new model are marked **Specified**. A requirement marked **Gap** requires an implementation change. Open issues are listed in Section 15.
 
@@ -20,6 +20,7 @@ The scope is the language that the repository parser and type checker implement:
 - Null-pointer literals.
 - Variables, functions, parameters, and the main function.
 - Unary and binary operators.
+- Explicit numeric casts using `expression as numeric-type`.
 - Assignment and compound assignment.
 - Calls.
 - Fixed arrays, array literals, vectors, and indexing.
@@ -304,6 +305,7 @@ SurfaceExpr is abstract. Each node below is concrete. All required children are 
 | N-SE-07 Assignment | target: SurfaceExpr; value: SurfaceExpr; node_id; span | Simple assignment. Parser-valid targets are variables or index expressions. An index base can still be a temporary; the semantic place rule rejects it. |
 | N-SE-08 Call | callee: SurfaceExpr; arguments: Vec<SurfaceExpr>; node_id; span | Call. Arguments are in source order. |
 | N-SE-09 Index | array: SurfaceExpr; index: SurfaceExpr; node_id; span | Array or vector index. |
+| N-SE-10 Cast | operand: SurfaceExpr; target_type: NumericType; node_id; span | Explicit numeric conversion. The target must be one of the ten built-in numeric types. The full source extent includes the `as` keyword and target type. |
 
 There is no ErrorExpr node. Recovery placeholders do not make a parse result valid. If parsing emits a diagnostic, SurfaceProgram.status is Incomplete.
 
@@ -367,15 +369,18 @@ vector-type   = "vector" "<" type ">"
 array-literal = "{" expressions? "}"
 expression    = literal | identifier | "(" expression ")" | array-literal
               | prefix-op expression | expression infix-op expression
+              | expression "as" numeric-type
               | expression postfix-op | expression "(" arguments? ")"
               | expression "[" expression "]"
+numeric-type  = "i8" | "i16" | "i32" | "i64" | "u8" | "u16" | "u32" | "u64"
+              | "f32" | "f64"
 ~~~
 
 In this grammar, `block = "{" statement* "}"`; `parameter = identifier ":" type`; `parameters = parameter ("," parameter)*`; `identifiers = identifier ("," identifier)*`; `initializers = expression ("," expression)*`; `expressions = expression ("," expression)*`; and `arguments = expression ("," expression)*`. An array literal may have zero expressions. The parser reports E2001 if a declaration has different counts of identifiers and initializers.
 
 For a for-statement, `initializer = declaration | expression`; `condition = expression`; and `increment = expression`. `break = "break"` and `continue = "continue"`. The `initializer`, `condition`, and `increment` clauses can be absent.
 
-`literal` includes numeric, string, character, Boolean, and nullptr forms. `primitive-type` includes the type names in N-ST-01. `prefix-op` includes `!`, unary `-`, `~`, `++`, and `--`. `infix-op` includes the operators in the precedence table, including `=`, but excludes dot. `postfix-op` includes `++` and `--`. The parser permits any expression as a call callee or index base. Semantic rules then restrict calls and mutable places.
+`literal` includes numeric, string, character, Boolean, and nullptr forms. `primitive-type` includes the type names in N-ST-01. `numeric-type` is limited to `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, and `f64`. `prefix-op` includes `!`, unary `-`, `~`, `++`, and `--`. `infix-op` includes the operators in the precedence table, including `=`, but excludes dot and `as`. The cast production requires a numeric type token after `as`. `postfix-op` includes `++` and `--`. The parser permits any expression as a call callee or index base. Semantic rules then restrict calls and mutable places.
 
 An array suffix applies to a primitive type or identifier type. Multiple suffixes are valid. The parser does not accept an array suffix after a `vector-type`. A vector type can contain an array type or another vector type as its element type.
 
@@ -395,6 +400,7 @@ Expression parsing uses the following binding powers. A larger binding power bin
 | 10 | Additive | +, - | Left | 20 | 21 |
 | 11 | Multiplicative | *, /, % | Left | 22 | 23 |
 | n/a | Prefix | !, -, ~, ++, -- | n/a | 24 | 23 |
+| n/a | Cast | as numeric-type | Left | 23 | 24 |
 | n/a | Call, index, postfix update | (), [], ++, -- | n/a | 27 | 26 |
 
 The parser's binding-power table also lists dot at power 27, but the parser has no dot-expression handler. A dot token in expression position is a syntax error. Member access is outside this subset.
@@ -404,6 +410,7 @@ The parser's binding-power table also lists dot at power 27, but the parser has 
 | SYN-001 | The Surface AST grammar and documented clause constraints MUST match the syntax profile in this section. | Parser-conformance tests cover every production, each optional clause, and each stated parser restriction. |
 | SYN-002 | Expression AST shape MUST follow the binding powers and associativity in this table. | For every left-associative row, parse x op y op z and verify the shape (x op y) op z. For the assignment row, parse x op y op z and verify the shape x op (y op z). Verify that every infix table entry satisfies the power derivation rule in this section. |
 | SYN-003 | A `fun` or `main` declaration MUST be a direct child of the program root. The parser MUST reject either declaration in a block or other statement position with syntax diagnostic E1004. The SurfaceProgram status MUST be Incomplete. | Parse declarations at the root and inside blocks, branches, and loop bodies. Verify root declarations pass, nested declarations report E1004, and semantic analysis does not run. |
+| SYN-004 | A cast MUST use the form `expression as numeric-type`, where numeric-type is one of the ten built-in numeric types. Casts MUST bind more tightly than multiplicative operators and less tightly than prefix operators, and chained casts MUST associate left-to-right. | Parse each target type, reject non-numeric target tokens, and assert AST shape for casts in arithmetic expressions and chained casts. |
 
 Each declaration name has one initializer. The initializer count must equal the name count. Ordinary statements do not require a semicolon. Semicolons delimit the three for-loop clauses. A for-loop initializer is empty, a declaration, or an expression statement. Function and main declarations are top-level items. A block or other statement cannot contain either declaration.
 
@@ -569,16 +576,18 @@ ConversionKind has these variants:
 | Kind | Requirement |
 | --- | --- |
 | NumericAssignable | Source and target are numeric, and the pair is in the assignment table in Section 7.2. The kind covers assignment conversions and the operand conversions of Section 7.3. Every conversion of this kind preserves every value of the source type (DEC-017). |
+| ExplicitNumericCast | Source and target are numeric. Unlike NumericAssignable, this kind permits narrowing and precision loss only when requested by source syntax `expression as numeric-type` (DEC-020). Runtime value semantics are not defined by the current front-end specification and MUST be specified before lowering executes this conversion. |
 | CharToString | Source is Char and target is String. |
 | NullToAggregate | Source is NullPtr and target is Array, Vector, or Named. |
 | ArrayElementConversion | Source and target arrays have equal length, and source element is assignable to target element. |
 | VectorElementConversion | Source and target vectors have assignable element types. |
 
-Identity conversion does not create a Convert node. Explicit cast syntax is not supported.
+Identity conversion does not create a Convert node. An explicit numeric cast becomes an ExplicitNumericCast conversion when source and target types differ. Non-numeric source or target types MUST be rejected during type checking. Explicit casts do not modify the implicit assignability table in Section 7.2.
 
 | ID | Requirement | Verification |
 |---|---|---|
-| TY-15 | A non-identity implicit conversion MUST use one of the conversion kinds above and MUST satisfy that kind's source and target conditions. | Construct each allowed conversion and one invalid source/target pair for every conversion kind. |
+| TY-15 | A non-identity implicit conversion MUST use one of the conversion kinds above and MUST satisfy that kind's source and target conditions. | Construct each allowed implicit conversion and one invalid source/target pair for every implicit conversion kind. |
+| TY-16 | ExplicitNumericCast MUST accept numeric source and target types, including narrowing pairs excluded from the implicit assignment table. A cast MUST NOT make a non-numeric source or target valid. | Test all numeric source/target categories for acceptance and verify that a string source or a non-numeric target reports a type or syntax diagnostic. |
 
 ### 7.5 Declared, inferred, and result types
 
@@ -1203,6 +1212,25 @@ main {
 ~~~
 
 The checker reports E2035 for `a` and E2035 for `b`, because each value is outside the range of its context type. It reports E2002 for `c`, because a floating-point literal does not adapt to an integer type. It returns no Fully Typed AST.
+
+
+
+### 14.10 Explicit numeric casts
+
+Source:
+
+~~~text
+main {
+    var wide: i64 = 300i64
+    var small: i8 = wide as i8
+    var precise: f64 = 16777217i32 as f64
+    var narrower_float: f32 = 3.5f64 as f32
+}
+~~~
+
+The parser constructs a Cast node for each `as` expression. The type checker requires both operand and target types to be numeric, then gives the cast the target type. This permits an explicit narrowing conversion without adding that conversion to implicit assignability. For example, I64 to I8 is accepted only because the source uses `as i8`.
+
+The current compiler front end does not define runtime behavior for integer overflow, out-of-range floating-point-to-integer conversions, or floating-point rounding. The execution and lowering specification must define those cases before the conversion can be executed.
 
 ### 14.9 Operator context boundaries
 
