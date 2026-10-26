@@ -576,6 +576,8 @@ impl<'a> JsavParser<'a> {
 
             // Assignment
             TokenKind::Equal => self.parse_assignment(left, &token),
+            // Explicit numeric cast
+            TokenKind::KeywordAs => self.parse_numeric_cast(left),
             // Function call
             TokenKind::OpenParen => self.parse_call(left, &token),
             // Array access
@@ -590,6 +592,34 @@ impl<'a> JsavParser<'a> {
                 None
             }
         }
+    }
+
+    /// Parses `expression as numeric_type`, requiring a numeric target type.
+    fn parse_numeric_cast(&mut self, expr: Expr) -> Option<Expr> {
+        let target = self.advance()?.clone();
+        let target_type = match target.kind {
+            TokenKind::TypeI8 => Type::I8,
+            TokenKind::TypeI16 => Type::I16,
+            TokenKind::TypeI32 => Type::I32,
+            TokenKind::TypeI64 => Type::I64,
+            TokenKind::TypeU8 => Type::U8,
+            TokenKind::TypeU16 => Type::U16,
+            TokenKind::TypeU32 => Type::U32,
+            TokenKind::TypeU64 => Type::U64,
+            TokenKind::TypeF32 => Type::F32,
+            TokenKind::TypeF64 => Type::F64,
+            _ => {
+                self.syntax_error(
+                    "Invalid cast target, expected a numeric type",
+                    &target,
+                    Some("Use one of i8, i16, i32, i64, u8, u16, u32, u64, f32, or f64"),
+                    Some(ErrorCode::E1002),
+                );
+                return None;
+            }
+        };
+        let span = expr.span().merge(&target.span);
+        Some(Expr::Cast { expr: Box::new(expr), target_type, span })
     }
 
     /// Validates a compound-assignment target and preserves its `Expr::Binary` representation.
