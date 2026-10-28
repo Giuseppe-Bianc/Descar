@@ -377,6 +377,111 @@ fn parses_explicit_numeric_casts_and_preserves_precedence() {
     ));
 }
 
+/// Renders an expression with one pair of parentheses around every binary, assignment, prefix, postfix, and cast
+/// node, so a test can compare the exact tree shape with a string.
+fn shape(expr: &Expr) -> String {
+    match expr {
+        Expr::Binary { left, op, right, .. } => {
+            let symbol = match op {
+                BinaryOp::Add => "+",
+                BinaryOp::Subtract => "-",
+                BinaryOp::Multiply => "*",
+                BinaryOp::Divide => "/",
+                BinaryOp::Modulo => "%",
+                BinaryOp::Less => "<",
+                BinaryOp::AddEqual => "+=",
+                other => panic!("shape() has no symbol for {other:?}"),
+            };
+            format!("({} {symbol} {})", shape(left), shape(right))
+        }
+        Expr::Assign { target, value, .. } => format!("({} = {})", shape(target), shape(value)),
+        Expr::Cast { expr, target_type, .. } => format!("({} as {target_type})", shape(expr)),
+        Expr::Unary { op, side, expr, .. } => {
+            let symbol = match op {
+                UnaryOp::Negate => "-",
+                UnaryOp::Not => "!",
+                UnaryOp::BitwiseNot => "~",
+                UnaryOp::Increment => "++",
+                UnaryOp::Decrement => "--",
+            };
+            match side {
+                UnaryOpSide::Prefix => format!("({symbol}{})", shape(expr)),
+                UnaryOpSide::Postfix => format!("({}{symbol})", shape(expr)),
+            }
+        }
+        Expr::Call { callee, arguments, .. } => {
+            let arguments: Vec<String> = arguments.iter().map(shape).collect();
+            format!("{}({})", shape(callee), arguments.join(", "))
+        }
+        Expr::ArrayAccess { array, index, .. } => format!("{}[{}]", shape(array), shape(index)),
+        Expr::Variable { name, .. } => name.clone(),
+        other => panic!("shape() does not render {other:?}"),
+    }
+}
+
+/// Source and required shape pairs for SYN-004. The vectors match Table SYN-004 in the specification.
+const CAST_SHAPE_VECTORS: &[(&str, &str)] = &[
+    ("a + b as f64", "(a + (b as f64))"),
+    ("a - b as f64", "(a - (b as f64))"),
+    ("a * b as f64", "(a * (b as f64))"),
+    ("a / b as f64", "(a / (b as f64))"),
+    ("a % b as i32", "(a % (b as i32))"),
+    ("a as i32 * b", "((a as i32) * b)"),
+    ("a as i32 * b as i32", "((a as i32) * (b as i32))"),
+    ("a as i32 + b", "((a as i32) + b)"),
+    ("a as i32 < b", "((a as i32) < b)"),
+    ("-a as f64", "((-a) as f64)"),
+    ("~a as u8", "((~a) as u8)"),
+    ("-a * b as f64", "((-a) * (b as f64))"),
+    ("-f(x)", "(-f(x))"),
+    ("-a[i] as i32", "((-a[i]) as i32)"),
+    ("f(x) as i32", "(f(x) as i32)"),
+    ("a[i] as i32", "(a[i] as i32)"),
+    ("a++ as i32", "((a++) as i32)"),
+    ("a as i32 as f64", "((a as i32) as f64)"),
+    ("x = y as i32", "(x = (y as i32))"),
+    ("x += y as f64", "(x += (y as f64))"),
+];
+
+#[test]
+fn cast_shapes_follow_the_syn_004_vectors() {
+    for (source, expected) in CAST_SHAPE_VECTORS {
+        let (statements, errors) = parse(source);
+        assert_no_errors(&errors);
+        assert_eq!(statements.len(), 1, "expected one statement for `{source}`");
+        let Stmt::Expression { expr } = &statements[0] else {
+            panic!("expected an expression statement for `{source}`");
+        };
+        assert_eq!(&shape(expr), expected, "wrong shape for `{source}`");
+    }
+}
+
+#[test]
+fn cast_and_prefix_powers_satisfy_the_syn_004_ordering_constraint() {
+    // M < C <= P < K, where M is the multiplicative right power, C the cast left power,
+    // P the prefix right power, and K the call, index, and postfix-update left power.
+    let cast_left = Precedence::binding_power(&token_from("as")).left;
+    let prefix_right = Precedence::unary_binding_power(&token_from("-")).right;
+    let call_left = Precedence::binding_power(&token_from("(")).left;
+
+    for operator in ["*", "/", "%"] {
+        let multiplicative_right = Precedence::binding_power(&token_from(operator)).right;
+        assert!(
+            multiplicative_right < cast_left,
+            "cast left power {cast_left} must exceed the right power {multiplicative_right} of `{operator}`"
+        );
+    }
+    assert!(cast_left <= prefix_right, "cast left power {cast_left} must not exceed prefix right power {prefix_right}");
+    assert!(prefix_right < call_left, "prefix right power {prefix_right} must be below call left power {call_left}");
+}
+
+#[test]
+fn rejects_literal_cast_target() {
+    let (statements, errors) = parse("value as 5");
+    assert_has_error(&errors, ErrorCode::E1002);
+    assert!(statements.is_empty(), "no statements should be produced when the cast target is a literal");
+}
+
 #[test]
 fn rejects_non_type_cast_targets() {
     let (_, errors) = parse("value as nullptr");

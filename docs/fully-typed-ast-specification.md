@@ -194,6 +194,7 @@ In node tables, fields named `node_id` and `span` have types NodeId and SourceSp
 | GAP-013 | Every binary row has a right power below its left power, so the parser groups repeated operators to the right. For example, 10 - 3 - 2 parses as 10 - (3 - 2). | The parser MUST use the binding powers in Section 6.4. Each left-associative row MUST have a right power equal to its left power plus 1. |
 | GAP-014 | TR-001 types every unsuffixed numeric literal with a 64-bit type, and the assignability table has no narrowing edge. An unsuffixed literal cannot initialize a variable of a narrower type or combine with a value of a narrower type. | The new checker MUST apply TR-028. |
 | GAP-015 | Promotion selects the first type in the preference order without checking that the operands keep their values. Shift operators promote both operands. The assignability table also contains four numeric conversion rows that cannot preserve every source value: I32 and U32 to F32, and I64 and U64 to F64. | The new checker MUST apply the promotion condition in Section 7.3, the shift rule in TR-012, and the lossless conversion table in Section 7.2 (DEC-017). |
+| GAP-016 | The parser gives a cast a left power of 23 and a prefix operator a right power of 23. When GAP-013 sets the multiplicative right power to 23, `a * b as f64` parses as `(a * b) as f64`, which violates SYN-004. The current parser avoids this only because GAP-013 is not yet applied. | The parser MUST use the cast and prefix powers in Section 6.4 (cast left 24, prefix right 25) in the same change that applies GAP-013, and MUST satisfy M < C ≤ P < K. |
 
 The performance target in BAS-016 is provisional. No unresolved decision affects the confirmed language scope.
 
@@ -438,7 +439,7 @@ For a for-statement, `initializer = declaration | expression`; `condition = expr
 
 An array suffix applies to a primitive type or identifier type. Multiple suffixes are valid. The parser does not accept an array suffix after a `vector-type`. A vector type can contain an array type or another vector type as its element type.
 
-Expression parsing uses the following binding powers. A larger binding power binds more tightly. The Pratt parser uses a loop condition `left_power > minimum_power` and parses each right operand with the listed right power. Under that rule, a row whose right power is greater than its left power is left-associative. A row whose right power is less than its left power is right-associative. Assignment and compound assignment are right-associative. All other binary rows are left-associative. For each infix row, the left power is 2 multiplied by the level. The right power is the left power plus 1 for a left-associative row and the left power minus 1 for a right-associative row. The prefix left power and the postfix right power are not used.
+Expression parsing uses the following binding powers. A larger binding power binds more tightly. The Pratt parser uses a loop condition `left_power > minimum_power` and parses each right operand with the listed right power. Under that rule, a row whose right power is greater than its left power is left-associative. A row whose right power is less than its left power is right-associative. Assignment and compound assignment are right-associative. All other binary rows are left-associative. For each infix row, the left power is 2 multiplied by the level. The right power is the left power plus 1 for a left-associative row and the left power minus 1 for a right-associative row. The prefix left power, the cast right power, and the postfix right power are not used. The cast and prefix rows have no level. Their powers satisfy the ordering constraint stated after the table.
 
 | Level | Syntax class | Operators | Associativity | Left power | Right power |
 | ---: | --- | --- | --- | ---: | ---: |
@@ -453,18 +454,51 @@ Expression parsing uses the following binding powers. A larger binding power bin
 | 9 | Shift | <<, >> | Left | 18 | 19 |
 | 10 | Additive | +, - | Left | 20 | 21 |
 | 11 | Multiplicative | *, /, % | Left | 22 | 23 |
-| n/a | Prefix | !, -, ~, ++, -- | n/a | 24 | 23 |
-| n/a | Cast | as cast-target | Left | 23 | 24 |
+| n/a | Cast | as cast-target | Left | 24 | 25 |
+| n/a | Prefix | !, -, ~, ++, -- | n/a | 26 | 25 |
 | n/a | Call, index, postfix update | (), [], ++, -- | n/a | 27 | 26 |
 
 The parser's binding-power table also lists dot at power 27, but the parser has no dot-expression handler. A dot token in expression position is a syntax error. Member access is outside this subset.
+
+Let M be the multiplicative right power, C the cast left power, P the prefix right power, and K the call, index, and postfix-update left power. The table MUST satisfy M < C ≤ P < K. The values 23 < 24 ≤ 25 < 27 satisfy it. Each relation fixes one parse shape:
+
+- M < C: a cast binds into the right operand of a multiplicative operator, so `a * b as f64` has the shape `a * (b as f64)`.
+- C ≤ P: a cast does not bind into the operand of a prefix operator, so `-a as f64` has the shape `(-a) as f64`.
+- P < K: a call, index, or postfix update binds into the operand of a prefix operator, so `-f(x)` has the shape `-(f(x))`.
+
+A change to M, C, P, or K MUST keep the constraint true. The earlier values C = 23 and P = 23 equal M = 23, which made a cast bind outside the right operand of `*`, `/`, and `%` (GAP-016).
 
 | ID | Requirement | Verification |
 | --- | --- | --- |
 | SYN-001 | The Surface AST grammar and documented clause constraints MUST match the syntax profile in this section. | Parser-conformance tests cover every production, each optional clause, and each stated parser restriction. |
 | SYN-002 | Expression AST shape MUST follow the binding powers and associativity in this table. | For every left-associative row, parse x op y op z and verify the shape (x op y) op z. For the assignment row, parse x op y op z and verify the shape x op (y op z). Verify that every infix table entry satisfies the power derivation rule in this section. |
 | SYN-003 | A `fun` or `main` declaration MUST be a direct child of the program root. The parser MUST reject either declaration in a block or other statement position with syntax diagnostic E1004. The SurfaceProgram status MUST be Incomplete. | Parse declarations at the root and inside blocks, branches, and loop bodies. Verify root declarations pass, nested declarations report E1004, and semantic analysis does not run. |
-| SYN-004 | A cast MUST use the form `expression as cast-target`, where cast-target follows the existing type production. Valid targets include numeric, character, Boolean, string, array, vector, and named custom types. Casts MUST bind more tightly than multiplicative operators and less tightly than prefix operators, and chained casts MUST associate left-to-right. | Parse each supported target family, reject `nullptr` as a type target, and assert AST shape for casts in arithmetic expressions and chained casts. |
+| SYN-004 | A cast MUST use the form `expression as cast-target`, where cast-target follows the existing type production. Valid targets include numeric, character, Boolean, string, array, vector, and named custom types. Casts MUST bind more tightly than multiplicative operators and less tightly than prefix operators, and chained casts MUST associate left-to-right. | Parse each supported target family. Reject `nullptr`, a literal, and a missing type as a target with E1002. Assert the exact node shape of every vector in Table SYN-004. Check that the powers in this section satisfy M < C ≤ P < K. |
+
+Table SYN-004 lists the required shapes. Each source is one expression statement. In the shape column, parentheses surround every binary, assignment, prefix, postfix, and cast node. A call is written `f(x)` and an index is written `a[i]`. The parentheses are not source tokens.
+
+| Source | Required shape | Relation checked |
+| --- | --- | --- |
+| `a + b as f64` | `(a + (b as f64))` | A cast binds into an additive operand. |
+| `a - b as f64` | `(a - (b as f64))` | The same, with a left-associative operator. |
+| `a * b as f64` | `(a * (b as f64))` | M < C |
+| `a / b as f64` | `(a / (b as f64))` | M < C |
+| `a % b as i32` | `(a % (b as i32))` | M < C |
+| `a as i32 * b` | `((a as i32) * b)` | A multiplicative operator continues after a cast. |
+| `a as i32 * b as i32` | `((a as i32) * (b as i32))` | Each cast binds to its nearest operand. |
+| `a as i32 + b` | `((a as i32) + b)` | An additive operator continues after a cast. |
+| `a as i32 < b` | `((a as i32) < b)` | A primitive target ends before `<`. |
+| `-a as f64` | `((-a) as f64)` | C ≤ P |
+| `~a as u8` | `((~a) as u8)` | C ≤ P |
+| `-a * b as f64` | `((-a) * (b as f64))` | P, M, and C together. |
+| `-f(x)` | `(-f(x))` | P < K |
+| `-a[i] as i32` | `((-a[i]) as i32)` | P < K and C ≤ P |
+| `f(x) as i32` | `(f(x) as i32)` | A call binds tighter than a cast. |
+| `a[i] as i32` | `(a[i] as i32)` | An index binds tighter than a cast. |
+| `a++ as i32` | `((a++) as i32)` | A postfix update binds tighter than a cast. |
+| `a as i32 as f64` | `((a as i32) as f64)` | Chained casts associate left to right. |
+| `x = y as i32` | `(x = (y as i32))` | The right side of an assignment is a cast. |
+| `x += y as f64` | `(x += (y as f64))` | The right side of a compound assignment is a cast. |
 
 Each declaration name has one initializer. The initializer count must equal the name count. Ordinary statements do not require a semicolon. Semicolons delimit the three for-loop clauses. A for-loop initializer is empty, a declaration, or an expression statement. Function and main declarations are top-level items. A block or other statement cannot contain either declaration.
 
@@ -650,7 +684,7 @@ ConversionKind has these variants:
 | ArrayElementConversion | Source and target arrays have equal length, and source element is assignable to target element. |
 | VectorElementConversion | Source and target vectors have assignable element types. |
 
-Identity conversion does not create a Convert node. An explicit cast becomes an ExplicitCast conversion when source and target types differ and the pair is not covered by an existing conversion kind. Char-to-string uses CharToString; null-pointer-to-array, vector, or named custom type uses NullToAggregate. Supported ExplicitCast pairs are numeric-to-numeric, numeric-to-char, char-to-numeric, numeric-to-bool, and bool-to-numeric. String parsing, unrelated aggregate conversions, and pointer reinterpretation MUST be rejected during type checking. Explicit casts do not modify the implicit assignability table in Section 7.2.
+Identity conversion does not create a Convert node. An explicit cast becomes an ExplicitCast conversion when source and target types differ and the pair is not covered by an existing conversion kind. Char-to-string uses CharToString; null-pointer-to-array, vector, or named custom type uses NullToAggregate. Supported ExplicitCast pairs are numeric-to-numeric, numeric-to-char, char-to-numeric, numeric-to-bool, and bool-to-numeric. String parsing, unrelated aggregate conversions, and pointer reinterpretation MUST be rejected during type checking. Explicit casts do not modify the implicit assignability table in Section 7.2. TR-029 in Section 8.5 applies these conversions to a cast expression.
 
 | ID | Requirement | Verification |
 |---|---|---|
@@ -765,7 +799,7 @@ A context type is a type that the position of an expression supplies to it. The 
 | TR-028a Leaf adaptation | An adaptable literal that receives a numeric context type T takes type T when its signed value v passes the test for its kind. An integer literal with an integer T passes when v is within the range of T. An integer literal with F32 or F64 passes when v is exactly representable in T. A floating-point literal with F32 or F64 passes when its value is finite after rounding to nearest in T. A floating-point literal with an integer T is not compatible by kind. It keeps its default type. Leaf adaptation reports no error for this kind mismatch; the enclosing rule still checks assignability. | E2035 when the literal is compatible by kind and fails the test. |
 | TR-028b Passing | Only a flexible expression passes its context type to its children. Grouping passes any numeric T. Negate, BitwiseNot, and the Binary operators `+ - * / % & \| ^` pass an integer T to every operand. A shift passes an integer T to its left operand only. A Binary node MUST NOT pass its incoming F32 or F64 context to an operand. This restriction does not override the separate peer rule in TR-028c. Operand and result types then follow TR-009 to TR-012. | None. |
 | TR-028c Peer | For `+ - * / % & \| ^ == != < <= > >=`, if exactly one operand is flexible and the other operand is not flexible and has numeric type S, the flexible operand receives S as its context type. This replaces the context type from the position of the Binary node. This peer context may be F32 or F64. If both operands are flexible, both receive the context type of the Binary node only when TR-028b permits that context to pass. Therefore, an incoming F32 or F64 context is not passed through an operator to two flexible operands. Shifts have no peer rule. | None. |
-| TR-028d No context | A flexible expression with no context type takes default types, and operators apply TR-009 to TR-012 to those types. Index expressions, conditions, shift counts, and operands of non-flexible unary operators receive no context type. A non-numeric context type has no effect. | None. |
+| TR-028d No context | A flexible expression with no context type takes default types, and operators apply TR-009 to TR-012 to those types. Index expressions, conditions, shift counts, operands of non-flexible unary operators, and cast operands receive no context type. A non-numeric context type has no effect. | None. |
 
 For example, `var value: i32 = 1.5` leaves `1.5` at F64 under TR-028a. Leaf adaptation does not report an error, but TR-015 reports E2002 because F64 is not assignable to I32. The absence of an error from TR-028a does not mean that the enclosing expression is valid.
 
@@ -839,7 +873,7 @@ TR-013 requires the value to be assignable to the place type. For example, an I1
 
 The checker reports E2011 for invalid bitwise operands, E2012 or E2017 for invalid logical operands, E2013 or E2016 for invalid arithmetic operands, and E2014 for incompatible comparison operands. It reports E2024 for an immutable compound-assignment target, E2033 for a non-place target under [DEC-008](#dec-008), defined in Section 15.1, E2002 when the value cannot convert to the place type, E2035 when a literal does not fit its context type, and E2036 when numeric operands have no common type.
 
-### 8.5 Assignment, declaration, call, and index rules
+### 8.5 Assignment, declaration, call, index, and cast rules
 
 | Rule ID | Preconditions | Postcondition | Possible errors |
 | --- | --- | --- | --- |
@@ -849,8 +883,11 @@ The checker reports E2011 for invalid bitwise operands, E2012 or E2017 for inval
 | TR-017 Function call | Callee is a simple name that resolves to a function. Argument count equals parameter count. Each argument is checked with its parameter type as context type and is assignable to that type. | Call result type is the function result type. Each needed argument conversion is explicit. | E2026 non-name callee; E2027 unknown function; E2028 wrong count; E2029 incompatible argument. |
 | TR-018 Array literal | At least one element. When the literal has context type Array(E,n), each element is checked with context type E. Every element has an equivalent type. | Result is Array(element type, element count). No element promotion occurs. | E2020 empty literal; E2021 mixed element types. |
 | TR-019 Index | Base has Array(T,n) or Vector(T). Index has an integer type. | Result type is T. | E2030 non-integer index; E2031 non-indexable base. |
+| TR-029 Cast | The operand is checked with no context type (TR-028d). Its type S and the resolved target type T form a supported pair: S ≡ T; S and T are both in Num; S is in Num and T is Char or Bool; S is Char or Bool and T is in Num; S is Char and T is String; or S is NullPtr and T is an Array, Vector, or Named type. Every other pair is unsupported. | The result type is T. When S ≡ T, the typed node is the typed operand and no Convert node is created. When S and T are in Num, S is not T, and S ⪯ T holds (Section 7.2), the operand receives a NumericAssignable conversion. When S is Char and T is String, the operand receives a CharToString conversion. When S is NullPtr, the operand receives a NullToAggregate conversion. Every other supported pair receives one ExplicitCast conversion from S to T. The Convert node spans the whole cast expression. | E1002 if the parser finds no type after `as`; E2002 for an unsupported pair, reported at the span of the whole cast expression. An error in the operand propagates, and the cast reports no E2002. |
 
 The current parser accepts only a simple variable name as a function call target after semantic checking. Function values and indirect calls are not supported.
+
+TR-029 applies Section 7.4 to a cast expression. The unsupported pairs include string to numeric, numeric to String, Bool to Char, Char to Bool, Array to Vector, Vector to Array, Array to a different Array, and a Named type to a different Named type. A cast never changes the assignability table in Section 7.2. The target type is not a context type, so a literal operand takes its default type under TR-001. For example, `200 as i8` has type I8 with an I64 operand and reports no E2035, while `var x: i8 = 200` reports E2035. The value change of a narrowing cast has no defined runtime behavior (OPEN-001).
 
 ### 8.6 Statement and control-flow rules
 
@@ -906,7 +943,7 @@ The exact-magnitude step may use checked arithmetic or a wider representation. I
 
 ### 8.8 Formal forms for all typing rules
 
-The following forms state the premises and conclusion for every rule in TR-001 through TR-028. The rule tables in Sections 8.2 through 8.7 define each rule's diagnostics and AST postconditions.
+The following forms state the premises and conclusion for every rule in TR-001 through TR-029. The rule tables in Sections 8.2 through 8.7 define each rule's diagnostics and AST postconditions.
 
 | Rule | Formal premises and conclusion |
 | --- | --- |
@@ -938,6 +975,7 @@ The following forms state the premises and conclusion for every rule in TR-001 t
 | TR-026 | For array type syntax with length literal `k`, `0≤k≤MAX_U64 ⇒ Length(k)=k`. For an inferred array literal with `n` elements, `0≤n≤MAX_U64 ⇒ Length(elements)=n`. |
 | TR-027 | `Γ ⊢ primitiveSyntax ⇒ its canonical primitive TypeId`; `Γ ⊢ namedSyntax(x) ⇒ Named(x)`; `Γ ⊢ τ⇒T` and `T≠Void ⇒ Γ ⊢ Vector(τ)⇒Vector(T)`; `Γ ⊢ τ⇒T` and `Length(k)=n ⇒ Γ ⊢ Array(τ,k)⇒Array(T,n)`. Named(`"void"`) is not the built-in Void type. |
 | TR-028 | `e` is an adaptable literal, `T` is numeric, and the signed value `v` of `e` passes the TR-028a test for its kind `⇒ Γ ⊢ e ⇐ T ⇒ T`. A flexible expression passes `T` to its operands under TR-028b. A flexible operand next to a non-flexible operand of numeric type `S` is checked with `S` under TR-028c. |
+| TR-029 | `Γ ⊢ e:S` with `e` checked without a context type, `Γ ⊢ τ⇒T`, and `Cast(S,T) ⇒ Γ ⊢ e as τ:T`. `Cast(S,T)` holds when `S≡T`; when `S,T∈Num`; when `S∈Num` and `T∈{Char,Bool}`; when `S∈{Char,Bool}` and `T∈Num`; when `S=Char` and `T=String`; or when `S=NullPtr` and `T` is an Array, Vector, or Named type. |
 
 `MAX_U64` means the largest value representable by an unsigned 64-bit integer. A type-resolution error or a false premise has the diagnostic listed for that rule.
 
@@ -976,7 +1014,7 @@ check_expression(surface_expr, optional_context_type, environment):
     return the typed expression
 ```
 
-A rule MUST NOT infer a context merely because a destination type exists elsewhere in the AST (TC-003). Context is passed only in positions identified by TR-028 and the rule tables. In particular, the restriction in TR-028b on forwarding an incoming F32 or F64 context, the distinct peer behavior in TR-028c, and the no-context cases in TR-028d are normative.
+A rule MUST NOT infer a context merely because a destination type exists elsewhere in the AST (TC-003). Context is passed only in positions identified by TR-028 and the rule tables. In particular, the restriction in TR-028b on forwarding an incoming F32 or F64 context, the distinct peer behavior in TR-028c, and the no-context cases in TR-028d are normative. A cast does not pass its target type to its operand (TR-029).
 
 A successful expression node MUST have exactly one result TypeId. A conversion node MUST have a source child whose result type equals its `from` type, and its result type MUST equal its `to` type. An identity conversion MUST NOT create a Convert node. A rule that requires a conversion MUST NOT leave that conversion implicit (TC-002).
 
@@ -1531,6 +1569,8 @@ The test suite MUST include:
 42. Parser recovery progress. Feed malformed input at the start of a source unit, inside a nested block, and at end of input. Verify that each recovery path consumes input or exits its current parse context, terminates without an infinite loop, produces an Incomplete SurfaceProgram, and never invokes name resolution or type checking.
 43. Array-length upper boundary. Verify that a fixed-array length equal to `MAX_U64` is accepted, but a positive integer literal equal to `MAX_U64 + 1` reports E2034 and does not create a canonical Array type entry. Use an arbitrary-precision expected value in the test fixture so the test itself does not overflow its host integer type.
 44. Static array-index bounds. For `var a: i32[2] = {1, 2}; var value: i32 = a[2]`, verify that the index expression is accepted by TR-019 and has type I32, because the base type and integer index type are valid. Do not require a compile-time bounds diagnostic or infer runtime behavior from this test; the out-of-range access remains OPEN-008.
+45. Cast parsing. Parse every source in Table SYN-004 and compare the node shape with the required shape. Parse `a as T` for each primitive type, `i32[4]`, `vector<i32>`, and a custom name. Verify that `a as nullptr`, `a as 5`, `a as`, and `a as i32 as` each report E1002 and leave the SurfaceProgram Incomplete (Section 11.1). Verify M < C ≤ P < K against the values in Section 6.4, for each of `*`, `/`, and `%`.
+46. Cast typing. For each family in TR-029, verify the result type, the conversion kind, and the operand type. With `wide: i64`, `v: i32`, `f: f64`, `c: char`, and `text: string`: `wide as i8` and `v as f32` and `f as i32` have an ExplicitCast to I8, F32, and I32; `v as i64` and `v as f64` have a NumericAssignable conversion to I64 and F64; `v as char` and `v as bool` have an ExplicitCast to Char and Bool; `c as i32` has an ExplicitCast to I32; `c as string` has CharToString; `nullptr as i32[4]`, `nullptr as vector<i32>`, and `nullptr as Record` have NullToAggregate; `v as i32` and `text as string` create no Convert node. Verify E2002 at the span of the whole cast expression for `text as i32`, `v as string`, `flag as char` and `c as bool` with `flag: bool`, `arr as vector<i32>` with `arr: i32[4]`, and `r as Other` with `r: Record`. Verify that `200 as i8` has type I8 with an I64 operand and reports no E2035, that `var x: i8 = 200` reports E2035, and that `var small: i8 = wide` reports E2002. Verify that an invalid operand reports its own diagnostic and no E2002 for the cast.
 
 ### 13.3 Acceptance criteria
 
@@ -1567,6 +1607,7 @@ The specification is implemented when all the following conditions hold:
 | ACC-027 | Every parser recovery path makes progress or exits, terminates without an infinite loop, and leaves the SurfaceProgram Incomplete so semantic phases cannot consume it. Verification: ERR-001, ERR-003, ERR-010, ERR-015, and Section 13.2 test 42. |
 | ACC-028 | Fixed-array lengths accept the inclusive range from zero through MAX_U64 and reject negative, non-integer, or out-of-range values with E2034 before inserting a canonical array type. Verification: TR-026, TR-027, and Section 13.2 tests 6, 7, and 43. |
 | ACC-029 | Static index typing validates the index as an integer and derives the element type without requiring a compile-time bounds check; it does not imply runtime behavior for out-of-range access. Verification: TR-019, Section 13.2 test 44, and OPEN-008. |
+| ACC-030 | Every cast has the node shape in Table SYN-004, the result type, conversion kind, and diagnostic that TR-029 specifies, and no cast changes the implicit assignability table. A cast operand receives no context type. Verification: SYN-004, TY-18, TR-029, and Section 13.2 tests 45 and 46. |
 
 ## 14. Technical Examples
 
@@ -1805,7 +1846,7 @@ The current front end does not define runtime behavior for integer overflow, out
 | DEC-017 | An implicit numeric conversion MUST preserve every value of the source type. TY-13 loses four rows: I32 and U32 to F32, and I64 and U64 to F64. The exactness test in TR-028a is the literal case of the same rule. ADR-0003 lists the alternatives considered. | The table converted four integer types to a floating-point type that cannot hold all their values. A literal above 2^24 was rejected for F32, while an I32 variable with the same value converted without a diagnostic. ADR-0001 chose promotion that defines no run-time conversion, and a rounding conversion needs a run-time definition. | TY-13, TY-14, TR-009, TR-010, TR-013, TR-028a, GAP-015, OPEN-001, Section 13.2 tests 2, 3 and 28 | 32 ordered numeric pairs have no promotion instead of 24. The implicit conversions I32 and U32 to F32, and I64 and U64 to F64, are rejected. I64 and U64 can be converted to floating-point types only through an explicit numeric cast under DEC-020. A mixed integer and floating-point literal expression such as `1 + 2.5` has no promotion (OPEN-006). |
 | DEC-018 | TR-028b controls whether a Binary node passes its incoming context to operands. The peer rule in TR-028c is separate. When both operands are flexible, the Binary node passes its context only when TR-028b permits it. An incoming F32 or F64 context is not passed through an operator. | The former TR-028c wording could be read to override TR-028b for two flexible operands. Explicit precedence fixes the type and diagnostic for operator expressions without adding a numeric conversion. | TR-028b, TR-028c, TR-009, TR-012, TR-015, Section 13.2 test 29, Section 14.9, OPEN-006 | `x + 1.5` has type F64 when `x` is I32, because I32 is assignable to F64. It reports E2036 when `x` is I64 or U64, because neither type is assignable to F64. `var x: f64 = 1 << 3` reports E2002 because the shift result is I64 and I64 is not assignable to F64. |
 | DEC-019 | Non-void functions are rejected when conservative statement analysis says their bodies can complete normally. Blocks are analyzed in order, if/else requires both branches to avoid fall-through, and all loops are treated as potentially completing normally. | A recursive search for a return can accept a return nested inside a loop that may execute zero times or exit. | TR-025, GAP-008, OPEN-002, Section 13.2 test 30 | A return inside a loop is insufficient by itself. A return after the loop or returns in both branches of an if/else satisfy the check. |
-| DEC-020 | Explicit casts use `expression as cast-target`, where cast-target follows the existing type production. Supported changing conversions are numeric-to-numeric, numeric-to-char, char-to-numeric, numeric-to-bool, bool-to-numeric, char-to-string, and nullptr-to-array/vector/custom type. Same-type casts are identities; string parsing, unrelated aggregate conversions, and pointer reinterpretation are rejected. The conversion rules do not expand the implicit assignability table. Runtime behavior for value-changing casts is deferred to the execution and lowering specifications. ADR-0002 records this decision. | These conversions cover useful existing value categories without silently expanding implicit conversions or inventing string parsing and pointer reinterpretation semantics. | SYN-004, N-SE-10, TY-18, Section 14.10, OPEN-001 | Casts are parsed and type-checked. Runtime conversion behavior remains to be specified before the compiler executes value-changing casts. |
+| DEC-020 | Explicit casts use `expression as cast-target`, where cast-target follows the existing type production. Supported changing conversions are numeric-to-numeric, numeric-to-char, char-to-numeric, numeric-to-bool, bool-to-numeric, char-to-string, and nullptr-to-array/vector/custom type. Same-type casts are identities; string parsing, unrelated aggregate conversions, and pointer reinterpretation are rejected. The conversion rules do not expand the implicit assignability table. Runtime behavior for value-changing casts is deferred to the execution and lowering specifications. ADR-0002 records this decision. | These conversions cover useful existing value categories without silently expanding implicit conversions or inventing string parsing and pointer reinterpretation semantics. | SYN-004, N-SE-10, TY-18, TR-029, Section 14.10, OPEN-001 | Casts are parsed and type-checked. Runtime conversion behavior remains to be specified before the compiler executes value-changing casts. |
 
 ### 15.2 Open issues and pending clarification
 
@@ -1839,13 +1880,14 @@ The following matrix identifies the principal sources of the normative rules. Re
 | Comparison compatibility and typed conversions | TR-010, TY-15, ACC-025–ACC-026, OPEN-005 | Section 8.4 and Section 13.2 tests 19, 40, and 41 | Type compatibility is a static typing contract; runtime equality behavior remains a Descar-specific unresolved decision |
 | Fixed-array length resolution | TY-07, TR-026–TR-027, DEC-007, ACC-028 | Section 8.7 and Section 13.2 tests 6, 7, and 43 | Range validation is a static semantic constraint; array runtime layout remains outside this specification |
 | Array index typing and runtime bounds | TR-019, ACC-029, OPEN-008 | Section 8.5 and Section 13.2 test 44 | Static index typing is distinct from the runtime behavior of out-of-range access |
-| Operator precedence and AST shape | SYN-001–SYN-003, DEC-013, INV-003–INV-004 | Section 13.2, test 22 | Aho et al., Chapter 4, syntax analysis, and Chapter 6, Section 6.1 |
+| Operator precedence and AST shape | SYN-001–SYN-004, DEC-013, GAP-016, INV-003–INV-004 | Section 13.2, tests 22 and 45 | Aho et al., Chapter 4, syntax analysis, and Chapter 6, Section 6.1 |
 | Syntax-directed semantic construction | ARC-008, OP-004–OP-007, IF-004–IF-006 | Sections 13.1–13.3 | Aho et al., Chapter 5, syntax-directed translation; Chapter 6, Sections 6.3 and 6.5 |
 | Phase interface and failure gating | IF-001–IF-010, VAL-001–VAL-006, TC-001, TC-006–TC-007 | Sections 5.1.1, 8.9, 10.2, and 13.1–13.3 | Phase separation and semantic validation; interface identifiers and failure contracts are Descar-specific |
 | Control-flow and return validation | TR-025, GAP-008, DEC-019, OPEN-002 | Section 13.2, test 30 | Static semantic analysis associated with syntax-directed translation; the conservative rule itself is Descar-specific |
 | Error boundaries and invalid intermediate state | ERR-001–ERR-015, INV-005, INV-012, INV-023, IF-001–IF-010, VAL-001–VAL-006, OPEN-007 | Sections 10.2, 11, and 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
 | Algorithmic expectations | CMP-001–CMP-008 | Section 12.4 plus implementation profiling when a workload is approved | Asymptotic analysis is general algorithmic methodology, not a Descar-specific textbook guarantee |
 | Numeric language decisions | DEC-016–DEC-018, OPEN-001, OPEN-006 | ADR-0001, ADR-0003, ADR-0004 and Section 13.2 tests 23–29 | The textbook supplies the type-checking framework. The exact numeric rules are project decisions. |
+| Explicit casts | SYN-004, TY-18, TR-029, DEC-020, GAP-016, OPEN-001 | ADR-0002, Section 13.2 tests 45 and 46, ACC-030 | Cast typing is a static contract. The runtime behavior of value-changing casts remains OPEN-001. |
 
 ### 17.2 Theoretical scope boundaries
 
@@ -1870,7 +1912,7 @@ A change to this specification is complete only when the author or reviewer has 
 | Review ID | Review condition | Evidence |
 | --- | --- | --- |
 | QA-001 | Every normative requirement has a unique identifier and an objective verification method. | Requirement tables and Section 13. |
-| QA-002 | Every numeric typing rule agrees with ADR-0001, ADR-0003, and ADR-0004. | Compare TR-001, TR-009–TR-013, TR-028, and DEC-016–DEC-018 against the ADR decisions and verification vectors. |
+| QA-002 | Every numeric typing rule agrees with ADR-0001, ADR-0002, ADR-0003, and ADR-0004. | Compare TR-001, TR-009–TR-013, TR-028, TR-029, and DEC-016–DEC-018 and DEC-020 against the ADR decisions and verification vectors. |
 | QA-003 | Observed implementation facts are distinguishable from specified behavior and proposed future work. | Status labels in Sections 1 and 4, GAP records, and OPEN records. |
 | QA-004 | Every interface identifies its required input state and failure behavior. | Sections 5.1.1 and 12. |
 | QA-005 | AST identity, type identity, symbol resolution, spans, conversions, and control-flow references satisfy the invariants in Section 10. | Structural and typed-AST validator tests. |
