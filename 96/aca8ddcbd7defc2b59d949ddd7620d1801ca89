@@ -1,0 +1,16 @@
+docs/adr-0001-literal-typing-and-compound-assignment.md
+  h_361662506da91f 34,155,328,334,433-434
+docs/fully-typed-ast-specification.md
+  h_361662506da91f 172,1668,1688
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "96aca8ddcbd7defc2b59d949ddd7620d1801ca89",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
