@@ -138,7 +138,7 @@ The AST-specific record definitions are:
 | Diagnostics | `Vec<Diagnostic>` in report order. |
 | Identifier | The exact non-empty UTF-8 spelling of one lexer identifier token. Equality compares Unicode scalar values without normalization. |
 | LiteralValue | `Numeric(Number)`, `StringLit(String)`, `CharLit(String)`, `Bool(bool)`, or `NullPtr`. |
-| Number | `I8(i8)`, `I16(i16)`, `I32(i32)`, `Integer(i64)`, `U8(u8)`, `U16(u16)`, `U32(u32)`, `UnsignedInteger(u64)`, `Float32(f32)`, `Float64(f64)`, `Scientific32(f32,i32)`, or `Scientific64(f64,i32)`. The 64-bit variants hold the value of an unsuffixed literal and of a literal with the matching 64-bit suffix. The `width_suffix` field of N-SE-01 tells them apart. |
+| Number | `I8(i8)`, `I16(i16)`, `I32(i32)`, `Integer(i64)`, `U8(u8)`, `U16(u16)`, `U32(u32)`, `UnsignedInteger(u64)`, `Float32(f32)`, `Float64(f64)`, `Scientific32(f32,i32)`, or `Scientific64(f64,i32)`. In lexer output, `Integer(i64)` holds an unsuffixed integer literal, because the language has no I64 suffix. `UnsignedInteger(u64)` holds a literal with the `u` suffix. `Float64(f64)` and `Scientific64(f64,i32)` hold a literal with the `d` suffix or with no suffix. The `width_suffix` field of N-SE-01 tells the suffixed and unsuffixed cases apart. The suffix set is in the table that follows the record definitions. |
 | UnaryOp | `Negate`, `Not`, `BitwiseNot`, `Increment`, or `Decrement`. |
 | BinaryOp | The operators listed in Section 8.4 and the compound operators listed in TR-013. |
 | NonAssignmentBinaryOp | The arithmetic, comparison, logical, and bitwise operators in TR-009 through TR-012. It excludes assignment and compound assignment. |
@@ -150,6 +150,30 @@ The AST-specific record definitions are:
 | TypedBlock | An alias for the concrete Typed Block node. |
 | ElseBranch | `None`, `Block(SourceBlock)`, or `ElseIf(Surface If)`. |
 | TypedElseBranch | `None`, `Block(TypedBlock)`, or `ElseIf(Typed If)`. |
+
+**Observed.** The lexer accepts the decimal numeric literal suffixes in the following table. The `width_suffix` field of N-SE-01 is true when the literal carries one of them. A suffix is written directly after the numeric part, in lowercase or uppercase.
+
+| Suffix | Numeric part | Number variant | Type | `width_suffix` |
+| --- | --- | --- | --- | --- |
+| `i8` | Decimal digits only | `I8(i8)` | I8 | true |
+| `i16` | Decimal digits only | `I16(i16)` | I16 | true |
+| `i32` | Decimal digits only | `I32(i32)` | I32 | true |
+| `u8` | Decimal digits only | `U8(u8)` | U8 | true |
+| `u16` | Decimal digits only | `U16(u16)` | U16 | true |
+| `u32` | Decimal digits only | `U32(u32)` | U32 | true |
+| `u` | Decimal digits only | `UnsignedInteger(u64)` | U64 | true |
+| `f` | Integer, decimal, or scientific spelling | `Float32(f32)`, or `Scientific32(f32,i32)` for scientific spelling | F32 | true |
+| `d` | Integer, decimal, or scientific spelling | `Float64(f64)`, or `Scientific64(f64,i32)` for scientific spelling | F64 | true |
+| none | Integer spelling | `Integer(i64)` | I64 by default | false |
+| none | Decimal or scientific spelling | `Float64(f64)`, or `Scientific64(f64,i32)` for scientific spelling | F64 by default | false |
+
+The following rules apply to the table:
+
+- The language has no suffix for I64. The spellings `i64`, `u64`, `f32`, and `f64` are not suffixes. The lexer reports E0009 for `5i64`, `2u64`, and `1.0f32`. A U64 literal uses `u`, an F32 literal uses `f`, and an F64 literal uses `d`.
+- An integer suffix requires a numeric part of decimal digits only. The lexer reports E0009 for `1.5i32` and `1e3u`.
+- The suffixes `f` and `d` accept an integer spelling. The literal `100d` has the Number variant `Float64(f64)` and the value 100.0.
+- The lexer reports E0010 when the numeric part does not fit the suffix type. The literal `300u8` is an example.
+- The table covers decimal literals. It does not describe the prefixed `#b`, `#o`, and `#x` literal forms.
 
 In node tables, fields named `node_id` and `span` have types NodeId and SourceSpan. A field named `result_type` or `place_type` has type TypeId. A field named `operator` has type UnaryOp, NonAssignmentBinaryOp, or CompoundOperator as stated by its node. Fields named `side` have type Prefix or Postfix. An unqualified `else_branch` has type ElseBranch for a Surface If and TypedElseBranch for a Typed If. Every child field has the abstract or concrete node type shown in that field. Every optional field uses `Option<T>`. Every ordered list uses `Vec<T>` unless the field is explicitly `NonEmptyVec<T>`.
 
