@@ -169,7 +169,7 @@ The AST-specific record definitions are:
 
 The following rules apply to the table:
 
-- The language has no suffix for I64. The spellings `i64`, `u64`, `f32`, and `f64` are not suffixes. The lexer reports E0009 for `5i64`, `2u64`, and `1.0f32`. A U64 literal uses `u`, an F32 literal uses `f`, and an F64 literal uses `d`.
+- The language has no suffix for I64. The spellings `i64`, `u64`, `f32`, and `f64` are not suffixes. The lexer reports E0009 for `5i64`, `2u`, and `1.0f32`. A U64 literal uses `u`, an F32 literal uses `f`, and an F64 literal uses `d`.
 - An integer suffix requires a numeric part of decimal digits only. The lexer reports E0009 for `1.5i32` and `1e3u`.
 - The suffixes `f` and `d` accept an integer spelling. The literal `100d` has the Number variant `Float64(f64)` and the value 100.0.
 - The lexer reports E0010 when the numeric part does not fit the suffix type. The literal `300u8` is an example.
@@ -1665,7 +1665,7 @@ Source:
 
 ~~~text
 main {
-    var value: u64 = 1u32 + 2u64
+    var value: u64 = 1u32 + 2u
 }
 ~~~
 
@@ -1685,7 +1685,7 @@ Source:
 
 ~~~text
 main {
-    var value: u64 = 1i32 + 2u64
+    var value: u64 = 1i32 + 2u
 }
 ~~~
 

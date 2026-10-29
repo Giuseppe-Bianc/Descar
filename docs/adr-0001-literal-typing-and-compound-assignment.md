@@ -31,7 +31,7 @@ TR-001 gave every unsuffixed numeric literal a 64-bit type: I64, U64 or F64. TY-
 |---|---|
 | `-1i32 < 1u32` | Promote(I32,U32) is U32. The operand -1 becomes 4294967295. OPEN-001 leaves the conversion undefined. |
 | `a + b`, `a: i64`, `b: f32` | Promote(I64,F32) is F32. The I64 operand is rounded to a 24-bit significand. |
-| `1i32 + 2u64` (Example 14.2) | Promote(I32,U64) is U64. A negative I32 operand changes value. |
+| `1i32 + 2u` (Example 14.2) | Promote(I32,U64) is U64. A negative I32 operand changes value. |
 
 Every numeric literal used as a value in Examples 14.1 to 14.4 carries a width suffix. The specification contains no program in which an unsuffixed literal feeds a narrower type. The Number definition in Section 3 has no I64 or U64 variant, so `Integer(i64)` is the value of both `5` and `5i64`. The Surface AST cannot tell them apart.
 
@@ -152,7 +152,7 @@ Under D6, the earlier procedure (promote, then check that the result converts ba
 |---|---|
 | Complexity | Low. No change. |
 | Cost | None to the specification. Every narrow literal needs a suffix. |
-| Scalability | `i += 1i32` and `x *= 2.0f32` work. Array literals need a suffix on every element. |
+| Scalability | `i += 1i32` and `x *= 2.0f` work. Array literals need a suffix on every element. |
 | Precedent | The examples in Section 14 already follow it. |
 
 **Pros:** No checker change. A missing suffix produces an error, not a wrong value.
@@ -325,13 +325,13 @@ The following items document the amendment instructions recorded when ADR-0001 w
 
 ~~~text
 main {
-    var value: u64 = 1u32 + 2u64
+    var value: u64 = 1u32 + 2u
 }
 ~~~
 
 Required semantic result: the operands have types U32 and U64. Promote selects U64, and U32 ⪯ U64 holds. The U32 operand has an explicit NumericAssignable conversion to U64. The binary expression and the initializer have type U64.
 
-**Example 14.2a (new).** `var value: u64 = 1i32 + 2u64` selects U64, and I32 ⪯ U64 does not hold. The checker reports E2036 and returns no Fully Typed AST.
+**Example 14.2a (new).** `var value: u64 = 1i32 + 2u` selects U64, and I32 ⪯ U64 does not hold. The checker reports E2036 and returns no Fully Typed AST.
 
 **Example 14.7 (new).**
 
@@ -430,8 +430,8 @@ Types in the Result column are typed-tree types. A bare diagnostic code means th
 | `x * 2.0`, `x: f32` | F32 |
 | `x * (2 + 3)`, `x: f32` | E2036 |
 | `1 + 2.5` | E2036 under ADR-0003 and ADR-0004; see OPEN-006 |
-| `1u32 + 2u64` | U64 with conversion on the left operand |
-| `1i32 + 2u64` | E2036 |
+| `1u32 + 2u` | U64 with conversion on the left operand |
+| `1i32 + 2u` | E2036 |
 | `a + b`, `a: u32`, `b: i64` | I64 with conversion on `a` |
 | `a + b`, `a: i64`, `b: f32` | E2036 |
 | `a + b`, `a: i8`, `b: u8` | E2036 |
