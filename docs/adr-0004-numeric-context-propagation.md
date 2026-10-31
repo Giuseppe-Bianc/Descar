@@ -44,6 +44,18 @@ When both operands are flexible, the Binary node passes its context only when TR
 
 The phrase in TR-028a that leaf adaptation reports nothing applies only to the leaf adaptation step. The enclosing expression, declaration, assignment, call, or return rule still checks assignability and emits its defined diagnostic.
 
+The decision procedure for the cases most likely to be confused is:
+
+| Expression and context | Operand treatment | Required result |
+|---|---|---|
+| `i + 1.5`, `i: i32` | The peer rule gives `1.5` an I32 context. The floating-point literal remains F64 because leaf adaptation does not convert a floating-point literal to an integer type. | F64, with I32 converted losslessly to F64. |
+| `wide + 1.5`, `wide: i64` | The peer rule gives `1.5` an I64 context, but the literal remains F64. I64 is not assignable to F64 under ADR-0003. | E2036, no typed binary expression. |
+| `var f: f64 = 1 + 2.5` | Both operands are flexible. The incoming F64 context does not pass through the operator. The operands default to I64 and F64. | E2036, no typed binary expression. |
+| `var shifted: f64 = 1 << 3` | A shift passes an integer context only to its flexible left operand. The incoming F64 context is not passed through the shift. The result type is I64. | E2002 from the initializer assignment check. |
+| `var value: i32 = 1.5` | The floating-point literal keeps its F64 type. Leaf adaptation does not issue the enclosing assignment diagnostic. | E2002 from the initializer assignment check. |
+
+For every row, the error belongs to the enclosing typing rule when the leaf-adaptation step succeeds without assigning the requested context type. A failed expression MUST NOT be represented as a successful TypedExpr.
+
 ## Consequences
 
 - `i + 1.5` has type F64 when `i` is I32 or another integer type assignable to F64. The I32 operand receives a NumericAssignable conversion to F64. It reports E2036 when `i` is I64 or U64, which are not assignable to F64 under ADR-0003.

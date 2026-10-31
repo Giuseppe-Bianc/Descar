@@ -1,6 +1,6 @@
 # ADR-0001: Literal typing and compound assignment
 
-**Status:** Accepted. Amended in part by ADR-0003: the I32 and U32 to F32 rows and the I64 and U64 to F64 rows leave TY-13, and the pair counts in D6 become 68 and 32.
+**Status:** Accepted. ADR-0003 removes the four lossy numeric conversions and changes the current promotion counts to 68 successful and 32 rejected ordered pairs. ADR-0004 amends the interpretation of TR-028b and TR-028c. The current result for `1 + 2.5` is E2036 under ADR-0003 and ADR-0004, as recorded in OPEN-006.
 **Date:** 2026-10-18
 **Deciders:** Descar language owner; implementer of the parser and type checker
 **Applies to:** Descar Fully Typed Abstract Syntax Tree Specification
@@ -8,9 +8,11 @@
 
 ## Context
 
-TR-001 gives every unsuffixed numeric literal a 64-bit type: I64, U64 or F64. TY-13 has no edge from I64 to a narrower integer, from I64 to F32, or from F64 to F32. TR-014, TR-015, TR-017 and TR-023 require the value type to be assignable to the target type. DEC-006 and TR-013 require the result of a compound operation to be assignable to its place. That last rule is correct and stays. Together these rules reject ordinary programs and accept programs that change values.
+**Historical baseline:** The following context tables describe the behavior before ADR-0001 was accepted on 2026-10-18. ADR-0003 and ADR-0004 later amended the numeric conversion and context-propagation rules. The tables are retained to explain the original decision and must not be used as the current normative behavior.
 
-### Programs rejected by the current rules
+TR-001 gave every unsuffixed numeric literal a 64-bit type: I64, U64 or F64. TY-13 has no edge from I64 to a narrower integer, from I64 to F32, or from F64 to F32. TR-014, TR-015, TR-017 and TR-023 require the value type to be assignable to the target type. DEC-006 and TR-013 require the result of a compound operation to be assignable to its place. That last rule is correct and stays. Together these rules reject ordinary programs and accept programs that change values.
+
+### Programs rejected by the pre-ADR-0001 rules
 
 | Program | Rule chain | Result |
 |---|---|---|
@@ -23,13 +25,13 @@ TR-001 gives every unsuffixed numeric literal a 64-bit type: I64, U64 or F64. TY
 | `var m: u64 = 1 << 40` | TR-012 gives I64. TY-13 has no I64 to U64 edge. | E2002 |
 | `b <<= k`, `b: i8`, `k: u64` | TR-012 promotes both operands to U64. The store needs U64 ⪯ I8. | E2002 |
 
-### Programs accepted by the current rules that change values
+### Programs accepted by the pre-ADR-0001 rules that could change values
 
 | Program | Rule chain |
 |---|---|
 | `-1i32 < 1u32` | Promote(I32,U32) is U32. The operand -1 becomes 4294967295. OPEN-001 leaves the conversion undefined. |
 | `a + b`, `a: i64`, `b: f32` | Promote(I64,F32) is F32. The I64 operand is rounded to a 24-bit significand. |
-| `1i32 + 2u64` (Example 14.2) | Promote(I32,U64) is U64. A negative I32 operand changes value. |
+| `1i32 + 2u` (Example 14.2) | Promote(I32,U64) is U64. A negative I32 operand changes value. |
 
 Every numeric literal used as a value in Examples 14.1 to 14.4 carries a width suffix. The specification contains no program in which an unsuffixed literal feeds a narrower type. The Number definition in Section 3 has no I64 or U64 variant, so `Integer(i64)` is the value of both `5` and `5i64`. The Surface AST cannot tell them apart.
 
@@ -97,6 +99,8 @@ Rules:
 - **TR-028c. Peer rule.** For `+ - * / % & | ^ == != < <= > >=`, if exactly one operand is flexible and the other operand is not flexible and has numeric type S, the flexible operand receives S as its context type. This replaces any context type from the position of the Binary node. If both operands are flexible, both receive the context type of the Binary node. Shifts have no peer rule.
 - **TR-028d. No context.** A flexible expression with no context type takes default types, and operators apply TR-009 to TR-012 to those types. Index expressions, conditions, shift counts and operands of non-flexible unary operators receive no context type. A non-numeric context type has no effect.
 
+**Amendment by ADR-0004:** For current behavior, TR-028b takes precedence over TR-028c when both operands are flexible. The Binary node passes its context only when TR-028b permits it. An incoming F32 or F64 context therefore does not pass through the operator to two flexible operands.
+
 Formal form, with `Γ ⊢ e ⇐ T ⇒ S` meaning that e is checked with context type T and has type S:
 
 `e` is an adaptable literal, `T` is numeric, and `v` passes the test of TR-028a `⇒ Γ ⊢ e ⇐ T ⇒ T`.
@@ -115,7 +119,7 @@ TR-009, the numeric branch of TR-010, and TR-012 for `& | ^` select C = Promote(
 
 TY-13 receives six rows that preserve every value: U8 to I16, I32 and I64; U16 to I32 and I64; U32 to I64. Without them no assignment or promotion converts an unsigned value to a signed type.
 
-After D6 these twelve pairs have no promotion, in either operand order: F32 with I64; F32 with U64; U64 with I64, I32, I16 or I8; U32 with I32, I16 or I8; U16 with I16 or I8; U8 with I8. The other 76 ordered pairs of the 100 have the result that Section 7.3 selects. Every promotion is now a pair in TY-13, so NumericPromotion is removed from Section 7.4.
+**Original ADR-0001 baseline, superseded by ADR-0003:** the initial D6 table had twelve unordered pairs without promotion and 76 promotable ordered pairs. ADR-0003 later removed four lossy implicit conversions. The current table has 16 unordered pairs without promotion and 68 promotable ordered pairs, as specified in Section 7.3 of the Fully Typed AST specification. That section is the current normative source for the complete set of pairs. Every permitted current promotion is a pair in TY-13, so NumericPromotion is removed from Section 7.4.
 
 ### D7. Shifts
 
@@ -148,7 +152,7 @@ Under D6, the earlier procedure (promote, then check that the result converts ba
 |---|---|
 | Complexity | Low. No change. |
 | Cost | None to the specification. Every narrow literal needs a suffix. |
-| Scalability | `i += 1i32` and `x *= 2.0f32` work. Array literals need a suffix on every element. |
+| Scalability | `i += 1i32` and `x *= 2.0f` work. Array literals need a suffix on every element. |
 | Precedent | The examples in Section 14 already follow it. |
 
 **Pros:** No checker change. A missing suffix produces an error, not a wrong value.
@@ -226,7 +230,7 @@ P2 is chosen. It keeps the Section 7.3 order, adds one precondition, and defines
 2. **Error, not fallback, for an out-of-range literal.** `x_i8 + 300` reports E2035. The earlier checker accepted it and widened to I64. In Rust and Go the same source is a compile error. A fallback would make the type of `300` depend on whether it fits, which is the behavior D3 removes.
 3. **Float contexts do not pass through operators.** With `var f: f64 = 7 / 2`, passing F64 to the literals would turn integer division into float division and give 3.5 where the earlier rules give 3.0. The cost is that `var f: f32 = 0.5 * 2.0` stays rejected, as it is today. A bare literal still adapts, so `var f: f32 = 1` and `x_f32 *= 2` are accepted.
 4. **No constant evaluation.** `var x: i8 = 100 + 100` is accepted because each literal fits I8. The sum overflows at run time. Detecting it needs Option C.
-5. **Narrowing stays impossible for values.** D6 rejects 24 ordered pairs. A program can widen with an assignment to a wider variable, which works because of the six new table rows. No program can narrow a non-literal value. This limit exists today and needs ADR-0002.
+5. **Narrowing stays impossible for values.** In the original ADR-0001 baseline, D6 rejected 24 ordered pairs. ADR-0003 later restricted implicit conversion further to preserve every source value. A program can widen with an assignment to a wider variable, which works because of the six lossless table rows. No program can narrow a non-literal value. This limit remains and requires an explicit cast under ADR-0002.
 6. **Tree shape.** D4 removes one Unary node per negated literal. `-128i8` stays unwritable because the Number variant I8(i8) cannot hold 128.
 
 ## Consequences
@@ -244,7 +248,7 @@ P2 is chosen. It keeps the Section 7.3 order, adds one precondition, and defines
 
 **Migration, programs whose result changes:**
 
-- Rejected after the change: the 12 pairs in D6; `x_f32 * (2 + 3)`, which reports E2036; `x_i8 + 300`; `var f: f64 = 9007199254740993`; Example 14.2 as written.
+- Rejected by the original ADR-0001 baseline: the 12 unordered pairs listed in D6; `x_f32 * (2 + 3)`, which reports E2036; `x_i8 + 300`; `var f: f64 = 9007199254740993`; and Example 14.2 as originally written. The current promotion matrix has 16 unordered pairs without a promoted type after ADR-0003.
 - Typed differently after the change: `x_i32 + 1` has type I32; `x_u8 == 5` compares in U8.
 - Accepted after the change: every program in the first table.
 
@@ -256,7 +260,9 @@ P2 is chosen. It keeps the Section 7.3 order, adds one precondition, and defines
 
 ## Spec Amendments
 
-Apply these when the ADR is accepted.
+**Historical record:** This section preserves the original amendment checklist from ADR-0001's acceptance. It is not a substitute for later accepted amendments. Where this checklist conflicts with ADR-0003 or ADR-0004, apply the later decision. The current promotion matrix has 68 successful ordered pairs and 32 E2036 outcomes. The current result for `1 + 2.5` is E2036 under ADR-0003 and ADR-0004.
+
+The following items document the amendment instructions recorded when ADR-0001 was first accepted.
 
 **Section 3.** Add terms: *adaptable literal*, *flexible expression*, *context type*, *default type*, each as defined in D1 to D3.
 
@@ -282,7 +288,7 @@ Apply these when the ADR is accepted.
 
 **Section 7.3.** Replace the paragraphs after the preference order with: "For two numeric operand types, Promote(T1,T2) selects the first type C in this list that is equal to either operand. The promotion is defined only when T1 ⪯ C and T2 ⪯ C. Otherwise the operation reports E2036. Promotion uses only conversions in TY-13. The order does not define arithmetic overflow, shift-count range or floating-point rounding."
 
-**TY-14 verification.** "Exhaust all 100 ordered numeric type pairs. Assert the selected TypeId for 76 pairs and E2036 for the 24 ordered pairs listed in D6."
+**Initial TY-14 verification, superseded by ADR-0003.** "Exhaust all 100 ordered numeric type pairs. The initial ADR-0001 table selected a TypeId for 76 pairs and reported E2036 for 24. ADR-0003 changes the current result to 68 selected types and 32 E2036 results."
 
 **Section 7.4.** Delete the NumericPromotion row. NumericAssignable: "Source and target are numeric and the pair is in TY-13. The kind is used for assignment conversions and for operand conversions under D6."
 
@@ -319,13 +325,13 @@ Apply these when the ADR is accepted.
 
 ~~~text
 main {
-    var value: u64 = 1u32 + 2u64
+    var value: u64 = 1u32 + 2u
 }
 ~~~
 
 Required semantic result: the operands have types U32 and U64. Promote selects U64, and U32 ⪯ U64 holds. The U32 operand has an explicit NumericAssignable conversion to U64. The binary expression and the initializer have type U64.
 
-**Example 14.2a (new).** `var value: u64 = 1i32 + 2u64` selects U64, and I32 ⪯ U64 does not hold. The checker reports E2036 and returns no Fully Typed AST.
+**Example 14.2a (new).** `var value: u64 = 1i32 + 2u` selects U64, and I32 ⪯ U64 does not hold. The checker reports E2036 and returns no Fully Typed AST.
 
 **Example 14.7 (new).**
 
@@ -359,7 +365,7 @@ The checker reports E2035 for `a`, E2035 for `b`, and E2002 for `c`. It returns 
 
 1. Every numeric type in literal typing, with and without a suffix, with and without a context type.
 2. Every assignment conversion in TY-13, including the six added rows, and the adjacent disallowed conversion in both directions.
-3. All 100 ordered numeric type pairs: the selected type for 76 and E2036 for 24.
+3. Initial ADR-0001 baseline, superseded by ADR-0003: all 100 ordered numeric type pairs, with 76 selected types and 24 E2036 results. The current acceptance counts are 68 selected types and 32 E2036 results.
 16. Compound assignment with each vector in the Compound table below.
 23. The minimum, the maximum, and each value one outside the range, for all eight integer types, as initializers and as peer operands.
 24. F32 overflow, and integer exactness at 2^24 and 2^53 with the neighboring values.
@@ -423,9 +429,9 @@ Types in the Result column are typed-tree types. A bare diagnostic code means th
 | `x * 2`, `x: f32` | F32 |
 | `x * 2.0`, `x: f32` | F32 |
 | `x * (2 + 3)`, `x: f32` | E2036 |
-| `1 + 2.5` | F64 |
-| `1u32 + 2u64` | U64 with conversion on the left operand |
-| `1i32 + 2u64` | E2036 |
+| `1 + 2.5` | E2036 under ADR-0003 and ADR-0004; see OPEN-006 |
+| `1u32 + 2u` | U64 with conversion on the left operand |
+| `1i32 + 2u` | E2036 |
 | `a + b`, `a: u32`, `b: i64` | I64 with conversion on `a` |
 | `a + b`, `a: i64`, `b: f32` | E2036 |
 | `a + b`, `a: i8`, `b: u8` | E2036 |

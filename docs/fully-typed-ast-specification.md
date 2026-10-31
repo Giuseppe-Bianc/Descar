@@ -2,7 +2,7 @@
 
 **Status:** Normative design specification for the implemented Descar language subset.
 
-**Revision:** 2026-10-26. This revision expands phase-boundary contracts, symbol resolution, type-checking pass behavior, diagnostic source locations, AST validation, complexity expectations, traceability, and acceptance criteria while retaining the established language scope and leaving runtime and IR semantics unspecified. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0002 defines explicit numeric casts. Decision DEC-020 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change. ADR-0004 clarifies operator context propagation. Decision DEC-018 records the change. DEC-019 defines conservative non-void return-path validation.
+**Revision:** 2026-10-26. This revision expands phase-boundary contracts, symbol resolution, type-checking and typed-tree finalization, deterministic diagnostic ordering and source locations, recursive canonical type resolution, AST validation and failure reporting, UTF-8 span validity, complexity expectations, traceability, and acceptance criteria while retaining the established language scope and leaving runtime and IR semantics unspecified. ADR-0001 amends literal typing, numeric promotion, shift typing, and compound assignment. Decision DEC-016 records the change. ADR-0002 defines explicit numeric casts. Decision DEC-020 records the change. ADR-0003 limits implicit numeric conversion to conversions that preserve every value of the source type. Decision DEC-017 records the change. ADR-0004 clarifies operator context propagation. Decision DEC-018 records the change. DEC-019 defines conservative non-void return-path validation. ADR-0005 defines the runtime value of every explicit cast outside this document. Decision DEC-021 records the change.
 
 Repository facts are marked **Observed**. Requirements for the new model are marked **Specified**. A requirement marked **Gap** requires an implementation change. Open issues are listed in Section 15.
 
@@ -132,13 +132,13 @@ The AST-specific record definitions are:
 | AstId, NodeId, SymbolId, TypeId, ScopeId, LoopId, SourceId, CompilationUnitId, DiagnosticId | Distinct newtype wrappers over u64. Zero is a valid ID. An ID is meaningful only in its declared AST, source, compilation-unit, or compiler-run domain. IDs are not interchangeable. |
 | CompilationUnitId | Identity of one source file processed as one semantic unit in one compiler run. This subset has no module or multi-file symbol-resolution rule. |
 | NodeId | A monotonically allocated u64 unique within one AstId. A node key is the pair (AstId, NodeId). |
-| SourceSpan | A record `{ source_id: SourceId, start_byte: u64, end_byte: u64 }`. The range is half-open. `start_byte <= end_byte` and `end_byte` is within the source file. |
+| SourceSpan | A record `{ source_id: SourceId, start_byte: u64, end_byte: u64 }`. The range is half-open. `start_byte <= end_byte` and `end_byte` is within the source file. Both offsets MUST be UTF-8 code-point boundaries. A span MUST NOT split a multi-byte Unicode scalar value. |
 | Token | Lexer output with `kind: TokenKind` and `span: SourceSpan`. TokenKind belongs to the lexer interface and is outside the AST model. |
 | Tokens | `Vec<Token>` in source order. |
 | Diagnostics | `Vec<Diagnostic>` in report order. |
 | Identifier | The exact non-empty UTF-8 spelling of one lexer identifier token. Equality compares Unicode scalar values without normalization. |
 | LiteralValue | `Numeric(Number)`, `StringLit(String)`, `CharLit(String)`, `Bool(bool)`, or `NullPtr`. |
-| Number | `I8(i8)`, `I16(i16)`, `I32(i32)`, `Integer(i64)`, `U8(u8)`, `U16(u16)`, `U32(u32)`, `UnsignedInteger(u64)`, `Float32(f32)`, `Float64(f64)`, `Scientific32(f32,i32)`, or `Scientific64(f64,i32)`. The 64-bit variants hold the value of an unsuffixed literal and of a literal with the matching 64-bit suffix. The `width_suffix` field of N-SE-01 tells them apart. |
+| Number | `I8(i8)`, `I16(i16)`, `I32(i32)`, `Integer(i64)`, `U8(u8)`, `U16(u16)`, `U32(u32)`, `UnsignedInteger(u64)`, `Float32(f32)`, `Float64(f64)`, `Scientific32(f32,i32)`, or `Scientific64(f64,i32)`. In lexer output, `Integer(i64)` holds an unsuffixed integer literal, because the language has no I64 suffix. `UnsignedInteger(u64)` holds a literal with the `u` suffix. `Float64(f64)` and `Scientific64(f64,i32)` hold a literal with the `d` suffix or with no suffix. The `width_suffix` field of N-SE-01 tells the suffixed and unsuffixed cases apart. The suffix set is in the table that follows the record definitions. |
 | UnaryOp | `Negate`, `Not`, `BitwiseNot`, `Increment`, or `Decrement`. |
 | BinaryOp | The operators listed in Section 8.4 and the compound operators listed in TR-013. |
 | NonAssignmentBinaryOp | The arithmetic, comparison, logical, and bitwise operators in TR-009 through TR-012. It excludes assignment and compound assignment. |
@@ -150,6 +150,30 @@ The AST-specific record definitions are:
 | TypedBlock | An alias for the concrete Typed Block node. |
 | ElseBranch | `None`, `Block(SourceBlock)`, or `ElseIf(Surface If)`. |
 | TypedElseBranch | `None`, `Block(TypedBlock)`, or `ElseIf(Typed If)`. |
+
+**Observed.** The lexer accepts the decimal numeric literal suffixes in the following table. The `width_suffix` field of N-SE-01 is true when the literal carries one of them. A suffix is written directly after the numeric part, in lowercase or uppercase.
+
+| Suffix | Numeric part | Number variant | Type | `width_suffix` |
+| --- | --- | --- | --- | --- |
+| `i8` | Decimal digits only | `I8(i8)` | I8 | true |
+| `i16` | Decimal digits only | `I16(i16)` | I16 | true |
+| `i32` | Decimal digits only | `I32(i32)` | I32 | true |
+| `u8` | Decimal digits only | `U8(u8)` | U8 | true |
+| `u16` | Decimal digits only | `U16(u16)` | U16 | true |
+| `u32` | Decimal digits only | `U32(u32)` | U32 | true |
+| `u` | Decimal digits only | `UnsignedInteger(u64)` | U64 | true |
+| `f` | Integer, decimal, or scientific spelling | `Float32(f32)`, or `Scientific32(f32,i32)` for scientific spelling | F32 | true |
+| `d` | Integer, decimal, or scientific spelling | `Float64(f64)`, or `Scientific64(f64,i32)` for scientific spelling | F64 | true |
+| none | Integer spelling | `Integer(i64)` | I64 by default | false |
+| none | Decimal or scientific spelling | `Float64(f64)`, or `Scientific64(f64,i32)` for scientific spelling | F64 by default | false |
+
+The following rules apply to the table:
+
+- The language has no suffix for I64. The spellings `i64`, `u64`, `f32`, and `f64` are not suffixes. The lexer reports E0009 for `5i64`, `2u`, and `1.0f32`. A U64 literal uses `u`, an F32 literal uses `f`, and an F64 literal uses `d`.
+- An integer suffix requires a numeric part of decimal digits only. The lexer reports E0009 for `1.5i32` and `1e3u`.
+- The suffixes `f` and `d` accept an integer spelling. The literal `100d` has the Number variant `Float64(f64)` and the value 100.0.
+- The lexer reports E0010 when the numeric part does not fit the suffix type. The literal `300u8` is an example.
+- The table covers decimal literals. It does not describe the prefixed `#b`, `#o`, and `#x` literal forms.
 
 In node tables, fields named `node_id` and `span` have types NodeId and SourceSpan. A field named `result_type` or `place_type` has type TypeId. A field named `operator` has type UnaryOp, NonAssignmentBinaryOp, or CompoundOperator as stated by its node. Fields named `side` have type Prefix or Postfix. An unqualified `else_branch` has type ElseBranch for a Surface If and TypedElseBranch for a Typed If. Every child field has the abstract or concrete node type shown in that field. Every optional field uses `Option<T>`. Every ordered list uses `Vec<T>` unless the field is explicitly `NonEmptyVec<T>`.
 
@@ -194,6 +218,7 @@ In node tables, fields named `node_id` and `span` have types NodeId and SourceSp
 | GAP-013 | Every binary row has a right power below its left power, so the parser groups repeated operators to the right. For example, 10 - 3 - 2 parses as 10 - (3 - 2). | The parser MUST use the binding powers in Section 6.4. Each left-associative row MUST have a right power equal to its left power plus 1. |
 | GAP-014 | TR-001 types every unsuffixed numeric literal with a 64-bit type, and the assignability table has no narrowing edge. An unsuffixed literal cannot initialize a variable of a narrower type or combine with a value of a narrower type. | The new checker MUST apply TR-028. |
 | GAP-015 | Promotion selects the first type in the preference order without checking that the operands keep their values. Shift operators promote both operands. The assignability table also contains four numeric conversion rows that cannot preserve every source value: I32 and U32 to F32, and I64 and U64 to F64. | The new checker MUST apply the promotion condition in Section 7.3, the shift rule in TR-012, and the lossless conversion table in Section 7.2 (DEC-017). |
+| GAP-016 | The parser gives a cast a left power of 23 and a prefix operator a right power of 23. When GAP-013 sets the multiplicative right power to 23, `a * b as f64` parses as `(a * b) as f64`, which violates SYN-004. The current parser avoids this only because GAP-013 is not yet applied. | The parser MUST use the cast and prefix powers in Section 6.4 (cast left 24, prefix right 25) in the same change that applies GAP-013, and MUST satisfy M < C ≤ P < K. |
 
 The performance target in BAS-016 is provisional. No unresolved decision affects the confirmed language scope.
 
@@ -288,13 +313,47 @@ Each scope stores only declarations made directly in that scope. Lookup searches
 
 TypeTable canonicalization MUST use these keys: primitive and special types use one entry per kind; named types use exact identifier spelling; vector types use the canonical element TypeId; array types use the canonical element TypeId and u64 length. Two equal keys MUST map to one TypeId in a compilation unit. TypeIds are not stable across compilation units or runs.
 
+The required canonicalization procedure is:
+
+~~~text
+resolve_type(syntax):
+    match syntax:
+        PrimitiveType(kind):
+            return intern(kind)
+        NamedType(name):
+            return intern(Named(exact_identifier_spelling(name)))
+        VectorType(element):
+            element_id = resolve_type(element)
+            if element_id is failure:
+                return failure
+            if resolved_kind(element_id) is built-in Void:
+                report an internal type-syntax invariant failure
+                return failure
+            return intern(Vector(element_id))
+        ArrayType(element, length_expr):
+            element_id = resolve_type(element)
+            length = resolve_array_length(length_expr)  // TR-026
+            if either step fails:
+                return failure
+            return intern(Array(element_id, length))
+
+intern(canonical_kind):
+    if TypeTable contains an entry with this canonical kind:
+        return that entry's TypeId
+    allocate one TypeId
+    append TypeEntry { id: TypeId, kind: canonical_kind }
+    return TypeId
+~~~
+
+`intern` MUST compare keys by the identity rules in Sections 3 and 7.1, not by source span or AST node identity. It MUST return the existing TypeId for an existing canonical key. When a child type or array length fails to resolve, the parent type MUST NOT be inserted. This procedure applies only to TypeSyntax variants the parser is specified to produce. It does not make the built-in Void type available as a source annotation, and it does not turn the identifier `void` into built-in Void.
+
 | ID | Requirement | Verification |
 |---|---|---|
 | SR-013 | SymbolTable, ScopeRecord, SymbolRecord, LoopRecord, TypeTable, and TypeEntry MUST use the fields and links listed above. | Validate one test table with each record kind, then corrupt every required ID link and verify rejection. |
 
 ### 5.4 Source locations
 
-SourceSpan uses a half-open byte range [start_byte, end_byte) in one source file. Every concrete node MUST have a span. The span MUST refer to a registered source file. The span of a composite expression or statement MUST cover its complete source construct. A point span is valid when start_byte equals end_byte.
+SourceSpan uses a half-open byte range [start_byte, end_byte) in one source file. Every concrete node MUST have a span. The span MUST refer to a registered source file. Both offsets MUST be UTF-8 code-point boundaries, and the range MUST satisfy `start_byte <= end_byte <= source_length`. The span of a composite expression or statement MUST cover its complete source construct. A point span is valid when start_byte equals end_byte.
 
 ## 6. Node Model
 
@@ -404,7 +463,7 @@ For a for-statement, `initializer = declaration | expression`; `condition = expr
 
 An array suffix applies to a primitive type or identifier type. Multiple suffixes are valid. The parser does not accept an array suffix after a `vector-type`. A vector type can contain an array type or another vector type as its element type.
 
-Expression parsing uses the following binding powers. A larger binding power binds more tightly. The Pratt parser uses a loop condition `left_power > minimum_power` and parses each right operand with the listed right power. Under that rule, a row whose right power is greater than its left power is left-associative. A row whose right power is less than its left power is right-associative. Assignment and compound assignment are right-associative. All other binary rows are left-associative. For each infix row, the left power is 2 multiplied by the level. The right power is the left power plus 1 for a left-associative row and the left power minus 1 for a right-associative row. The prefix left power and the postfix right power are not used.
+Expression parsing uses the following binding powers. A larger binding power binds more tightly. The Pratt parser uses a loop condition `left_power > minimum_power` and parses each right operand with the listed right power. Under that rule, a row whose right power is greater than its left power is left-associative. A row whose right power is less than its left power is right-associative. Assignment and compound assignment are right-associative. All other binary rows are left-associative. For each infix row, the left power is 2 multiplied by the level. The right power is the left power plus 1 for a left-associative row and the left power minus 1 for a right-associative row. The prefix left power, the cast right power, and the postfix right power are not used. The cast and prefix rows have no level. Their powers satisfy the ordering constraint stated after the table.
 
 | Level | Syntax class | Operators | Associativity | Left power | Right power |
 | ---: | --- | --- | --- | ---: | ---: |
@@ -419,18 +478,51 @@ Expression parsing uses the following binding powers. A larger binding power bin
 | 9 | Shift | <<, >> | Left | 18 | 19 |
 | 10 | Additive | +, - | Left | 20 | 21 |
 | 11 | Multiplicative | *, /, % | Left | 22 | 23 |
-| n/a | Prefix | !, -, ~, ++, -- | n/a | 24 | 23 |
-| n/a | Cast | as cast-target | Left | 23 | 24 |
+| n/a | Cast | as cast-target | Left | 24 | 25 |
+| n/a | Prefix | !, -, ~, ++, -- | n/a | 26 | 25 |
 | n/a | Call, index, postfix update | (), [], ++, -- | n/a | 27 | 26 |
 
 The parser's binding-power table also lists dot at power 27, but the parser has no dot-expression handler. A dot token in expression position is a syntax error. Member access is outside this subset.
+
+Let M be the multiplicative right power, C the cast left power, P the prefix right power, and K the call, index, and postfix-update left power. The table MUST satisfy M < C ≤ P < K. The values 23 < 24 ≤ 25 < 27 satisfy it. Each relation fixes one parse shape:
+
+- M < C: a cast binds into the right operand of a multiplicative operator, so `a * b as f64` has the shape `a * (b as f64)`.
+- C ≤ P: a cast does not bind into the operand of a prefix operator, so `-a as f64` has the shape `(-a) as f64`.
+- P < K: a call, index, or postfix update binds into the operand of a prefix operator, so `-f(x)` has the shape `-(f(x))`.
+
+A change to M, C, P, or K MUST keep the constraint true. The earlier values C = 23 and P = 23 equal M = 23, which made a cast bind outside the right operand of `*`, `/`, and `%` (GAP-016).
 
 | ID | Requirement | Verification |
 | --- | --- | --- |
 | SYN-001 | The Surface AST grammar and documented clause constraints MUST match the syntax profile in this section. | Parser-conformance tests cover every production, each optional clause, and each stated parser restriction. |
 | SYN-002 | Expression AST shape MUST follow the binding powers and associativity in this table. | For every left-associative row, parse x op y op z and verify the shape (x op y) op z. For the assignment row, parse x op y op z and verify the shape x op (y op z). Verify that every infix table entry satisfies the power derivation rule in this section. |
 | SYN-003 | A `fun` or `main` declaration MUST be a direct child of the program root. The parser MUST reject either declaration in a block or other statement position with syntax diagnostic E1004. The SurfaceProgram status MUST be Incomplete. | Parse declarations at the root and inside blocks, branches, and loop bodies. Verify root declarations pass, nested declarations report E1004, and semantic analysis does not run. |
-| SYN-004 | A cast MUST use the form `expression as cast-target`, where cast-target follows the existing type production. Valid targets include numeric, character, Boolean, string, array, vector, and named custom types. Casts MUST bind more tightly than multiplicative operators and less tightly than prefix operators, and chained casts MUST associate left-to-right. | Parse each supported target family, reject `nullptr` as a type target, and assert AST shape for casts in arithmetic expressions and chained casts. |
+| SYN-004 | A cast MUST use the form `expression as cast-target`, where cast-target follows the existing type production. Valid targets include numeric, character, Boolean, string, array, vector, and named custom types. Casts MUST bind more tightly than multiplicative operators and less tightly than prefix operators, and chained casts MUST associate left-to-right. | Parse each supported target family. Reject `nullptr`, a literal, and a missing type as a target with E1002. Assert the exact node shape of every vector in Table SYN-004. Check that the powers in this section satisfy M < C ≤ P < K. |
+
+Table SYN-004 lists the required shapes. Each source is one expression statement. In the shape column, parentheses surround every binary, assignment, prefix, postfix, and cast node. A call is written `f(x)` and an index is written `a[i]`. The parentheses are not source tokens.
+
+| Source | Required shape | Relation checked |
+| --- | --- | --- |
+| `a + b as f64` | `(a + (b as f64))` | A cast binds into an additive operand. |
+| `a - b as f64` | `(a - (b as f64))` | The same, with a left-associative operator. |
+| `a * b as f64` | `(a * (b as f64))` | M < C |
+| `a / b as f64` | `(a / (b as f64))` | M < C |
+| `a % b as i32` | `(a % (b as i32))` | M < C |
+| `a as i32 * b` | `((a as i32) * b)` | A multiplicative operator continues after a cast. |
+| `a as i32 * b as i32` | `((a as i32) * (b as i32))` | Each cast binds to its nearest operand. |
+| `a as i32 + b` | `((a as i32) + b)` | An additive operator continues after a cast. |
+| `a as i32 < b` | `((a as i32) < b)` | A primitive target ends before `<`. |
+| `-a as f64` | `((-a) as f64)` | C ≤ P |
+| `~a as u8` | `((~a) as u8)` | C ≤ P |
+| `-a * b as f64` | `((-a) * (b as f64))` | P, M, and C together. |
+| `-f(x)` | `(-f(x))` | P < K |
+| `-a[i] as i32` | `((-a[i]) as i32)` | P < K and C ≤ P |
+| `f(x) as i32` | `(f(x) as i32)` | A call binds tighter than a cast. |
+| `a[i] as i32` | `(a[i] as i32)` | An index binds tighter than a cast. |
+| `a++ as i32` | `((a++) as i32)` | A postfix update binds tighter than a cast. |
+| `a as i32 as f64` | `((a as i32) as f64)` | Chained casts associate left to right. |
+| `x = y as i32` | `(x = (y as i32))` | The right side of an assignment is a cast. |
+| `x += y as f64` | `(x += (y as f64))` | The right side of a compound assignment is a cast. |
 
 Each declaration name has one initializer. The initializer count must equal the name count. Ordinary statements do not require a semicolon. Semicolons delimit the three for-loop clauses. A for-loop initializer is empty, a declaration, or an expression statement. Function and main declarations are top-level items. A block or other statement cannot contain either declaration.
 
@@ -577,9 +669,23 @@ The checker uses this preference order:
 
 F64, F32, U64, I64, U32, I32, U16, I16, U8, I8.
 
-For two numeric operand types, Promote(T₁,T₂) selects the first type C in this list that is equal to either operand. The promotion is defined only when T₁ ⪯ C and T₂ ⪯ C. Otherwise the operation reports E2036 and has no result type. The current checker has no value-preservation condition (GAP-015).
+For two numeric operand types, Promote(T₁,T₂) selects the first type C in this list that is equal to either operand. The promotion is defined only when T₁ ⪯ C and T₂ ⪯ C. Otherwise the operation reports E2036 and has no result type. **Observed implementation gap:** the current checker does not yet enforce the specified value-preservation condition (GAP-015). The required behavior in this specification does enforce it.
 
 Promotion uses only the conversions in the assignment table in Section 7.2. The Fully Typed AST records each operand conversion as a NumericAssignable conversion.
+
+The required promotion procedure is deterministic:
+
+~~~text
+promote(T1, T2):
+    require T1 and T2 are numeric types
+    for C in [F64, F32, U64, I64, U32, I32, U16, I16, U8, I8]:
+        if (T1 ≡ C or T2 ≡ C) and T1 ⪯ C and T2 ⪯ C:
+            return C
+    report E2036
+    return no type
+~~~
+
+The procedure MUST use the assignability relation in Section 7.2, not host-language casts or value-dependent guesses. It MUST NOT inspect runtime values. The ordered table contains ten entries, so the procedure takes O(1) time and O(1) additional space under the specified fixed type set. These bounds describe the algorithm, not measured end-to-end compiler performance. A successful result preserves every value of both operand types because both assignability premises must hold. A failed search produces E2036 and MUST NOT produce a typed binary expression.
 
 Of the 100 ordered pairs of numeric types, 68 have a promoted type. These sixteen pairs have none, in either operand order: F32 with I32, I64, U32, or U64; F64 with I64 or U64; U64 with I64, I32, I16, or I8; U32 with I32, I16, or I8; U16 with I16 or I8; U8 with I8. No promotion rounds an operand, because every conversion in the table in Section 7.2 preserves every value.
 
@@ -596,13 +702,13 @@ ConversionKind has these variants:
 | Kind | Requirement |
 | --- | --- |
 | NumericAssignable | Source and target are numeric, and the pair is in the assignment table in Section 7.2. The kind covers assignment conversions and the operand conversions of Section 7.3. Every conversion of this kind preserves every value of the source type (DEC-017). |
-| ExplicitCast | Numeric-to-numeric, numeric-to-char, char-to-numeric, numeric-to-bool, and bool-to-numeric conversions are allowed only when requested by source syntax `expression as target-type` (DEC-020). Char-to-string and null-pointer-to-array, vector, or named custom type use the corresponding existing conversion rules, and same-type casts are identity operations. String parsing, unrelated aggregate conversions, and pointer reinterpretation are not supported. Runtime value semantics for value-changing casts are not defined by the current front-end specification and MUST be specified before lowering executes them. |
+| ExplicitCast | Numeric-to-numeric, numeric-to-char, char-to-numeric, numeric-to-bool, and bool-to-numeric conversions are allowed only when requested by source syntax `expression as target-type` (DEC-020). Char-to-string and null-pointer-to-array, vector, or named custom type use the corresponding existing conversion rules, and same-type casts are identity operations. String parsing, unrelated aggregate conversions, and pointer reinterpretation are not supported. ADR-0005 defines the runtime value of every cast (DEC-021). This specification does not repeat those rules. |
 | CharToString | Source is Char and target is String. |
 | NullToAggregate | Source is NullPtr and target is Array, Vector, or Named. |
 | ArrayElementConversion | Source and target arrays have equal length, and source element is assignable to target element. |
 | VectorElementConversion | Source and target vectors have assignable element types. |
 
-Identity conversion does not create a Convert node. An explicit cast becomes an ExplicitCast conversion when source and target types differ and the pair is not covered by an existing conversion kind. Char-to-string uses CharToString; null-pointer-to-array, vector, or named custom type uses NullToAggregate. Supported ExplicitCast pairs are numeric-to-numeric, numeric-to-char, char-to-numeric, numeric-to-bool, and bool-to-numeric. String parsing, unrelated aggregate conversions, and pointer reinterpretation MUST be rejected during type checking. Explicit casts do not modify the implicit assignability table in Section 7.2.
+Identity conversion does not create a Convert node. An explicit cast becomes an ExplicitCast conversion when source and target types differ and the pair is not covered by an existing conversion kind. Char-to-string uses CharToString; null-pointer-to-array, vector, or named custom type uses NullToAggregate. Supported ExplicitCast pairs are numeric-to-numeric, numeric-to-char, char-to-numeric, numeric-to-bool, and bool-to-numeric. String parsing, unrelated aggregate conversions, and pointer reinterpretation MUST be rejected during type checking. Explicit casts do not modify the implicit assignability table in Section 7.2. TR-029 in Section 8.5 applies these conversions to a cast expression.
 
 | ID | Requirement | Verification |
 |---|---|---|
@@ -633,6 +739,7 @@ Variable type inference is not supported. Expression type synthesis is supported
 | --- | --- | --- |
 | TY-16 | Declared types, inferred expression types, result types, and non-applicable statement types MUST use the fields in the table above. | Inspect a typed sample containing every declaration and expression category. Verify statement nodes have no type field. |
 | TY-17 | TypeTable MUST use the canonicalization keys in Section 5.3. | Intern each primitive and composite type twice. Verify the same TypeId is returned for equivalent keys and a distinct TypeId is returned for non-equivalent keys. |
+| TY-19 | Type resolution MUST recursively resolve child types before interning composite types. An invalid child type or array length MUST prevent insertion of its parent key. `intern` MUST return one canonical TypeId per key in a compilation unit and MUST NOT use source spans or AST node IDs as type identity. | Resolve repeated primitive, named, nested-array, and nested-vector syntax. Verify shared canonical IDs, distinct IDs for non-equivalent keys, and no parent entry after an invalid child or length. |
 
 ## 8. Typing Rules
 
@@ -716,7 +823,7 @@ A context type is a type that the position of an expression supplies to it. The 
 | TR-028a Leaf adaptation | An adaptable literal that receives a numeric context type T takes type T when its signed value v passes the test for its kind. An integer literal with an integer T passes when v is within the range of T. An integer literal with F32 or F64 passes when v is exactly representable in T. A floating-point literal with F32 or F64 passes when its value is finite after rounding to nearest in T. A floating-point literal with an integer T is not compatible by kind. It keeps its default type. Leaf adaptation reports no error for this kind mismatch; the enclosing rule still checks assignability. | E2035 when the literal is compatible by kind and fails the test. |
 | TR-028b Passing | Only a flexible expression passes its context type to its children. Grouping passes any numeric T. Negate, BitwiseNot, and the Binary operators `+ - * / % & \| ^` pass an integer T to every operand. A shift passes an integer T to its left operand only. A Binary node MUST NOT pass its incoming F32 or F64 context to an operand. This restriction does not override the separate peer rule in TR-028c. Operand and result types then follow TR-009 to TR-012. | None. |
 | TR-028c Peer | For `+ - * / % & \| ^ == != < <= > >=`, if exactly one operand is flexible and the other operand is not flexible and has numeric type S, the flexible operand receives S as its context type. This replaces the context type from the position of the Binary node. This peer context may be F32 or F64. If both operands are flexible, both receive the context type of the Binary node only when TR-028b permits that context to pass. Therefore, an incoming F32 or F64 context is not passed through an operator to two flexible operands. Shifts have no peer rule. | None. |
-| TR-028d No context | A flexible expression with no context type takes default types, and operators apply TR-009 to TR-012 to those types. Index expressions, conditions, shift counts, and operands of non-flexible unary operators receive no context type. A non-numeric context type has no effect. | None. |
+| TR-028d No context | A flexible expression with no context type takes default types, and operators apply TR-009 to TR-012 to those types. Index expressions, conditions, shift counts, operands of non-flexible unary operators, and cast operands receive no context type. A non-numeric context type has no effect. | None. |
 
 For example, `var value: i32 = 1.5` leaves `1.5` at F64 under TR-028a. Leaf adaptation does not report an error, but TR-015 reports E2002 because F64 is not assignable to I32. The absence of an error from TR-028a does not mean that the enclosing expression is valid.
 
@@ -753,11 +860,44 @@ For a non-numeric comparison, choose the common operand type as follows: if T₁
 
 Ordering operators accept numeric operands only. The checker MUST reject non-numeric operands for <, <=, >, and >=, even when their types are compatible. This restriction prevents the Fully Typed AST from containing ordering operations without defined runtime semantics. Equality operators retain the existing compatibility rule for non-numeric operands.
 
+The required comparison-type procedure is deterministic:
+
+~~~text
+comparison_type(operator, T1, T2):
+    if operator is <, <=, >, or >=:
+        if T1 or T2 is not numeric:
+            report the applicable invalid-operand diagnostic
+            return failure
+        C = Promote(T1, T2)
+        if C does not exist:
+            report E2036
+            return failure
+        return C with NumericAssignable conversions on operands not already C
+
+    if operator is == or !=:
+        if T1 and T2 are numeric:
+            C = Promote(T1, T2)
+            if C does not exist:
+                report E2036
+                return failure
+            return C with NumericAssignable conversions on operands not already C
+        if T1 ≡ T2:
+            return T1 with no conversion
+        if T1 ⪯ T2:
+            return T2 with a conversion on the left operand
+        if T2 ⪯ T1:
+            return T1 with a conversion on the right operand
+        report E2014
+        return failure
+~~~
+
+The procedure determines only static operand compatibility, explicit conversion nodes, and the Bool result type. It does not define how equality or ordering is executed at runtime. For non-numeric equality, the listed branch order is normative: equivalent types take precedence, then left-to-right assignability, then right-to-left assignability. A failed comparison MUST NOT produce a successful typed comparison node.
+
 TR-013 requires the value to be assignable to the place type. For example, an I16 value cannot be applied to an I8 target. It also requires a valid mutable place.
 
 The checker reports E2011 for invalid bitwise operands, E2012 or E2017 for invalid logical operands, E2013 or E2016 for invalid arithmetic operands, and E2014 for incompatible comparison operands. It reports E2024 for an immutable compound-assignment target, E2033 for a non-place target under [DEC-008](#dec-008), defined in Section 15.1, E2002 when the value cannot convert to the place type, E2035 when a literal does not fit its context type, and E2036 when numeric operands have no common type.
 
-### 8.5 Assignment, declaration, call, and index rules
+### 8.5 Assignment, declaration, call, index, and cast rules
 
 | Rule ID | Preconditions | Postcondition | Possible errors |
 | --- | --- | --- | --- |
@@ -767,8 +907,11 @@ The checker reports E2011 for invalid bitwise operands, E2012 or E2017 for inval
 | TR-017 Function call | Callee is a simple name that resolves to a function. Argument count equals parameter count. Each argument is checked with its parameter type as context type and is assignable to that type. | Call result type is the function result type. Each needed argument conversion is explicit. | E2026 non-name callee; E2027 unknown function; E2028 wrong count; E2029 incompatible argument. |
 | TR-018 Array literal | At least one element. When the literal has context type Array(E,n), each element is checked with context type E. Every element has an equivalent type. | Result is Array(element type, element count). No element promotion occurs. | E2020 empty literal; E2021 mixed element types. |
 | TR-019 Index | Base has Array(T,n) or Vector(T). Index has an integer type. | Result type is T. | E2030 non-integer index; E2031 non-indexable base. |
+| TR-029 Cast | The operand is checked with no context type (TR-028d). Its type S and the resolved target type T form a supported pair: S ≡ T; S and T are both in Num; S is in Num and T is Char or Bool; S is Char or Bool and T is in Num; S is Char and T is String; or S is NullPtr and T is an Array, Vector, or Named type. Every other pair is unsupported. | The result type is T. When S ≡ T, the typed node is the typed operand and no Convert node is created. When S and T are in Num, S is not T, and S ⪯ T holds (Section 7.2), the operand receives a NumericAssignable conversion. When S is Char and T is String, the operand receives a CharToString conversion. When S is NullPtr, the operand receives a NullToAggregate conversion. Every other supported pair receives one ExplicitCast conversion from S to T. The Convert node spans the whole cast expression. | E1002 if the parser finds no type after `as`; E2002 for an unsupported pair, reported at the span of the whole cast expression. An error in the operand propagates, and the cast reports no E2002. |
 
 The current parser accepts only a simple variable name as a function call target after semantic checking. Function values and indirect calls are not supported.
+
+TR-029 applies Section 7.4 to a cast expression. The unsupported pairs include string to numeric, numeric to String, Bool to Char, Char to Bool, Array to Vector, Vector to Array, Array to a different Array, and a Named type to a different Named type. A cast never changes the assignability table in Section 7.2. The target type is not a context type, so a literal operand takes its default type under TR-001. For example, `200 as i8` has type I8 with an I64 operand and reports no E2035, while `var x: i8 = 200` reports E2035. The value of a narrowing cast is defined by ADR-0005 (DEC-021).
 
 ### 8.6 Statement and control-flow rules
 
@@ -800,13 +943,31 @@ The Fully Typed AST stores array length as a u64 constant. The source form must 
 
 This rule reflects the confirmed array-length decision in [DEC-007](#dec-007), defined in Section 15.1. It resolves the current parser/checker mismatch.
 
+Array length resolution MUST check the literal's exact integer value before converting it to u64. The implementation MUST NOT cast first and rely on wrapping, truncation, or host-language overflow behavior. A literal whose value exceeds MAX_U64 MUST produce E2034, even if its low 64 bits would fit. Invalid array lengths MUST NOT be interned into the TypeTable as Array types.
+
+The required length check is:
+
+~~~text
+resolve_array_length(expression):
+    if expression is not a permitted integer literal:
+        report E2034 at the length expression
+        return failure
+    value = obtain the exact non-negative integer magnitude
+    if value < 0 or value > MAX_U64:
+        report E2034 at the length expression
+        return failure
+    return the exact value represented as u64
+~~~
+
+The exact-magnitude step may use checked arithmetic or a wider representation. It MUST distinguish a representable value from a literal that exceeds MAX_U64 without first overflowing the target integer type.
+
 | Rule ID | Preconditions | Postcondition | Possible error |
 |---|---|---|---|
 | TR-027 Type syntax resolution | The TypeSyntax node is structurally valid. Primitive types use the canonical primitive entry. A named type uses its exact name and does not require declaration lookup. Vector and array element syntax resolves recursively. Array length passes TR-026. | Return the canonical TypeId for the resolved primitive, Named, Vector, or Array type. Vector element type MUST NOT be built-in Void. | E2034 for an invalid array length; parser diagnostic for invalid TypeSyntax. |
 
 ### 8.8 Formal forms for all typing rules
 
-The following forms state the premises and conclusion for every rule in TR-001 through TR-028. The rule tables in Sections 8.2 through 8.7 define each rule's diagnostics and AST postconditions.
+The following forms state the premises and conclusion for every rule in TR-001 through TR-029. The rule tables in Sections 8.2 through 8.7 define each rule's diagnostics and AST postconditions.
 
 | Rule | Formal premises and conclusion |
 | --- | --- |
@@ -838,6 +999,7 @@ The following forms state the premises and conclusion for every rule in TR-001 t
 | TR-026 | For array type syntax with length literal `k`, `0≤k≤MAX_U64 ⇒ Length(k)=k`. For an inferred array literal with `n` elements, `0≤n≤MAX_U64 ⇒ Length(elements)=n`. |
 | TR-027 | `Γ ⊢ primitiveSyntax ⇒ its canonical primitive TypeId`; `Γ ⊢ namedSyntax(x) ⇒ Named(x)`; `Γ ⊢ τ⇒T` and `T≠Void ⇒ Γ ⊢ Vector(τ)⇒Vector(T)`; `Γ ⊢ τ⇒T` and `Length(k)=n ⇒ Γ ⊢ Array(τ,k)⇒Array(T,n)`. Named(`"void"`) is not the built-in Void type. |
 | TR-028 | `e` is an adaptable literal, `T` is numeric, and the signed value `v` of `e` passes the TR-028a test for its kind `⇒ Γ ⊢ e ⇐ T ⇒ T`. A flexible expression passes `T` to its operands under TR-028b. A flexible operand next to a non-flexible operand of numeric type `S` is checked with `S` under TR-028c. |
+| TR-029 | `Γ ⊢ e:S` with `e` checked without a context type, `Γ ⊢ τ⇒T`, and `Cast(S,T) ⇒ Γ ⊢ e as τ:T`. `Cast(S,T)` holds when `S≡T`; when `S,T∈Num`; when `S∈Num` and `T∈{Char,Bool}`; when `S∈{Char,Bool}` and `T∈Num`; when `S=Char` and `T=String`; or when `S=NullPtr` and `T` is an Array, Vector, or Named type. |
 
 `MAX_U64` means the largest value representable by an unsigned 64-bit integer. A type-resolution error or a false premise has the diagnostic listed for that rule.
 
@@ -876,7 +1038,7 @@ check_expression(surface_expr, optional_context_type, environment):
     return the typed expression
 ```
 
-A rule MUST NOT infer a context merely because a destination type exists elsewhere in the AST (TC-003). Context is passed only in positions identified by TR-028 and the rule tables. In particular, the restriction in TR-028b on forwarding an incoming F32 or F64 context, the distinct peer behavior in TR-028c, and the no-context cases in TR-028d are normative.
+A rule MUST NOT infer a context merely because a destination type exists elsewhere in the AST (TC-003). Context is passed only in positions identified by TR-028 and the rule tables. In particular, the restriction in TR-028b on forwarding an incoming F32 or F64 context, the distinct peer behavior in TR-028c, and the no-context cases in TR-028d are normative. A cast does not pass its target type to its operand (TR-029).
 
 A successful expression node MUST have exactly one result TypeId. A conversion node MUST have a source child whose result type equals its `from` type, and its result type MUST equal its `to` type. An identity conversion MUST NOT create a Convert node. A rule that requires a conversion MUST NOT leave that conversion implicit (TC-002).
 
@@ -896,6 +1058,25 @@ The checker MUST accumulate diagnostics from independent expressions when their 
 
 At finalization, the checker MUST validate the candidate typed tree against the invariants in Section 10 (TC-006, VAL-002). The checker MUST return no Fully Typed AST if any blocking Error diagnostic exists, if a required type or semantic reference is missing, or if typed validation fails. An internal invariant failure MUST be classified as an internal error rather than rewritten as a source type error.
 
+The finalization contract is:
+
+~~~text
+finalize(candidate, diagnostics):
+    if diagnostics contains a blocking Error:
+        discard candidate
+        return Failure(diagnostics)
+
+    validation = validate_typed_ast(candidate)
+    if validation failed:
+        record an internal validation failure
+        discard candidate
+        return Failure(diagnostics plus internal failure)
+
+    return Success(candidate, non-blocking diagnostics)
+~~~
+
+The candidate is private until finalization succeeds. No API caller or later compiler phase may observe a candidate tree on either failure path. Warnings and Notes may accompany Success because they are non-blocking under ERR-011. A failed validator result is not converted into a warning, and a source diagnostic is not converted into an internal error merely because the compiler continues checking independent constructs. This procedure defines the outcome contract; it does not require a particular result type or allocation strategy.
+
 | Rule ID | Requirement | Verification |
 | --- | --- | --- |
 | TC-001 | The type checker MUST reject an Incomplete or structurally invalid SurfaceProgram before expression checking. | Supply an Incomplete program with a recovery placeholder and a structurally invalid complete-status tree. Verify that neither enters the expression-checking operation and that no TypedProgram is returned. |
@@ -904,6 +1085,7 @@ At finalization, the checker MUST validate the candidate typed tree against the 
 | TC-004 | A failed expression check MUST NOT emit a successful typed expression with a fabricated type. The checker MUST continue checking independent expressions when their checks do not depend on the failed result. | Check a program with two independent type errors and assert both diagnostics are reported, while no successful TypedProgram or error-typed expression is exposed. |
 | TC-005 | The checker MUST accumulate diagnostics deterministically and MUST NOT use hash iteration order to determine the externally visible order. | Run the same erroneous source repeatedly and with different hash seeds where supported. Compare the ordered diagnostic phase, code, primary span, and message. |
 | TC-006 | The checker MUST return a Fully Typed AST only when no blocking Error diagnostic exists and typed validation succeeds. | Exercise separately a source type error, a missing semantic reference in a candidate tree, and an invalid conversion node. Verify that each case returns failure and no Fully Typed AST. |
+| TC-007 | The finalization operation MUST keep the candidate typed tree private until all blocking-error checks and typed validation succeed. It MUST return no typed tree when diagnostics contain a blocking Error or validation fails. Non-blocking Warning and Note diagnostics MAY accompany success. | Verify success with no diagnostics and with only Warning/Note diagnostics. Verify failure with a blocking Error, a missing type reference, and a typed invariant failure. Assert that no candidate tree is observable on any failure path. |
 
 
 
@@ -1056,7 +1238,7 @@ The AST validator must report the first failed invariant category and continue w
 | INV-001 | Every node ID is unique in its AST instance. | Construction and structural validation | Internal error. Do not run semantic analysis. |
 | INV-002 | Owned children form a tree with one parent per non-root node. | Structural validation | Internal error. Do not run later phases. |
 | INV-003 | Every required child exists and every child list follows source order. | Structural validation | Internal error for constructed nodes; parser diagnostic for malformed source. |
-| INV-004 | Every span refers to one source file and uses valid half-open byte positions. Composite spans cover the full construct. | Parser output and typed AST validation | Internal error if a constructed node violates it. |
+| INV-004 | Every span refers to one source file, uses valid half-open byte positions whose boundaries are UTF-8 code-point boundaries, and covers the full construct when composite. | Parser output and typed AST validation | Internal error if a constructed node violates it. |
 | INV-005 | A SurfaceProgram is Complete only when parsing produced no diagnostics and no recovery placeholder. | After parsing | Mark Incomplete. Stop before type checking. |
 | INV-006 | Every identifier reference resolves to one declaration of the required kind. | Name resolution | Source semantic error. Do not construct a Fully Typed AST. |
 | INV-007 | Every expression in the Fully Typed AST has a valid TypeId. | Type checking and typed validation | Source semantic error if the source operation is invalid; internal error if the checker omitted a type. |
@@ -1075,6 +1257,7 @@ The AST validator must report the first failed invariant category and continue w
 | INV-020 | TypeTable contains exactly one TypeId for each canonical type key. | Type resolution and typed validation | Internal error for duplicate or missing canonical entries. |
 | INV-021 | Surface and typed FunctionDecl and MainDecl nodes occur only as direct children of their program root. No block or other statement contains either declaration. | Parser output and typed validation | Report E1004 and mark SurfaceProgram Incomplete for source nesting. Treat a nested declaration in a typed tree as an internal error. |
 | <a id="inv-022"></a>INV-022 | A numeric Literal has a Number variant that corresponds to its result_type and a value that is representable in that type. | Typed AST validation | Internal error. |
+| <a id="inv-023"></a>INV-023 | Every SourceSpan start and end offset is a UTF-8 code-point boundary within its registered source, in addition to satisfying the half-open range bounds. | Structural and typed-AST validation; diagnostic rendering | Internal error for a constructed invalid span or reporting failure if the renderer receives one. |
 
 ### 10.1 Validity states
 
@@ -1084,7 +1267,7 @@ The AST validator must report the first failed invariant category and continue w
 | Incomplete Surface AST | Parser recovery occurred or parser diagnostics exist. | Diagnostic display and AST debugging only. |
 | Semantically valid | All names, types, operations, declarations, and control constraints pass the rules in Sections 7–9. | Fully Typed AST construction. |
 | Fully typed | Semantically valid; all expressions and declarations have resolved type data; all references use IDs; all conversions are explicit; all loop-control references are valid in the current function. | Typed AST validation. |
-| Ready for lowering | Fully typed and INV-001 through [INV-022](#inv-022) pass. No blocking design question remains for the program's constructs. | A later lowering phase that implements this contract. |
+| Ready for lowering | Fully typed and INV-001 through [INV-023](#inv-023) pass. No blocking design question remains for the program's constructs. | A later lowering phase that implements this contract. |
 | Invalid AST | Any structural or typed invariant fails. | No compiler phase after the failing validator. |
 
 An AST with an error is not semantically valid. Diagnostics do not convert an invalid source program into a valid AST.
@@ -1161,18 +1344,50 @@ After structural validation succeeds, the typed validator MUST check all applica
 - Every break and continue reference identifies the nearest valid loop in the same function.
 - No error marker, placeholder, unresolved type, dangling ID, unsupported type category, or diagnostic sentinel appears in a successful tree.
 
+The validator MUST apply checks in an order that prevents unsafe reference access:
+
+~~~text
+validate_typed_ast(program):
+    structural_report = validate_structure(program)
+    if structural_report has failures:
+        return Invalid(structural_report)
+
+    validate SymbolTable and TypeTable record shapes, compilation-unit IDs,
+        ID uniqueness, and canonical type-key uniqueness
+    record table failures before using affected IDs
+    prepare lookups only from entries whose IDs are unique and in-unit
+
+    for node in deterministic preorder, using declared child-field order:
+        for each semantic reference field in declared field order:
+            if its ID has no unique, valid in-unit entry:
+                record the applicable invariant failure
+                mark dependent checks as unavailable
+            else:
+                validate the reference's expected kind and relation
+        validate node-specific semantic invariants only when their required
+            references have been resolved safely
+
+    if any structural, table, or semantic failure exists:
+        return Invalid(failures in deterministic encounter order)
+    return Valid
+~~~
+
+An ambiguous duplicate ID MUST NOT be resolved by selecting the first or last entry. A dangling, duplicate, or foreign-unit reference MUST NOT be dereferenced. The validator MAY continue with independent records and nodes after recording such a failure, but it MUST skip checks that require the invalid reference. This procedure defines required behavior, not a required map, indexing structure, or error-reporting data type.
+
 Validation MUST use the same canonical type and assignability definitions as semantic analysis (TY-12, TY-13, TY-17, VAL-002). It MUST NOT silently repair a malformed typed tree by inventing a type, rebinding a reference by name, or inserting an unrequested conversion (VAL-003).
 
 #### 10.2.3 Failure behavior and validation result
 
-A validator MUST return a successful validity result only if all required checks pass (VAL-002, VAL-004). It MAY accumulate multiple independent validation failures where this is safe, but it MUST stop following a branch when doing so would require dereferencing an invalid or dangling reference (VAL-002). Any typed-tree invariant failure is an internal error, not a source-language type diagnostic (INV-001–INV-022, VAL-002, ERR-006). An invalid tree MUST NOT be passed to a lowering or other downstream phase (VAL-004).
+A validator MUST return a successful validity result only if all required checks pass (VAL-002, VAL-004). It MAY accumulate multiple independent validation failures where this is safe, but it MUST stop following a branch when doing so would require dereferencing an invalid or dangling reference (VAL-002). Any typed-tree invariant failure is an internal error, not a source-language type diagnostic (INV-001–INV-023, VAL-002, ERR-006). An invalid tree MUST NOT be passed to a lowering or other downstream phase (VAL-004).
 
 | Rule ID | Requirement | Verification |
 | --- | --- | --- |
-| VAL-001 | Structural validation MUST check root kind, node identity, owned-child topology, required child kinds, source order, and source-span validity before accepting an AST. | Mutate a valid tree separately to introduce a duplicate NodeId, repeated child, missing child, invalid child kind, reversed child order, and out-of-range span. Verify each mutation is rejected with the corresponding invariant or internal-error result. |
+| VAL-001 | Structural validation MUST check root kind, node identity, owned-child topology, required child kinds, source order, and source-span validity before accepting an AST. | Mutate a valid tree separately to introduce a duplicate NodeId, repeated child, missing child, invalid child kind, reversed child order, out-of-range span, and a span boundary inside a multi-byte UTF-8 character. Verify each mutation is rejected with the corresponding invariant or internal-error result. |
 | VAL-002 | Typed-AST validation MUST verify semantic IDs, canonical types, declaration/signature consistency, conversion metadata, mutable places, array lengths, call signatures, and loop references against the invariants in Section 10. It MUST classify typed-tree invariant failures as internal errors and MUST NOT dereference invalid or dangling references while continuing validation. | Create one invalid typed tree per applicable invariant, including multiple invalid references, and assert rejection as an internal error without a crash or downstream use. |
 | VAL-003 | A validator MUST NOT repair an invalid AST by resolving names again, inventing missing type information, inserting conversions, or changing source spans. | Remove a type ID, replace a valid symbol ID with a dangling ID, and alter a conversion target. Verify failure without tree mutation or substituted metadata. |
 | VAL-004 | An Incomplete SurfaceProgram and any typed tree that fails validation MUST be rejected as downstream phase input. | Attempt semantic processing on an Incomplete SurfaceProgram and lowering on an invalid TypedProgram. Verify the next phase is not entered. |
+| VAL-005 | Each validation failure MUST identify the violated invariant or validation rule and classify the failure as structural or typed-semantic. It MUST identify the affected field and node when they can be established safely. The report MUST NOT dereference a dangling ID or use an ambiguous duplicate NodeId as a unique reference. Multiple independent failures MAY be reported in deterministic traversal order. | Mutate separate nodes to violate different invariants and verify each report identifies the rule and safe location. Include duplicate IDs and dangling references, and verify report generation does not crash or dereference invalid data. |
+| VAL-006 | Typed-AST validation MUST establish uniqueness and compilation-unit ownership of semantic table entries before it dereferences their IDs. It MUST NOT resolve an ambiguous duplicate ID by entry order. Checks that depend on a dangling, duplicate, or foreign-unit ID MUST be skipped, while independent checks MAY continue in deterministic traversal order. | Introduce duplicate SymbolIds, duplicate TypeIds, duplicate canonical type keys, a foreign CompilationUnitId, and dangling references. Verify safe rejection, no arbitrary entry selection, no invalid dereference, and deterministic independent findings. |
 
 
 
@@ -1209,9 +1424,14 @@ The normative diagnostic field set is defined by ERR-008. Every diagnostic MUST 
 | ERR-008 | Every diagnostic MUST contain the fields listed above. A source-caused diagnostic MUST include its primary SourceSpan. A diagnostic MUST link to its affected NodeId when that node exists. | Generate one diagnostic from each error category and validate all required fields and the source-node link. |
 | ERR-011 | DiagnosticId MUST be unique in one compiler run. Phase and Severity MUST use the enumerations in Section 3. Every Error is blocking. A Warning or Note does not block Fully Typed AST output. | Generate diagnostics in each phase and verify ID uniqueness, enum values, and blocking behavior by severity. |
 | ERR-012 | A diagnostic's primary span MUST identify the source construct responsible for the immediate error. An unresolved identifier or wrong-kind reference MUST point to the identifier token. A duplicate declaration MUST point to the later declaration and include the earlier declaration as a related span when available. An invalid operator or operand combination MUST point to the complete expression span. | Trigger each listed error and assert the primary span boundaries and, for duplicates, the related declaration span. |
-| ERR-013 | A diagnostic span MUST refer to an existing SourceId in the SourceMap and use valid half-open byte offsets within that source. A renderer encountering an invalid span record MUST report an internal reporting failure and MUST NOT misclassify the source program as invalid. | Render diagnostics at byte offset zero, at end of file where an empty span is permitted, and on multi-byte UTF-8 text. Inject an out-of-range span and an unknown SourceId and verify internal reporting failure. |
+| ERR-013 | A diagnostic span MUST refer to an existing SourceId in the SourceMap and use valid half-open byte offsets whose start and end are UTF-8 code-point boundaries within that source. A renderer encountering an invalid span record MUST report an internal reporting failure and MUST NOT misclassify the source program as invalid. | Render diagnostics at byte offset zero, at end of file where an empty span is permitted, and on multi-byte UTF-8 text. Inject an out-of-range span, an offset inside a multi-byte scalar, and an unknown SourceId. Verify internal reporting failure. |
+| ERR-014 | Diagnostic order MUST follow pipeline phase order and deterministic phase encounter order as defined in Section 11.2. The order MUST NOT depend on hash iteration, diagnostic code values, or DiagnosticId values. | Compile the same input repeatedly and with different hash seeds where supported. Compare the complete ordered diagnostic list, including phase, code, primary span, related spans, and message. Include multiple diagnostics with the same primary span. |
 
 The existing CompileError model provides a phase-specific variant, optional code, message, span, and optional help. Related spans and NodeId are specified additions. The span-selection rules above define the diagnostic contract; the visual formatting of rendered messages remains implementation-dependent.
+
+Diagnostic ordering is observable compiler output and MUST be deterministic. The compiler MUST preserve the phase execution order in Section 5.1. Within one phase, the encounter order MUST follow the phase's deterministic traversal: source/token order for lexical and parser diagnostics, source-ordered declarations and statements for name resolution and type checking, and declared AST field order for validation. When one node triggers more than one diagnostic, the implementation MUST emit them in the order in which the applicable rule checks are performed. Diagnostic codes and DiagnosticId numeric values MUST NOT be used as ordering keys. DiagnosticId MUST remain unique within the compiler run, but the ID value does not convey diagnostic severity or precedence.
+
+The implementation MUST NOT use hash-table iteration order to select which declaration, node, or diagnostic is visited first. If an implementation uses a collection whose iteration order is unspecified, it MUST impose a deterministic order at the point where that collection affects diagnostics or semantic output.
 
 ### 11.3 Recovery and stopping rules
 
@@ -1225,6 +1445,7 @@ The existing CompileError model provides a phase-specific variant, optional code
 | ERR-006 | Internal errors MUST stop the current compilation. A source error MUST NOT cause an internal-error classification. |
 | ERR-007 | No code-generation or lowering phase may accept an Incomplete or invalid AST. |
 | ERR-010 | On a statement parse failure at the root or in a block, the parser MUST advance one token and continue. It MAY return successfully parsed statements with diagnostics. Expression recovery placeholders MUST be nullptr literals. An invalid declaration-type fallback MUST be represented as an absent annotation. Both placeholders MUST remain unusable because the parse result is Incomplete. The CLI MUST stop before type checking when parse diagnostics exist. |
+| ERR-015 | Every parser recovery path MUST guarantee progress. After a recovery attempt fails, the parser MUST consume at least one token, return from the current parse context, or terminate at end of input. It MUST NOT repeat recovery with the same token position and parser context indefinitely. The selected synchronization strategy remains implementation-dependent. Any recovered result MUST remain Incomplete and MUST NOT enter name resolution or type checking. |
 
 | ID | Requirement | Verification |
 |---|---|---|
@@ -1310,16 +1531,16 @@ The implementation MUST provide tests or validator checks for each row below. A 
 | N-TE-01–N-TE-11 | Typed-node tests. Verify result_type and all linked IDs. |
 | N-TD-01–N-TD-02 | Typed declaration-node tests. Verify declared types, symbol links, source spans, and owner links. |
 | N-TP-01–N-TP-03 | Place tests for mutable variables, grouped places, mutable arrays, immutable targets, and invalid indexes. |
-| TY-01–TY-18 | Type identity, canonicalization, assignability, promotion, conversion, and invalid-category tests. |
+| TY-01–TY-19 | Type identity, canonicalization, assignability, promotion, conversion, and invalid-category tests. |
 | TR-001–TR-028 | Positive and negative tests for every typing rule, including primitive, named, vector, nested-array, and invalid array type syntax. |
 | SR-001–SR-012 | Scope, shadowing, duplicate, recursion, forward-reference, custom type, and symbol-kind tests. |
 | SR-013 | Source-order visibility, direct recursion, and rejection of calls to later declarations and mutual recursion. |
 | SR-014–SR-017 | Nearest-scope lookup, declaration visibility, scope exit, and resolved SymbolId identity tests. |
-| TC-001–TC-006 | Negative and positive tests for pass input state, result types, contextual typing, diagnostic accumulation, deterministic ordering, and successful-output gating. |
-| VAL-001–VAL-004 | Structural topology, source-span, semantic cross-reference, no-repair, and downstream-gating tests for AST validators. |
+| TC-001–TC-007 | Negative and positive tests for pass input state, result types, contextual typing, diagnostic accumulation, deterministic ordering, typed-tree finalization, and successful-output gating. |
+| VAL-001–VAL-006 | Structural topology, source-span, semantic cross-reference, safe table indexing, deterministic failure reporting, no-repair, and downstream-gating tests for AST validators. |
 | SYN-002 | AST-shape tests for left associativity, assignment right associativity, and precedence for every operator class. |
-| INV-001–[INV-022](#inv-022) | One validator test per invariant. Each negative case must identify the violated invariant. |
-| ERR-001–ERR-013 | Parser recovery, blocking errors, accumulated diagnostics, diagnostic fields and locations, error codes, severity, CLI phase boundary, and internal-error separation tests. |
+| INV-001–[INV-023](#inv-023) | One validator test per invariant. Each negative case must identify the violated invariant. |
+| ERR-001–ERR-015 | Parser recovery progress, blocking errors, accumulated diagnostics, diagnostic fields, deterministic ordering and locations, error codes, severity, CLI phase boundary, and internal-error separation tests. |
 | OP-001–OP-009 | Interface tests for each mandatory operation, transformation, and cloning. |
 | OP-010–OP-011 | Comparison tests only if an optional comparison utility is implemented. |
 
@@ -1347,7 +1568,7 @@ The test suite MUST include:
 18. A variable, function, type, or scope ID that is dangling or belongs to another AST. Verify typed validation rejects it.
 19. A comparison between two Void-returning calls. Verify the current type rule accepts it and assigns Bool.
 20. An array literal whose elements are Void-returning calls. Verify the current checker assigns Array(Void,n).
-21. Primitive, named, vector, and nested-array type syntax. Verify canonical type identity and reject malformed type syntax.
+21. Primitive, named, vector, and nested-array type syntax. Verify canonical type identity and reject malformed type syntax. Resolve repeated canonical keys in different source positions, verify equal keys share one TypeId, verify non-equivalent keys do not share an ID, and verify an invalid child type or length does not create a parent TypeEntry.
 22. Operator associativity. Parse each source below and verify the exact node shape: 10 - 3 - 2 as (10 - 3) - 2; 2 - 3 + 4 as (2 - 3) + 4; 100 / 10 / 5 as (100 / 10) / 5; 1 << 2 << 3 as (1 << 2) << 3; a - b *c - d as (a - (b* c)) - d; a = b = c as a = (b = c); -a *b as (-a)* b.
 23. The minimum, the maximum, and each value one outside the range, for all eight integer types, as initializers and as peer operands. Verify E2035 outside the range.
 24. F32 overflow, and integer exactness at 2^24 for F32 and 2^53 for F64 with the neighboring values. Verify E2035 for an inexact integer literal.
@@ -1362,10 +1583,18 @@ The test suite MUST include:
 32. Initializer visibility and same-scope duplicates. In a nested block, declare an outer variable and declare an inner variable with the same name whose initializer references that name. Verify the initializer resolves to the outer SymbolId and subsequent references in the inner scope resolve to the inner SymbolId. Declare the same name twice in one scope and verify E2032; the rejected duplicate must not replace the first SymbolId.
 33. Scope exit. Declare a variable in a nested block and reference it after the block. Verify E2023. Declare a for-loop initializer variable, reference it in the condition, increment, and body, then reference it after the loop. Verify all in-loop references resolve and the post-loop reference reports E2023.
 34. Function source order. Verify a function can call itself recursively because its symbol is registered before its body is checked. Verify a call to a function declared later reports E2023. Verify declaration order that places the callee first allows the call, and does not create support for mutual recursion.
-35. Diagnostic source locations. Trigger an unresolved identifier, a duplicate declaration, and a numeric expression whose operands have no common promotion type. Verify the unresolved identifier diagnostic points to the identifier token, the duplicate diagnostic points to the later declaration and links the original declaration span, and the invalid binary diagnostic points to the complete expression span. Test source spans at byte offset zero, a permitted empty end-of-file span, and a multi-byte UTF-8 source sequence.
-36. AST validation failures. Starting from a valid typed tree, separately introduce a duplicate NodeId, a missing required child, a dangling SymbolId, an invalid conversion target, an immutable SymbolRecord used as an assignment target, and a break/continue link to a loop in another function. Verify the validator rejects each tree, identifies the failed invariant, does not repair the input, and prevents downstream lowering.
+35. Diagnostic source locations. Trigger an unresolved identifier, a duplicate declaration, and a numeric expression whose operands have no common promotion type. Verify the unresolved identifier diagnostic points to the identifier token, the duplicate diagnostic points to the later declaration and links the original declaration span, and the invalid binary diagnostic points to the complete expression span. Test source spans at byte offset zero, a permitted empty end-of-file span, and valid boundaries around a multi-byte UTF-8 source sequence. Verify that a boundary inside a multi-byte scalar is rejected.
+36. AST validation failures. Starting from a valid typed tree, separately introduce a duplicate NodeId, a missing required child, a dangling SymbolId, an invalid conversion target, an immutable SymbolRecord used as an assignment target, and a break/continue link to a loop in another function. Verify the validator rejects each tree, identifies the violated invariant or validation rule, reports a safe node or field location when available, does not dereference invalid IDs or repair the input, and prevents downstream lowering.
 37. Type-checking failure gating. Supply an Incomplete SurfaceProgram, a source program with two independent type errors, and a candidate typed tree with a missing TypeId. Verify the first is rejected before semantic analysis, the second produces both independent diagnostics and no Fully Typed AST, and the third fails typed validation without synthesizing a replacement type.
-38. Diagnostic ordering. Run the same source with multiple errors repeatedly and under different hash seeds where supported. Verify phase order, diagnostic code, primary span, and message order remain stable and do not depend on hash-map traversal.
+38. Diagnostic ordering. Run the same source with multiple errors repeatedly and under different hash seeds where supported. Compare the complete ordered diagnostic sequence, including phase, code, primary span, related spans, and message. Verify these fields remain stable and do not depend on hash-map traversal or DiagnosticId values.
+39. Semantic table validation. Mutate a valid TypedProgram to contain duplicate SymbolIds, duplicate TypeIds, duplicate canonical type keys, a table whose CompilationUnitId differs from the root, and a reference to a missing entry. Verify duplicate or foreign entries are rejected before use, dependent checks are skipped rather than dereferencing them, independent findings remain deterministic, and no invalid TypedProgram is returned.
+40. Non-numeric equality conversion. For compatible but non-equivalent operands, verify that `char == string` selects String and inserts a CharToString conversion on the character operand, and that `nullptr == namedValue` selects the named type and inserts NullToAggregate on the nullptr operand. Verify both expressions have type Bool. These are typed-AST checks only; do not infer runtime equality semantics, which remain OPEN-005.
+41. Comparison failure behavior. Verify that an ordering comparison with compatible but non-numeric operands is rejected under TR-010, that equality between unrelated opaque Named types reports E2014, and that neither failure creates a successful typed comparison node.
+42. Parser recovery progress. Feed malformed input at the start of a source unit, inside a nested block, and at end of input. Verify that each recovery path consumes input or exits its current parse context, terminates without an infinite loop, produces an Incomplete SurfaceProgram, and never invokes name resolution or type checking.
+43. Array-length upper boundary. Verify that a fixed-array length equal to `MAX_U64` is accepted, but a positive integer literal equal to `MAX_U64 + 1` reports E2034 and does not create a canonical Array type entry. Use an arbitrary-precision expected value in the test fixture so the test itself does not overflow its host integer type.
+44. Static array-index bounds. For `var a: i32[2] = {1, 2}; var value: i32 = a[2]`, verify that the index expression is accepted by TR-019 and has type I32, because the base type and integer index type are valid. Do not require a compile-time bounds diagnostic or infer runtime behavior from this test; the out-of-range access remains OPEN-008.
+45. Cast parsing. Parse every source in Table SYN-004 and compare the node shape with the required shape. Parse `a as T` for each primitive type, `i32[4]`, `vector<i32>`, and a custom name. Verify that `a as nullptr`, `a as 5`, `a as`, and `a as i32 as` each report E1002 and leave the SurfaceProgram Incomplete (Section 11.1). Verify M < C ≤ P < K against the values in Section 6.4, for each of `*`, `/`, and `%`.
+46. Cast typing. For each family in TR-029, verify the result type, the conversion kind, and the operand type. With `wide: i64`, `v: i32`, `f: f64`, `c: char`, and `text: string`: `wide as i8` and `v as f32` and `f as i32` have an ExplicitCast to I8, F32, and I32; `v as i64` and `v as f64` have a NumericAssignable conversion to I64 and F64; `v as char` and `v as bool` have an ExplicitCast to Char and Bool; `c as i32` has an ExplicitCast to I32; `c as string` has CharToString; `nullptr as i32[4]`, `nullptr as vector<i32>`, and `nullptr as Record` have NullToAggregate; `v as i32` and `text as string` create no Convert node. Verify E2002 at the span of the whole cast expression for `text as i32`, `v as string`, `flag as char` and `c as bool` with `flag: bool`, `arr as vector<i32>` with `arr: i32[4]`, and `r as Other` with `r: Record`. Verify that `200 as i8` has type I8 with an I64 operand and reports no E2035, that `var x: i8 = 200` reports E2035, and that `var small: i8 = wide` reports E2002. Verify that an invalid operand reports its own diagnostic and no E2002 for the cast.
 
 ### 13.3 Acceptance criteria
 
@@ -1379,16 +1608,30 @@ The specification is implemented when all the following conditions hold:
 | ACC-004 | Every implicit conversion is represented by a Convert node with the same source and target TypeIds. |
 | ACC-005 | Invalid source programs produce diagnostics and no Fully Typed AST. |
 | ACC-006 | Incomplete parser output is rejected by type checking. |
-| ACC-007 | The typed validator rejects each single-invariant mutation in INV-001 through [INV-022](#inv-022). |
+| ACC-007 | The typed validator rejects each single-invariant mutation in INV-001 through [INV-023](#inv-023). |
 | ACC-008 | The complete test suite covers every operator, type category, semantic reference, and error category in this document. |
 | ACC-009 | No unsupported type category or language feature can be inserted into a successful Fully Typed AST. |
 | ACC-010 | The final document review confirms that each requirement has an ID and a verification method. |
 | ACC-011 | Every phase boundary in IF-001 through IF-010 rejects inputs that fail its required preconditions, and no blocking result reaches a downstream phase as valid input. |
-| ACC-012 | The type-checking pass satisfies TC-001 through TC-006, including contextual typing under TR-028, explicit required conversions, deterministic diagnostics, and the absence of a successful Fully Typed AST on failure. |
+| ACC-012 | The type-checking pass satisfies TC-001 through TC-007, including contextual typing under TR-028, explicit required conversions, deterministic diagnostics, typed-tree finalization, and the absence of a successful Fully Typed AST on failure. |
 | ACC-013 | Symbol resolution satisfies SR-001 through SR-017, including exact nearest-scope lookup, declaration visibility, scope exit, direct recursion, and rejection of later-function references. |
-| ACC-014 | Diagnostic locations satisfy ERR-012 and ERR-013 for unresolved identifiers, duplicate declarations, numeric promotion failures, valid source-map references, and invalid-span handling. |
-| ACC-015 | The validators satisfy VAL-001 through VAL-004 by rejecting malformed trees and invalid semantic metadata without silently repairing the input or allowing downstream processing. |
+| ACC-014 | Diagnostic output satisfies ERR-012 through ERR-014 and INV-023 for unresolved identifiers, duplicate declarations, numeric promotion failures, valid source-map references, UTF-8-aligned span boundaries, and deterministic ordering. |
+| ACC-015 | The validators satisfy VAL-001 through VAL-006 by rejecting malformed trees and invalid semantic metadata, reporting safe failures, and preventing unsafe reference access without silently repairing the input or allowing downstream processing. |
 | ACC-016 | The implementation review or an explicit complexity argument addresses CMP-001 through CMP-008. Runtime performance thresholds are not claimed until a representative workload and measurement environment are approved. |
+| ACC-017 | The implementation exhausts all 100 ordered numeric type pairs. Exactly 68 pairs produce the specified promoted type, and the other 32 report E2036 without producing a typed binary expression. Every selected conversion satisfies the value-preservation predicate in Section 7.2. Verification: Section 13.2 test 3 and the procedure in Section 7.3. |
+| ACC-018 | Context-sensitive literal typing satisfies TR-028a through TR-028d, including integer range boundaries, exact floating-point representability, peer operands, compound assignment, and the rule that F32/F64 context does not pass through an operator to two flexible operands. Verification: Section 13.2 tests 1, 23 to 29, with expected tree shapes and diagnostics. |
+| ACC-019 | Diagnostics are reproducible in contents and order for repeated compilations of the same input. The ordered sequence follows phase and encounter order, including diagnostics with the same primary span, and preserves phase, code, primary span, related spans, and message without depending on DiagnosticId values. Verification: Section 13.2 test 38, TC-005, and ERR-014. |
+| ACC-020 | Every AST validation failure identifies the violated invariant or rule and supplies a safe node or field location when available. Reporting a validation failure never dereferences a dangling ID, repairs the AST, or permits downstream use. Verification: VAL-001 through VAL-006 and Section 13.2 test 36. |
+| ACC-021 | A candidate TypedProgram becomes observable only after error gating and typed validation succeed. Blocking diagnostics and validation failures return failure without a TypedProgram; non-blocking diagnostics may accompany success. Verification: TC-006, TC-007, and Section 13.2 test 37. |
+| ACC-022 | Each compilation unit has exactly one TypeId for every canonical type key, and failed type resolution does not leave an invalid composite type entry. Verification: TY-17, TY-19, and Section 13.2 test 21. |
+| ACC-023 | Typed validation rejects duplicate, dangling, and foreign-unit semantic IDs without dereferencing ambiguous or invalid entries. It preserves deterministic reports for independent failures and never returns the rejected tree. Verification: VAL-005, VAL-006, and Section 13.2 tests 36 and 39. |
+| ACC-024 | Every accepted SourceSpan uses in-range UTF-8 code-point boundaries. A span that splits a multi-byte scalar is rejected by structural validation and diagnostic rendering. Verification: INV-004, INV-023, VAL-001, ERR-013, and Section 13.2 test 35. |
+| ACC-025 | Non-numeric equality between compatible, non-equivalent operand types selects the defined common type, inserts the required conversion on the correct operand, and returns Bool without implying runtime equality behavior. Verification: TR-010, TY-15, Section 13.2 tests 19 and 40, and OPEN-005. |
+| ACC-026 | Comparison typing rejects non-numeric ordering and incompatible non-numeric equality, emits the required diagnostic, and does not produce a successful typed comparison node on failure. Verification: TR-010, Section 13.2 test 41, and the procedure in Section 8.4. |
+| ACC-027 | Every parser recovery path makes progress or exits, terminates without an infinite loop, and leaves the SurfaceProgram Incomplete so semantic phases cannot consume it. Verification: ERR-001, ERR-003, ERR-010, ERR-015, and Section 13.2 test 42. |
+| ACC-028 | Fixed-array lengths accept the inclusive range from zero through MAX_U64 and reject negative, non-integer, or out-of-range values with E2034 before inserting a canonical array type. Verification: TR-026, TR-027, and Section 13.2 tests 6, 7, and 43. |
+| ACC-029 | Static index typing validates the index as an integer and derives the element type without requiring a compile-time bounds check; it does not imply runtime behavior for out-of-range access. Verification: TR-019, Section 13.2 test 44, and OPEN-008. |
+| ACC-030 | Every cast has the node shape in Table SYN-004, the result type, conversion kind, and diagnostic that TR-029 specifies, and no cast changes the implicit assignability table. A cast operand receives no context type. Verification: SYN-004, TY-18, TR-029, and Section 13.2 tests 45 and 46. |
 
 ## 14. Technical Examples
 
@@ -1422,7 +1665,7 @@ Source:
 
 ~~~text
 main {
-    var value: u64 = 1u32 + 2u64
+    var value: u64 = 1u32 + 2u
 }
 ~~~
 
@@ -1442,7 +1685,7 @@ Source:
 
 ~~~text
 main {
-    var value: u64 = 1i32 + 2u64
+    var value: u64 = 1i32 + 2u
 }
 ~~~
 
@@ -1599,7 +1842,7 @@ main {
 
 The parser constructs a Cast node for each `as` expression and parses the target using the existing type grammar. The type checker accepts numeric conversions, numeric-to-char/Boolean and char/Boolean-to-numeric conversions, char-to-string, null-pointer-to-aggregate conversions, and same-type identity casts. This permits explicit narrowing without adding it to implicit assignability. For example, I64 to I8 is accepted only because the source uses `as i8`.
 
-The current front end does not define runtime behavior for integer overflow, out-of-range floating-point-to-integer conversions, floating-point rounding, numeric-to-char conversion, numeric-to-bool conversion, or the runtime representation of null-backed aggregates. The execution and lowering specification must define those cases before generated code can execute them. Char-to-string and nullptr-to-aggregate reuse the existing CharToString and NullToAggregate conversion rules. Same-type casts are identity operations.
+ADR-0005 defines the runtime value of each cast in this example (DEC-021). For example, `wide as i8` with `wide` equal to 300 yields 44, `16777217i32 as f64` yields 16777217.0, and `65i32 as char` yields U+0041. The runtime representation of null-backed aggregates remains open (OPEN-001). Char-to-string and nullptr-to-aggregate reuse the existing CharToString and NullToAggregate conversion rules. Same-type casts are identity operations.
 
 
 ## 15. Open Issues and Design Decisions
@@ -1616,7 +1859,7 @@ The current front end does not define runtime behavior for integer overflow, out
 | DEC-006 | A compound assignment value must be assignable to the place type. The operation runs in the place type, and the expression result type is the place type. | The stored value must be valid for the mutable place. | TR-013, GAP-003 | The checker must reject some cases it currently accepts. |
 | <a id="dec-007"></a>DEC-007 | Source array lengths are non-negative integer literals. The Fully Typed AST stores the resolved u64 value. | The subset has no constant-expression evaluator for array length. A literal gives a stable type identity. | N-ST-03, TY-07, TR-026, TR-027 | The checker must reject non-literal and negative lengths. |
 | <a id="dec-008"></a>DEC-008 | Assignment and update targets must be mutable variable places or index chains rooted in a mutable variable. | Mutation requires a valid mutable storage location. A temporary value is not a place. | N-TP-01–N-TP-03, TR-008, TR-013, TR-014 | The checker must reject some non-place expressions it currently accepts. |
-| DEC-009 | TypeTable stores one canonical TypeId per type key. Primitive and special types use kind keys; arrays and vectors use structural keys; named types use exact names. | Canonical IDs make equivalence checks and semantic references unambiguous. | ARC-005, TY-12, TY-17 | TypeIds remain local to one compilation unit. |
+| DEC-009 | TypeTable stores one canonical TypeId per type key. Primitive and special types use kind keys; arrays and vectors use structural keys; named types use exact names. | Canonical IDs make equivalence checks and semantic references unambiguous. | ARC-005, TY-12, TY-17, TY-19 | TypeIds remain local to one compilation unit. |
 | DEC-010 | Identity fields use distinct newtype wrappers over u64. NodeId is unique in one AstId. | Distinct wrappers prevent accidental use of an ID from the wrong domain. Local IDs need no persistent encoding. | ARC-001–ARC-005, ERR-011 | IDs are not stable across ASTs, compilation units, or runs. |
 | DEC-011 | SourceSpan uses half-open UTF-8 byte offsets. | Byte offsets support source slicing and do not depend on character width. | ARC-010, INV-004 | A SourceMap is required to render line and column positions. |
 | DEC-012 | One source file is one CompilationUnitId in this subset. | The language model has no module or multi-file name-resolution rule. | N-ROOT-02, ARC-005, SR-001 | Multi-file compilation requires a new unit and symbol-resolution design. |
@@ -1627,18 +1870,21 @@ The current front end does not define runtime behavior for integer overflow, out
 | DEC-017 | An implicit numeric conversion MUST preserve every value of the source type. TY-13 loses four rows: I32 and U32 to F32, and I64 and U64 to F64. The exactness test in TR-028a is the literal case of the same rule. ADR-0003 lists the alternatives considered. | The table converted four integer types to a floating-point type that cannot hold all their values. A literal above 2^24 was rejected for F32, while an I32 variable with the same value converted without a diagnostic. ADR-0001 chose promotion that defines no run-time conversion, and a rounding conversion needs a run-time definition. | TY-13, TY-14, TR-009, TR-010, TR-013, TR-028a, GAP-015, OPEN-001, Section 13.2 tests 2, 3 and 28 | 32 ordered numeric pairs have no promotion instead of 24. The implicit conversions I32 and U32 to F32, and I64 and U64 to F64, are rejected. I64 and U64 can be converted to floating-point types only through an explicit numeric cast under DEC-020. A mixed integer and floating-point literal expression such as `1 + 2.5` has no promotion (OPEN-006). |
 | DEC-018 | TR-028b controls whether a Binary node passes its incoming context to operands. The peer rule in TR-028c is separate. When both operands are flexible, the Binary node passes its context only when TR-028b permits it. An incoming F32 or F64 context is not passed through an operator. | The former TR-028c wording could be read to override TR-028b for two flexible operands. Explicit precedence fixes the type and diagnostic for operator expressions without adding a numeric conversion. | TR-028b, TR-028c, TR-009, TR-012, TR-015, Section 13.2 test 29, Section 14.9, OPEN-006 | `x + 1.5` has type F64 when `x` is I32, because I32 is assignable to F64. It reports E2036 when `x` is I64 or U64, because neither type is assignable to F64. `var x: f64 = 1 << 3` reports E2002 because the shift result is I64 and I64 is not assignable to F64. |
 | DEC-019 | Non-void functions are rejected when conservative statement analysis says their bodies can complete normally. Blocks are analyzed in order, if/else requires both branches to avoid fall-through, and all loops are treated as potentially completing normally. | A recursive search for a return can accept a return nested inside a loop that may execute zero times or exit. | TR-025, GAP-008, OPEN-002, Section 13.2 test 30 | A return inside a loop is insufficient by itself. A return after the loop or returns in both branches of an if/else satisfy the check. |
-| DEC-020 | Explicit casts use `expression as cast-target`, where cast-target follows the existing type production. Supported changing conversions are numeric-to-numeric, numeric-to-char, char-to-numeric, numeric-to-bool, bool-to-numeric, char-to-string, and nullptr-to-array/vector/custom type. Same-type casts are identities; string parsing, unrelated aggregate conversions, and pointer reinterpretation are rejected. The conversion rules do not expand the implicit assignability table. Runtime behavior for value-changing casts is deferred to the execution and lowering specifications. ADR-0002 records this decision. | These conversions cover useful existing value categories without silently expanding implicit conversions or inventing string parsing and pointer reinterpretation semantics. | SYN-004, N-SE-10, TY-18, Section 14.10, OPEN-001 | Casts are parsed and type-checked. Runtime conversion behavior remains to be specified before the compiler executes value-changing casts. |
+| DEC-020 | Explicit casts use `expression as cast-target`, where cast-target follows the existing type production. Supported changing conversions are numeric-to-numeric, numeric-to-char, char-to-numeric, numeric-to-bool, bool-to-numeric, char-to-string, and nullptr-to-array/vector/custom type. Same-type casts are identities; string parsing, unrelated aggregate conversions, and pointer reinterpretation are rejected. The conversion rules do not expand the implicit assignability table. ADR-0005 defines the runtime value of each cast (DEC-021). ADR-0002 records this decision. | These conversions cover useful existing value categories without silently expanding implicit conversions or inventing string parsing and pointer reinterpretation semantics. | SYN-004, N-SE-10, TY-18, TR-029, Section 14.10, OPEN-001 | Casts are parsed and type-checked. ADR-0005 defines their runtime values. |
+| DEC-021 | Every accepted cast has one defined runtime value for every source value, and no cast traps or has undefined behavior. A `char` is a Unicode scalar value. Integer conversions wrap modulo 2^N. Integer-to-floating-point and floating-point-to-floating-point conversions round to nearest, with ties to even. Floating-point-to-integer conversions truncate and saturate, and NaN gives 0. Numeric-to-bool tests for not equal to zero. Numeric-to-char gives U+FFFD for a value that is not a Unicode scalar value. ADR-0005 lists the alternatives considered. | ADR-0002 accepted these casts and left their values open, so the front end accepted programs that no later phase could execute. | TY-18, TR-029, Section 7.4, Section 14.10, OPEN-001 | Lowering can implement ExplicitCast from the source and target types alone. No program can detect a lossy cast at runtime until a checked conversion exists. |
 
 ### 15.2 Open issues and pending clarification
 
 | ID | Issue or question | Evidence or rationale | Requirement affected | Consequence |
 | --- | --- | --- | --- | --- |
-| OPEN-001 | Runtime behavior is not defined for arithmetic overflow, division by zero, shift counts outside the operand width, rounding of a floating-point literal to F32, narrowing integer conversions, out-of-range floating-point-to-integer casts, floating-point rounding, numeric-to-char and numeric-to-bool conversions, or how nullptr-backed arrays/vectors/custom types are represented at runtime. Implicit conversions remain lossless, but explicit casts may change or lose value information. | The checker selects types but does not define execution behavior or generated instructions for explicit conversions. | Sections 7.3 and 7.4, DEC-020 | IR, lowering, and runtime specifications must define these behaviors before executable cast semantics are claimed. |
+| OPEN-001 | Runtime behavior is not defined for arithmetic overflow, division by zero, shift counts outside the operand width, rounding of a floating-point literal to F32, or how nullptr-backed arrays/vectors/custom types are represented at runtime. Explicit casts are defined by ADR-0005 (DEC-021). | The checker selects types but does not define execution behavior or generated instructions for these operations. | Sections 7.3 and 7.4, DEC-020, DEC-021 | IR, lowering, and runtime specifications must define these behaviors before executable semantics are claimed. |
 | OPEN-002 | The return-path analysis is conservative and does not prove arbitrary loop termination or unreachable-code properties. | Loops are treated as potentially completing normally, even when their conditions may be constant. | TR-025, INV-015 | This may reject some functions whose loop is in fact non-terminating, but it prevents a return inside a possibly skipped or exited loop from satisfying the non-void return requirement. |
 | OPEN-003 | Custom names have no declarations or member access. | The parser accepts names, but the checker does not resolve declarations for them. | TY-09, SR-012 | A future user-defined type feature requires type declarations, name resolution, and new tests. |
 | OPEN-004 | The repository has no Fully Typed AST implementation or typed-tree consumer. | Source inspection found no typed-AST or IR-lowering module. | OP-005, OP-006 | This document defines a target contract. Integration design remains future work. |
 | OPEN-005 | The checker accepts compatible non-numeric operands for equality, including Void call results. It defines no runtime equality implementation. | The type checker returns Bool after compatibility validation. It defines no equality operation or runtime value for Void. | TR-010, TY-10 | A later execution specification must define behavior for accepted non-numeric equality pairs. Ordering on non-numeric operands is rejected by TR-010. |
 | OPEN-006 | An expression with two flexible operands of different numeric kinds, such as `1 + 2.5`, has no promotion under the current rules. The integer literal defaults to I64 and the floating-point literal defaults to F64 because an incoming F32 or F64 context is not passed through the operator. I64 is not assignable to F64 (DEC-017), so the operation reports E2036. | ADR-0004 clarifies that TR-028b takes precedence over TR-028c when both operands are flexible. It does not decide whether the language should later add constant-aware adaptation for mixed flexible operands. | TR-028b, TR-028c, TR-009, TR-010 | `1 + 2.5` and `var f: f64 = 1 + 2.5` report E2036 under the current rules. In contrast, `i + 1.5` where `i: i32` has type F64 because I32 is assignable to F64. A later language decision may add constant-aware adaptation for mixed flexible operands. |
+| OPEN-007 | Source spans use UTF-8 byte offsets, but the diagnostic renderer has no normative mapping from byte offsets to displayed line and column numbers. The presentation of tabs, line endings, and Unicode columns is also unspecified. | Section 5.4 defines the canonical byte range, and Section 11.2 leaves visual formatting implementation-dependent. No renderer compatibility contract is established. | Sections 5.4 and 11.2, OP-008 | The byte span remains the canonical diagnostic location. Rendered line and column conventions must not be treated as a stable interface until a separate decision defines them. |
+| OPEN-008 | The type checker validates that an index expression has an integer type but performs no compile-time bounds check, even when the index is a constant outside a fixed array's length. Runtime behavior for an out-of-range access is not specified. | TR-019 expressly excludes a compile-time bounds check. This AST specification does not define a runtime trap, unchecked memory access, or other execution result for an invalid index. | TR-019, Section 8.5, Section 13.2 test 44 | A typed Index node may represent an access that is out of range. A lowering and runtime specification must define this behavior before executable semantics are claimed. |
 
 ## 16. Bibliographic References
 
@@ -1653,16 +1899,20 @@ The following matrix identifies the principal sources of the normative rules. Re
 
 | Specification area | Requirement or decision references | Verification location | Primary theoretical relationship |
 | --- | --- | --- | --- |
-| Surface and typed tree separation | BAS-006–BAS-009, ARC-001–ARC-011, INV-001–INV-005, VAL-001–VAL-004 | Sections 10.2 and 13.1–13.3 | Aho et al., Chapter 6, Section 6.1, syntax-tree representations |
+| Surface and typed tree separation | BAS-006–BAS-009, ARC-001–ARC-011, INV-001–INV-005, VAL-001–VAL-006 | Sections 10.2 and 13.1–13.3 | Aho et al., Chapter 6, Section 6.1, syntax-tree representations |
 | Lexical scope and resolved references | SR-001–SR-017, INV-006, INV-013, DEC-009–DEC-012 | Sections 9.3, 13.1–13.2 | Aho et al., Chapter 2, Section 2.7, symbol tables; Chapter 6, Section 6.3, types and declarations |
-| Type identity, assignment, and conversions | TY-01–TY-17, TR-001–TR-028, TC-001–TC-006, INV-007–INV-009, INV-016–INV-020 | Sections 8.9, 13.1–13.3 and ADR-0001, ADR-0003, ADR-0004 verification vectors | Aho et al., Chapter 6, Section 6.5, type checking |
-| Operator precedence and AST shape | SYN-001–SYN-003, DEC-013, INV-003–INV-004 | Section 13.2, test 22 | Aho et al., Chapter 4, syntax analysis, and Chapter 6, Section 6.1 |
+| Type identity, assignment, and conversions | TY-01–TY-19, TR-001–TR-028, TC-001–TC-007, INV-007–INV-009, INV-016–INV-020 | Sections 8.9, 13.1–13.3 and ADR-0001, ADR-0003, ADR-0004 verification vectors | Aho et al., Chapter 6, Section 6.5, type checking |
+| Comparison compatibility and typed conversions | TR-010, TY-15, ACC-025–ACC-026, OPEN-005 | Section 8.4 and Section 13.2 tests 19, 40, and 41 | Type compatibility is a static typing contract; runtime equality behavior remains a Descar-specific unresolved decision |
+| Fixed-array length resolution | TY-07, TR-026–TR-027, DEC-007, ACC-028 | Section 8.7 and Section 13.2 tests 6, 7, and 43 | Range validation is a static semantic constraint; array runtime layout remains outside this specification |
+| Array index typing and runtime bounds | TR-019, ACC-029, OPEN-008 | Section 8.5 and Section 13.2 test 44 | Static index typing is distinct from the runtime behavior of out-of-range access |
+| Operator precedence and AST shape | SYN-001–SYN-004, DEC-013, GAP-016, INV-003–INV-004 | Section 13.2, tests 22 and 45 | Aho et al., Chapter 4, syntax analysis, and Chapter 6, Section 6.1 |
 | Syntax-directed semantic construction | ARC-008, OP-004–OP-007, IF-004–IF-006 | Sections 13.1–13.3 | Aho et al., Chapter 5, syntax-directed translation; Chapter 6, Sections 6.3 and 6.5 |
-| Phase interface and failure gating | IF-001–IF-010, VAL-001–VAL-004, TC-001, TC-006 | Sections 5.1.1, 8.9, 10.2, and 13.1–13.3 | Phase separation and semantic validation; interface identifiers and failure contracts are Descar-specific |
+| Phase interface and failure gating | IF-001–IF-010, VAL-001–VAL-006, TC-001, TC-006–TC-007 | Sections 5.1.1, 8.9, 10.2, and 13.1–13.3 | Phase separation and semantic validation; interface identifiers and failure contracts are Descar-specific |
 | Control-flow and return validation | TR-025, GAP-008, DEC-019, OPEN-002 | Section 13.2, test 30 | Static semantic analysis associated with syntax-directed translation; the conservative rule itself is Descar-specific |
-| Error boundaries and invalid intermediate state | ERR-001–ERR-013, INV-005, INV-012, IF-001–IF-010, VAL-001–VAL-004 | Sections 10.2, 11, and 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
+| Error boundaries and invalid intermediate state | ERR-001–ERR-015, INV-005, INV-012, INV-023, IF-001–IF-010, VAL-001–VAL-006, OPEN-007 | Sections 10.2, 11, and 13.1–13.3 | Compiler phase separation; diagnostic policy and error codes are Descar-specific |
 | Algorithmic expectations | CMP-001–CMP-008 | Section 12.4 plus implementation profiling when a workload is approved | Asymptotic analysis is general algorithmic methodology, not a Descar-specific textbook guarantee |
 | Numeric language decisions | DEC-016–DEC-018, OPEN-001, OPEN-006 | ADR-0001, ADR-0003, ADR-0004 and Section 13.2 tests 23–29 | The textbook supplies the type-checking framework. The exact numeric rules are project decisions. |
+| Explicit casts | SYN-004, TY-18, TR-029, DEC-020, DEC-021, GAP-016 | ADR-0002, ADR-0005, Section 13.2 tests 45 and 46, ACC-030 | Cast typing is a static contract. ADR-0005 defines the runtime value of each cast. |
 
 ### 17.2 Theoretical scope boundaries
 
@@ -1687,7 +1937,7 @@ A change to this specification is complete only when the author or reviewer has 
 | Review ID | Review condition | Evidence |
 | --- | --- | --- |
 | QA-001 | Every normative requirement has a unique identifier and an objective verification method. | Requirement tables and Section 13. |
-| QA-002 | Every numeric typing rule agrees with ADR-0001, ADR-0003, and ADR-0004. | Compare TR-001, TR-009–TR-013, TR-028, and DEC-016–DEC-018 against the ADR decisions and verification vectors. |
+| QA-002 | Every numeric typing rule agrees with ADR-0001, ADR-0002, ADR-0003, and ADR-0004. | Compare TR-001, TR-009–TR-013, TR-028, TR-029, and DEC-016–DEC-018 and DEC-020 against the ADR decisions and verification vectors. |
 | QA-003 | Observed implementation facts are distinguishable from specified behavior and proposed future work. | Status labels in Sections 1 and 4, GAP records, and OPEN records. |
 | QA-004 | Every interface identifies its required input state and failure behavior. | Sections 5.1.1 and 12. |
 | QA-005 | AST identity, type identity, symbol resolution, spans, conversions, and control-flow references satisfy the invariants in Section 10. | Structural and typed-AST validator tests. |
@@ -1696,11 +1946,17 @@ A change to this specification is complete only when the author or reviewer has 
 | QA-008 | No unsupported runtime or target-code behavior is implied by type checking or the Fully Typed AST. | Sections 1, 7, 12, and OPEN-001, OPEN-004, OPEN-005. |
 | QA-009 | Every remaining limitation is recorded rather than silently resolved. | Section 15.2. |
 | QA-010 | Any substantive change to established behavior is linked to an explicit design decision and its verification vectors. | Section 15.1 and the applicable ADR. |
+| QA-011 | Current numeric behavior agrees across this specification and ADR-0001, ADR-0003, and ADR-0004. Historical ADR examples and counts are clearly distinguished from current normative results. | Review TR-009 through TR-013 and TR-028, DEC-016 through DEC-018, OPEN-006, Section 13.2 tests 3 and 28 to 29, and the ADR consequence and verification tables. |
+| QA-012 | The traceability matrix uses current requirement ranges and connects newly added canonicalization, diagnostic, validator, and finalization requirements to their acceptance evidence. | Compare the entries in Section 17.1 with Sections 5, 8, 10, 11, 13, and 15.2. |
+| QA-013 | Comparison typing has one deterministic procedure for numeric and non-numeric operands, rejects unsupported comparisons, and does not imply runtime equality semantics that remain open. | Compare Section 8.4, TR-010, tests 19, 40, and 41 in Section 13.2, and OPEN-005. |
+| QA-014 | Every parser recovery path guarantees progress or exits and cannot pass a recovered Incomplete SurfaceProgram to semantic analysis. | Compare ERR-001, ERR-003, ERR-010, ERR-015, and Section 13.2 test 42. |
+| QA-015 | Fixed-array length boundaries, invalid positive overflow, and failure before canonical type insertion are covered by the required verification suite. | Compare TY-07, TR-026–TR-027, DEC-007, ACC-028, and Section 13.2 tests 6, 7, and 43. |
+| QA-016 | The specification distinguishes static array-index typing from undefined runtime bounds behavior and does not imply a compile-time bounds check. | Compare TR-019, test 44 in Section 13.2, ACC-029, and OPEN-008. |
 
 ### 17.4 Remaining limitations
 
 The document is a target contract, not evidence that all specified components exist. In particular, OPEN-004 records that the Fully Typed AST implementation and its consumer are not present in the inspected repository state. The specification does not establish that the tests in Section 13 have been implemented or pass.
 
-The execution semantics for overflow, division by zero, shift counts outside the operand width, floating-point literal rounding, and accepted non-numeric equality remain unresolved as listed in OPEN-001 and OPEN-005. Mixed flexible numeric operands remain governed by OPEN-006 and ADR-0004. No quantitative resource limits or performance acceptance thresholds have been approved.
+The execution semantics for overflow, division by zero, shift counts outside the operand width, floating-point literal rounding, accepted non-numeric equality, and out-of-range array indexing remain unresolved as listed in OPEN-001, OPEN-005, and OPEN-008. Mixed flexible numeric operands remain governed by OPEN-006 and ADR-0004. No quantitative resource limits or performance acceptance thresholds have been approved. Diagnostic line/column rendering and Unicode column conventions remain unspecified under OPEN-007; source byte spans are the normative location data.
 
 These limitations must be resolved in the relevant implementation or follow-up specification before the project claims behavior beyond the defined AST and static semantic contract.
