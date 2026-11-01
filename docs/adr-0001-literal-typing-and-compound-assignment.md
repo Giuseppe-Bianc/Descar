@@ -420,7 +420,8 @@ The Literals rows with a 64-bit boundary value follow the current lexer. The lex
 | `var m: u64 = 1 << n`, `n: u64` | left U64, Binary U64 |
 | `var m: u64 = (1 << n) \| (1 << k)` | Binary U64 |
 | `var u: u8 = ~0` | BitwiseNot over Literal U8(0), type U8 |
-| `var f: f64 = 7 / 2` | I64 division, then I64 to F64 conversion. Value 3.0 |
+| `var f: f64 = 7 / 2` | E2002 under ADR-0003. The division has type I64, and I64 is not assignable to F64 |
+| `var f: f64 = (7 as f64) / 2` | Left ExplicitCast I64 to F64, right Literal F64(2) by the peer rule, Binary F64. Value 3.5 |
 | `var f: f32 = 7 / 2` | E2002 |
 | `var f: f32 = 0.5 * 2.0` | E2002 |
 | `var v: i32[3] = {1, 2, 3}` | Array(I32,3) |
@@ -459,7 +460,8 @@ The Literals rows with a 64-bit boundary value follow the current lexer. The lex
 | `x += 2i16`, `x: i8` | E2002 |
 | `x += y`, `x: i64`, `y: i32` | Convert I32 to I64 |
 | `x += y`, `x: i32`, `y: i64` | E2002 |
-| `x += y`, `x: f32`, `y: i32` | Convert I32 to F32 |
+| `x += y`, `x: f32`, `y: i32` | E2002 under ADR-0003. I32 is not assignable to F32 |
+| `x += y as f32`, `x: f32`, `y: i32` | value ExplicitCast I32 to F32, no further Convert |
 | `x += y`, `x: f32`, `y: i64` | E2002 |
 | `x += y`, `x: i32`, `y: u16` | Convert U16 to I32 |
 | `x += y`, `x: i32`, `y: u32` | E2002 |
