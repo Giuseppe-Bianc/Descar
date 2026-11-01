@@ -377,6 +377,8 @@ The checker reports E2035 for `a`, E2035 for `b`, and E2002 for `c`. It returns 
 
 Types in the Result column are typed-tree types. A bare diagnostic code means the checker returns no Fully Typed AST.
 
+The Literals rows with a 64-bit boundary value follow the current lexer. The lexer parses an unsuffixed decimal integer as i64, so a spelling above 9223372036854775807 reports E0010 before the parser and the checker run. Those rows list E0010 from the lexer instead of a checker diagnostic. A value from 9223372036854775808 to 18446744073709551615 is written with the `u` suffix. The language has no I64 suffix, and the minimum I64 value has no literal spelling.
+
 ### Literals
 
 | Source | Result |
@@ -389,9 +391,18 @@ Types in the Result column are typed-tree types. A bare diagnostic code means th
 | `var a: u8 = 255` | Literal U8(255) |
 | `var a: u8 = 256` | E2035 |
 | `var a: u8 = -1` | E2035 |
-| `var a: i64 = -9223372036854775808` | one Literal I64 |
-| `var a: i64 = 9223372036854775808` | E2035 |
-| `var a: u64 = 18446744073709551615` | Literal U64 |
+| `var a: i64 = 9223372036854775807` | Literal I64(9223372036854775807) |
+| `var a: i64 = -9223372036854775807` | one Literal I64(-9223372036854775807) |
+| `var a: i64 = -9223372036854775807 - 1` | Binary I64 with Literal I64(-9223372036854775807) and Literal I64(1) |
+| `var a: i64 = -9223372036854775808` | E0010 from the lexer, at `9223372036854775808` |
+| `var a: i64 = 9223372036854775808` | E0010 from the lexer |
+| `var a: i64 = -9223372036854775809` | E0010 from the lexer, at `9223372036854775809` |
+| `var a: i64 = 9223372036854775808u` | E2002 |
+| `var a: u64 = 9223372036854775807` | Literal U64(9223372036854775807) |
+| `var a: u64 = 18446744073709551615` | E0010 from the lexer |
+| `var a: u64 = 18446744073709551615u` | Literal U64(18446744073709551615) |
+| `var a: u64 = 18446744073709551616` | E0010 from the lexer |
+| `var a: u64 = 18446744073709551616u` | E0010 from the lexer |
 | `var f: f32 = 1.5` | Literal F32(1.5) |
 | `var f: f32 = 1e38` | Literal F32 |
 | `var f: f32 = 1e39` | E2035 |
