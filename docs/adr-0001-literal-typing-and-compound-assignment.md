@@ -244,7 +244,7 @@ P2 is chosen. It keeps the Section 7.3 order, adds one precondition, and defines
 **Harder:**
 
 - The checker needs the flexible-expression predicate and a context parameter on every expression visit.
-- The lexer must record the suffix and must keep the magnitude of unsuffixed integers up to u64::MAX, so that `-9223372036854775808` can fold.
+- The lexer must record the suffix. It parses an unsuffixed decimal integer as i64 and reports E0010 above 9223372036854775807, so the minimum I64 value has no literal spelling and `-9223372036854775808` cannot fold. A value from 9223372036854775808 to 18446744073709551615 is written with the `u` suffix.
 
 **Migration, programs whose result changes:**
 
@@ -369,7 +369,7 @@ The checker reports E2035 for `a`, E2035 for `b`, and E2002 for `c`. It returns 
 16. Compound assignment with each vector in the Compound table below.
 23. The minimum, the maximum, and each value one outside the range, for all eight integer types, as initializers and as peer operands.
 24. F32 overflow, and integer exactness at 2^24 and 2^53 with the neighboring values.
-25. Negation folding: `-128` for I8, `-9223372036854775808` for I64, `-(128)` for I8, and a suffixed literal.
+25. Negation folding: `-128` for I8, `-9223372036854775807` for I64, `-(128)` for I8, and a suffixed literal. `-9223372036854775808` reports E0010 from the lexer, because the minimum I64 value has no literal spelling.
 26. The peer rule with the literal on either side, and with a flexible operator tree on one side.
 27. Context passing through array literals, nested array literals, call arguments, return values, and shifts with a non-literal count.
 
@@ -420,8 +420,8 @@ The Literals rows with a 64-bit boundary value follow the current lexer. The lex
 | `var m: u64 = 1 << n`, `n: u64` | left U64, Binary U64 |
 | `var m: u64 = (1 << n) \| (1 << k)` | Binary U64 |
 | `var u: u8 = ~0` | BitwiseNot over Literal U8(0), type U8 |
-| `var f: f64 = 7 / 2` | E2002 under ADR-0003. The division has type I64, and I64 is not assignable to F64 |
-| `var f: f64 = (7 as f64) / 2` | Left ExplicitCast I64 to F64, right Literal F64(2) by the peer rule, Binary F64. Value 3.5 |
+| `var f: f64 = 7 / 2` | E2002 under ADR-0003 and ADR-0004. The division has type I64, and I64 is not assignable to F64 |
+| `var f: f64 = (7 as f64) / 2` | Left ExplicitCast I64 to F64, right Literal F64(2) by the peer rule, Binary F64. This is the typed-tree result. The runtime value 3.5 is defined only if ADR-0005 is accepted |
 | `var f: f32 = 7 / 2` | E2002 |
 | `var f: f32 = 0.5 * 2.0` | E2002 |
 | `var v: i32[3] = {1, 2, 3}` | Array(I32,3) |
@@ -478,7 +478,7 @@ The Literals rows with a 64-bit boundary value follow the current lexer. The lex
 
 ## Action Items
 
-1. [ ] Lexer: record `width_suffix`. Confirm that the suffix set contains i64, u64 and f64, because a suffix is the only way to write a wide literal in a narrow context. Keep the magnitude of unsuffixed integers up to u64::MAX.
+1. [ ] Lexer: record `width_suffix`. Parse an unsuffixed decimal integer as i64 and report E0010 above 9223372036854775807. A value from 9223372036854775808 to 18446744073709551615 uses the `u` suffix. The language has no i64 suffix, so the minimum I64 value has no literal spelling.
 2. [ ] Surface AST: add `width_suffix` to N-SE-01.
 3. [ ] Checker: add the flexible-expression predicate, the context parameter, the peer rule, negation folding, E2035 and E2036.
 4. [ ] Checker: add the six TY-13 rows, the Promote precondition and the shift rule. Remove NumericPromotion.
