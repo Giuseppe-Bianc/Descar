@@ -1,6 +1,6 @@
 # ADR-0002: Explicit cast syntax and conversion rules
 
-**Status:** Accepted. ADR-0005 defines the runtime value of every cast that this ADR leaves open.  
+**Status:** Accepted. This ADR specifies parsing and front-end type checking only. ADR-0005 (Proposed) addresses the runtime value of the casts that this ADR leaves open.  
 **Date:** 2026-10-26  
 **Deciders:** Descar language owner  
 **Applies to:** Descar source syntax and numeric type checking  

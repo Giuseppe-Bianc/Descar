@@ -4,8 +4,8 @@
 **Date:** 2026-10-28
 **Deciders:** Descar language owner
 **Applies to:** Descar Fully Typed Abstract Syntax Tree Specification, and the lowering and execution specifications that consume it
-**Amends:** ADR-0002 (the paragraph that leaves runtime behavior unspecified), DEC-020, OPEN-001, Section 7.4, Section 8.5, Section 14.10, README language syntax
-**Numbering:** ADR-0002 stays unchanged except for its status line. This ADR completes it.
+**Amends:** DEC-020, OPEN-001, Section 7.4, Section 8.5, Section 14.10, README language syntax
+**Numbering:** ADR-0002 stays unchanged except for its status line, which links to this ADR. This ADR completes it and does not amend its text.
 
 ## Context
 
