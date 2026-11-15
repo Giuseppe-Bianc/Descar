@@ -13,9 +13,11 @@ categories = ["compilers"]
 workspace = true
 
 [dependencies]
-insta = { workspace = true }
 thiserror = { workspace = true }
 console = { workspace = true }
 regex = { workspace = true }
 logos = { workspace = true }
 tracing = { workspace = true }
+
+[dev-dependencies]
+insta = { workspace = true }
