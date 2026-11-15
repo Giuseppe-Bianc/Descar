@@ -1,0 +1,24 @@
+crates/descar-core/Cargo.toml
+  s_0dbe2d84e91c0c::t_30f75082bde9a9 21-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "67d22b2fc0975812742269cb61272097b9964144",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_0dbe2d84e91c0c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aed10efa-2262-4eef-a197-6b10aabde008",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
