@@ -6,6 +6,7 @@ pub mod expr;
 pub mod literal_value;
 pub mod parameter;
 pub mod stmt;
+pub mod type_syntax;
 pub mod unary_op;
 pub mod unary_op_side;
 
@@ -16,3 +17,4 @@ pub use expr::Expr;
 pub use literal_value::LiteralValue;
 pub use parameter::Parameter;
 pub use stmt::Stmt;
+pub use type_syntax::TypeSyntax;
