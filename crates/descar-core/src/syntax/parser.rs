@@ -568,11 +568,11 @@ impl<'a> JsavParser<'a> {
             TokenKind::StringLiteral(s) => Some(Expr::new_string_literal(s.to_string(), token.span)),
             TokenKind::CharLiteral(c) => Some(Expr::new_char_literal(c.to_string(), token.span)),
             // Unary operators
-            TokenKind::Minus => Some(self.parse_unary(UnaryOp::Negate, token)),
-            TokenKind::Not => Some(self.parse_unary(UnaryOp::Not, token)),
-            TokenKind::BitwiseNot => Some(self.parse_unary(UnaryOp::BitwiseNot, token)),
-            TokenKind::PlusPlus => Some(self.parse_unary(UnaryOp::Increment, token)),
-            TokenKind::MinusMinus => Some(self.parse_unary(UnaryOp::Decrement, token)),
+            TokenKind::Minus => Some(self.parse_unary(UnaryOp::Negate, &token)),
+            TokenKind::Not => Some(self.parse_unary(UnaryOp::Not, &token)),
+            TokenKind::BitwiseNot => Some(self.parse_unary(UnaryOp::BitwiseNot, &token)),
+            TokenKind::PlusPlus => Some(self.parse_unary(UnaryOp::Increment, &token)),
+            TokenKind::MinusMinus => Some(self.parse_unary(UnaryOp::Decrement, &token)),
             // Grouping
             TokenKind::OpenBrace => self.parse_array_literal(&token),
             TokenKind::OpenParen => self.parse_grouping(&token),
@@ -615,7 +615,7 @@ impl<'a> JsavParser<'a> {
             | TokenKind::Or
             | TokenKind::Xor
             | TokenKind::ShiftLeft
-            | TokenKind::ShiftRight => self.parse_binary(left, token),
+            | TokenKind::ShiftRight => self.parse_binary(left, &token),
 
             TokenKind::PlusPlus => {
                 let span = left.span().merge(&token.span);
@@ -702,7 +702,7 @@ impl<'a> JsavParser<'a> {
     }
 
     // Parsing operations
-    fn parse_unary(&mut self, op: UnaryOp, token: Token) -> Expr {
+    fn parse_unary(&mut self, op: UnaryOp, token: &Token) -> Expr {
         let rbp = Precedence::unary_binding_power(&token).right;
         let expr = self.parse_expr(rbp).unwrap_or_else(|| Expr::null_expr(token.span.clone()));
         Expr::Unary { op, side: UnaryOpSide::Prefix, span: token.span.merge(expr.span()), expr: Box::new(expr) }
@@ -730,7 +730,7 @@ impl<'a> JsavParser<'a> {
         }
     }
 
-    fn parse_binary(&mut self, left: Expr, token: Token) -> Option<Expr> {
+    fn parse_binary(&mut self, left: Expr, token: &Token) -> Option<Expr> {
         let op = match BinaryOp::get_op(&token) {
             Ok(op) => op,
             Err(e) => {
