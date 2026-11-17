@@ -129,7 +129,7 @@ fn parses_all_compound_assignment_operators() {
         assert_no_errors(&errors);
         assert!(
             matches!(
-                statements.as_slice(),
+                statements.declarations.as_slice(),
                 [Stmt::Expression { expr }]
                     if matches!(
                         expr.as_ref(),
@@ -377,7 +377,7 @@ fn binary_operators_are_left_associative() {
         assert_no_errors(&errors);
         assert!(
             matches!(
-                statements.as_slice(),
+                statements.declarations.as_slice(),
                 [Stmt::Expression { expr }]
                     if matches!(
                         expr.as_ref(),
@@ -401,7 +401,7 @@ fn assignment_operators_are_right_associative() {
         assert_no_errors(&errors);
         assert!(
             matches!(
-                statements.as_slice(),
+                statements.declarations.as_slice(),
                 [Stmt::Expression { expr }]
                     if matches!(
                         expr.as_ref(),
