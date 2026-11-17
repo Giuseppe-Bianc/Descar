@@ -496,19 +496,30 @@ impl TypeChecker {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
     /// Type-checks a binary expression and determines its resulting type.
     ///
-    /// Only non-mutating binary operators are handled here. Assignment
-    /// expressions are validated by `visit_assign`.
+    /// Assignment expressions use the same type rules through
+    /// `check_binary_operation`, without being represented as binary nodes.
     fn visit_binary_expr(&mut self, left: &Expr, op: BinaryOp, right: &Expr, span: &SourceSpan) -> Option<Type> {
         let left_type = self.visit_expr(left);
         let right_type = self.visit_expr(right);
 
-        let (Some(mut left_type), Some(mut right_type)) = (left_type, right_type) else {
+        let (Some(left_type), Some(right_type)) = (left_type, right_type) else {
             return None;
         };
 
+        self.check_binary_operation(op, left_type, right_type, span, left.span())
+    }
+
+    #[allow(clippy::too_many_lines)]
+    /// Applies binary operator type rules to already-resolved operand types.
+    ///
+    /// This is shared by binary expressions and compound assignments. It does
+    /// not traverse expressions or perform assignment-target mutability checks.
+    fn check_binary_operation(
+        &mut self, op: BinaryOp, mut left_type: Type, mut right_type: Type, span: &SourceSpan,
+        left_span: &SourceSpan,
+    ) -> Option<Type> {
         // Bitwise and shift operators require integer operands.
         if matches!(
             op,
@@ -620,7 +631,7 @@ impl TypeChecker {
                     self.type_error_with_code(
                         Some(ErrorCode::E2016),
                         format!("Arithmetic operation not supported for {left_type}"),
-                        left.span(),
+                        left_span,
                     );
                 }
                 left_type
@@ -636,7 +647,7 @@ impl TypeChecker {
                     self.type_error_with_code(
                         Some(ErrorCode::E2017),
                         format!("Logical operation requires bool, found {left_type}"),
-                        left.span(),
+                        left_span,
                     );
                 }
                 Type::Bool
@@ -884,35 +895,11 @@ impl TypeChecker {
         }
     }
 
-    /// Type-checks an assignment target and its assigned value.
+    /// Resolves an assignment target and verifies that it can be mutated.
     ///
-    /// Verifies that the target exists, is mutable, and accepts the value type.
-    /// Array-element assignments are validated through array access checking.
-    fn visit_assign(
-        &mut self, target: &Expr, op: AssignmentOp, value: &Expr, span: &SourceSpan,
-    ) -> Option<Type> {
-        if let Some(binary_op) = op.compound_binary_op() {
-            if !matches!(target, Expr::Variable { .. } | Expr::ArrayAccess { .. }) {
-                self.type_error_with_code(Some(ErrorCode::E1003), "Invalid assignment target", target.span());
-                return None;
-            }
-
-            if let Some(name) = Self::base_variable_name(target)
-                && let Some(var) = self.symbol_table.lookup_variable(name)
-                && !var.mutable
-            {
-                self.type_error_with_code(
-                    Some(ErrorCode::E2024),
-                    format!("Cannot assign to immutable variable '{name}'"),
-                    target.span(),
-                );
-                return None;
-            }
-
-            return self.visit_binary_expr(target, binary_op, value, span);
-        }
-
-        let target_type = match target {
+    /// Array-element targets are checked through array-access type resolution.
+    fn visit_assignment_target(&mut self, target: &Expr) -> Option<Type> {
+        match target {
             Expr::Variable { name, span } => {
                 if let Some(var) = self.symbol_table.lookup_variable(name) {
                     if var.mutable {
@@ -944,18 +931,35 @@ impl TypeChecker {
                 } else {
                     true
                 };
-                let array_access_type = self.visit_array_access(array, index, span);
-                if target_is_mutable { array_access_type } else { None }
+
+                let element_type = self.visit_array_access(array, index, span);
+                if target_is_mutable { element_type } else { None }
             }
             _ => {
                 self.type_error_with_code(Some(ErrorCode::E1003), "Invalid assignment target", target.span());
                 None
             }
-        };
+        }
+    }
+
+    /// Type-checks simple and compound assignment expressions.
+    ///
+    /// Target resolution and mutability validation are always assignment
+    /// responsibilities. Compound assignments then apply the corresponding
+    /// binary operation's type rules to the resolved target and value types.
+    fn visit_assign(
+        &mut self, target: &Expr, op: AssignmentOp, value: &Expr, span: &SourceSpan,
+    ) -> Option<Type> {
+        let target_type = self.visit_assignment_target(target);
         let value_type = self.visit_expr(value);
         let (Some(target_type), Some(value_type)) = (target_type, value_type) else {
             return None;
         };
+
+        if let Some(binary_op) = op.compound_binary_op() {
+            return self.check_binary_operation(binary_op, target_type, value_type, span, target.span());
+        }
+
         if !self.is_assignable(&value_type, &target_type) {
             let message = match target {
                 Expr::ArrayAccess { .. } => {
@@ -965,6 +969,7 @@ impl TypeChecker {
             };
             self.type_error_with_code(Some(ErrorCode::E2002), message, value.span());
         }
+
         Some(target_type)
     }
 
