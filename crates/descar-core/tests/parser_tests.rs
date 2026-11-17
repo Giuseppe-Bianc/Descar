@@ -3,7 +3,7 @@ use descar_core::{
     lex::lexer::{Lexer, lexer_tokenize_with_errors},
     syntax::{
         ast::{
-            ast_type::Type, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr, literal_value::LiteralValue,
+            ast_type::Type, assignment_op::AssignmentOp, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr, literal_value::LiteralValue,
             stmt::Stmt, unary_op::UnaryOp, unary_op_side::UnaryOpSide,
         },
         parser::JsavParser,
@@ -86,18 +86,17 @@ fn parses_assignment_calls_and_array_access() {
 #[test]
 fn parses_all_compound_assignment_operators() {
     let cases = [
-        ("x += 1", BinaryOp::AddEqual),
-        ("x -= 1", BinaryOp::SubtractEqual),
-        ("x *= 1", BinaryOp::MultiplyEqual),
-        ("x /= 1", BinaryOp::DivideEqual),
-        ("x %= 1", BinaryOp::ModuloEqual),
-        ("x &= 1", BinaryOp::BitwiseAndEqual),
-        ("x |= 1", BinaryOp::BitwiseOrEqual),
-        ("x ^= 1", BinaryOp::BitwiseXorEqual),
-        ("x <<= 1", BinaryOp::ShiftLeftEqual),
-        ("x >>= 1", BinaryOp::ShiftRightEqual),
+        ("x += 1", AssignmentOp::AddAssign),
+        ("x -= 1", AssignmentOp::SubtractAssign),
+        ("x *= 1", AssignmentOp::MultiplyAssign),
+        ("x /= 1", AssignmentOp::DivideAssign),
+        ("x %= 1", AssignmentOp::ModuloAssign),
+        ("x &= 1", AssignmentOp::BitwiseAndAssign),
+        ("x |= 1", AssignmentOp::BitwiseOrAssign),
+        ("x ^= 1", AssignmentOp::BitwiseXorAssign),
+        ("x <<= 1", AssignmentOp::ShiftLeftAssign),
+        ("x >>= 1", AssignmentOp::ShiftRightAssign),
     ];
-
     for (input, expected_op) in cases {
         let (statements, errors) = parse(input);
         assert_no_errors(&errors);
@@ -107,10 +106,10 @@ fn parses_all_compound_assignment_operators() {
                 [Stmt::Expression { expr }]
                     if matches!(
                         expr.as_ref(),
-                        Expr::Binary { op, left, right, .. }
+                        Expr::Assign { op, target, value, .. }
                             if *op == expected_op
-                                && matches!(left.as_ref(), Expr::Variable { name, .. } if name == "x")
-                                && matches!(right.as_ref(), Expr::Literal { .. })
+                                && matches!(target.as_ref(), Expr::Variable { name, .. } if name == "x")
+                                && matches!(value.as_ref(), Expr::Literal { .. })
                     )
             ),
             "unexpected AST for {input:?}: {statements:#?}"
@@ -136,11 +135,11 @@ fn parses_compound_assignment_to_array_element() {
         [Stmt::Expression { expr }]
             if matches!(
                 expr.as_ref(),
-                Expr::Binary {
-                    op: BinaryOp::AddEqual,
-                    left,
+                Expr::Assign {
+                    op: AssignmentOp::AddAssign,
+                    target,
                     ..
-                } if matches!(left.as_ref(), Expr::ArrayAccess { .. })
+                } if matches!(target.as_ref(), Expr::ArrayAccess { .. })
             )
     ));
 }
