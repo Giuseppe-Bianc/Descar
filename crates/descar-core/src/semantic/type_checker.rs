@@ -36,6 +36,7 @@ use crate::error::compile_error::CompileError;
 use crate::error::error_code::ErrorCode;
 use crate::location::source_span::SourceSpan;
 use crate::semantic::symbol_table::{FunctionSymbol, ScopeKind, Symbol, SymbolTable, VariableSymbol};
+use crate::syntax::ast::assignment_op::AssignmentOp;
 use crate::syntax::ast::binary_op::BinaryOp;
 use crate::syntax::ast::else_branch::ElseBranch;
 use crate::syntax::ast::stmt::VarBinding;
@@ -459,7 +460,7 @@ impl TypeChecker {
             Expr::Literal { value, span } => self.visit_literal(value, span),
             Expr::ArrayLiteral { elements, span } => self.visit_array_literal(elements, span),
             Expr::Variable { name, span } => self.visit_variable(name, span),
-            Expr::Assign { target, value, span } => self.visit_assign(target, value, span),
+            Expr::Assign { target, op, value, span } => self.visit_assign(target, *op, value, span),
             Expr::Call { callee, arguments, span } => self.visit_call(callee, arguments, span),
             Expr::ArrayAccess { array, index, span } => self.visit_array_access(array, index, span),
         }
@@ -498,62 +499,24 @@ impl TypeChecker {
     #[allow(clippy::too_many_lines)]
     /// Type-checks a binary expression and determines its resulting type.
     ///
-    /// Operand types are validated for the selected operator. Numeric and
-    /// bitwise operands are promoted when supported, compound assignments also
-    /// require a mutable target.
+    /// Only non-mutating binary operators are handled here. Assignment
+    /// expressions are validated by `visit_assign`.
     fn visit_binary_expr(&mut self, left: &Expr, op: BinaryOp, right: &Expr, span: &SourceSpan) -> Option<Type> {
         let left_type = self.visit_expr(left);
-
-        let is_compound = matches!(
-            op,
-            BinaryOp::AddEqual
-                | BinaryOp::SubtractEqual
-                | BinaryOp::MultiplyEqual
-                | BinaryOp::DivideEqual
-                | BinaryOp::ModuloEqual
-                | BinaryOp::BitwiseAndEqual
-                | BinaryOp::BitwiseOrEqual
-                | BinaryOp::BitwiseXorEqual
-                | BinaryOp::ShiftLeftEqual
-                | BinaryOp::ShiftRightEqual
-        );
-
-        if is_compound
-            && let Some(name) = Self::base_variable_name(left)
-            && let Some(var) = self.symbol_table.lookup_variable(name)
-            && !var.mutable
-        {
-            self.type_error_with_code(
-                Some(ErrorCode::E2024),
-                format!("Cannot assign to immutable variable '{name}'"),
-                left.span(),
-            );
-            return None;
-        }
-
         let right_type = self.visit_expr(right);
 
         let (Some(mut left_type), Some(mut right_type)) = (left_type, right_type) else {
             return None;
         };
 
-        /*
-         * Bitwise and shift operators have their own compatibility rules.
-         * They require integer operands and therefore must be handled before
-         * the generic compatibility check below.
-         */
+        // Bitwise and shift operators require integer operands.
         if matches!(
             op,
             BinaryOp::BitwiseAnd
-                | BinaryOp::BitwiseAndEqual
                 | BinaryOp::BitwiseOr
-                | BinaryOp::BitwiseOrEqual
                 | BinaryOp::BitwiseXor
-                | BinaryOp::BitwiseXorEqual
                 | BinaryOp::ShiftLeft
-                | BinaryOp::ShiftLeftEqual
                 | BinaryOp::ShiftRight
-                | BinaryOp::ShiftRightEqual
         ) {
             if Self::is_integer_type(&left_type) && Self::is_integer_type(&right_type) {
                 let common_type = self.promote_numeric_types(&left_type, &right_type);
@@ -571,22 +534,14 @@ impl TypeChecker {
             }
         }
 
-        /*
-         * Arithmetic and comparison operators use numeric promotion when both
-         * operands are numeric.
-         */
+        // Arithmetic and comparison operators promote compatible numeric operands.
         if matches!(
             op,
             BinaryOp::Add
-                | BinaryOp::AddEqual
                 | BinaryOp::Subtract
-                | BinaryOp::SubtractEqual
                 | BinaryOp::Multiply
-                | BinaryOp::MultiplyEqual
                 | BinaryOp::Divide
-                | BinaryOp::DivideEqual
                 | BinaryOp::Modulo
-                | BinaryOp::ModuloEqual
                 | BinaryOp::Equal
                 | BinaryOp::NotEqual
                 | BinaryOp::Less
@@ -601,14 +556,6 @@ impl TypeChecker {
             right_type = common_type;
         }
 
-        /*
-         * At this point bitwise operators have already been completely
-         * validated above. The compatibility check therefore only applies
-         * to logical, arithmetic, and comparison operators.
-         *
-         * There is intentionally no fallback `_ => E2015` here because all
-         * currently defined BinaryOp variants are explicitly classified.
-         */
         let compatibility_error = match op {
             BinaryOp::And | BinaryOp::Or => {
                 if self.are_compatible(&left_type, &right_type) {
@@ -622,17 +569,11 @@ impl TypeChecker {
                     ))
                 }
             }
-
             BinaryOp::Add
-            | BinaryOp::AddEqual
             | BinaryOp::Subtract
-            | BinaryOp::SubtractEqual
             | BinaryOp::Multiply
-            | BinaryOp::MultiplyEqual
             | BinaryOp::Divide
-            | BinaryOp::DivideEqual
-            | BinaryOp::Modulo
-            | BinaryOp::ModuloEqual => {
+            | BinaryOp::Modulo => {
                 if self.are_compatible(&left_type, &right_type) {
                     None
                 } else {
@@ -644,7 +585,6 @@ impl TypeChecker {
                     ))
                 }
             }
-
             BinaryOp::Equal
             | BinaryOp::NotEqual
             | BinaryOp::Less
@@ -662,17 +602,11 @@ impl TypeChecker {
                     ))
                 }
             }
-
             BinaryOp::BitwiseAnd
-            | BinaryOp::BitwiseAndEqual
             | BinaryOp::BitwiseOr
-            | BinaryOp::BitwiseOrEqual
             | BinaryOp::BitwiseXor
-            | BinaryOp::BitwiseXorEqual
             | BinaryOp::ShiftLeft
-            | BinaryOp::ShiftLeftEqual
-            | BinaryOp::ShiftRight
-            | BinaryOp::ShiftRightEqual => None,
+            | BinaryOp::ShiftRight => None,
         };
 
         if let Some((code, message)) = compatibility_error {
@@ -681,16 +615,7 @@ impl TypeChecker {
         }
 
         Some(match op {
-            BinaryOp::Add
-            | BinaryOp::AddEqual
-            | BinaryOp::Subtract
-            | BinaryOp::SubtractEqual
-            | BinaryOp::Multiply
-            | BinaryOp::MultiplyEqual
-            | BinaryOp::Divide
-            | BinaryOp::DivideEqual
-            | BinaryOp::Modulo
-            | BinaryOp::ModuloEqual => {
+            BinaryOp::Add | BinaryOp::Subtract | BinaryOp::Multiply | BinaryOp::Divide | BinaryOp::Modulo => {
                 if !Self::is_numeric(&left_type) {
                     self.type_error_with_code(
                         Some(ErrorCode::E2016),
@@ -700,14 +625,12 @@ impl TypeChecker {
                 }
                 left_type
             }
-
             BinaryOp::Equal
             | BinaryOp::NotEqual
             | BinaryOp::Less
             | BinaryOp::LessEqual
             | BinaryOp::Greater
             | BinaryOp::GreaterEqual => Type::Bool,
-
             BinaryOp::And | BinaryOp::Or => {
                 if left_type != Type::Bool {
                     self.type_error_with_code(
@@ -718,17 +641,11 @@ impl TypeChecker {
                 }
                 Type::Bool
             }
-
             BinaryOp::BitwiseAnd
-            | BinaryOp::BitwiseAndEqual
             | BinaryOp::BitwiseOr
-            | BinaryOp::BitwiseOrEqual
             | BinaryOp::BitwiseXor
-            | BinaryOp::BitwiseXorEqual
             | BinaryOp::ShiftLeft
-            | BinaryOp::ShiftLeftEqual
-            | BinaryOp::ShiftRight
-            | BinaryOp::ShiftRightEqual => left_type,
+            | BinaryOp::ShiftRight => left_type,
         })
     }
 
@@ -971,7 +888,30 @@ impl TypeChecker {
     ///
     /// Verifies that the target exists, is mutable, and accepts the value type.
     /// Array-element assignments are validated through array access checking.
-    fn visit_assign(&mut self, target: &Expr, value: &Expr, _span: &SourceSpan) -> Option<Type> {
+    fn visit_assign(
+        &mut self, target: &Expr, op: AssignmentOp, value: &Expr, span: &SourceSpan,
+    ) -> Option<Type> {
+        if let Some(binary_op) = op.compound_binary_op() {
+            if !matches!(target, Expr::Variable { .. } | Expr::ArrayAccess { .. }) {
+                self.type_error_with_code(Some(ErrorCode::E1003), "Invalid assignment target", target.span());
+                return None;
+            }
+
+            if let Some(name) = Self::base_variable_name(target)
+                && let Some(var) = self.symbol_table.lookup_variable(name)
+                && !var.mutable
+            {
+                self.type_error_with_code(
+                    Some(ErrorCode::E2024),
+                    format!("Cannot assign to immutable variable '{name}'"),
+                    target.span(),
+                );
+                return None;
+            }
+
+            return self.visit_binary_expr(target, binary_op, value, span);
+        }
+
         let target_type = match target {
             Expr::Variable { name, span } => {
                 if let Some(var) = self.symbol_table.lookup_variable(name) {
@@ -1017,7 +957,6 @@ impl TypeChecker {
             return None;
         };
         if !self.is_assignable(&value_type, &target_type) {
-            // Create specific error message for array elements
             let message = match target {
                 Expr::ArrayAccess { .. } => {
                     format!("Cannot assign {value_type} to array element of type {target_type}")
@@ -1029,7 +968,6 @@ impl TypeChecker {
         Some(target_type)
     }
 
-    #[allow(clippy::manual_let_else)]
     /// Type-checks a function call and validates its arguments.
     ///
     /// The callee must resolve to a function. The argument count and each
