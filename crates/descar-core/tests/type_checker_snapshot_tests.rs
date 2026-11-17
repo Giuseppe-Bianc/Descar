@@ -7,13 +7,44 @@ use descar_core::tokens::number::Number;
 use descar_core::utils::dummy_span;
 use insta::assert_debug_snapshot;
 
-// Test helper
-fn typecheck_with(ast: &str, mut checker: TypeChecker) -> Vec<CompileError> {
-    let mut lexer = Lexer::new("test.vn", ast);
-    let (tokens, _lex_errors) = lexer_tokenize_with_errors(&mut lexer);
+// Parse a source string and retain diagnostics so invalid test setup cannot
+// silently turn a type-checking test into an empty compilation unit.
+fn parse_source(source: &str) -> (descar_core::syntax::ast::CompilationUnit, Vec<CompileError>) {
+    let mut lexer = Lexer::new("test.vn", source);
+    let (tokens, lex_errors) = lexer_tokenize_with_errors(&mut lexer);
+    assert!(lex_errors.is_empty(), "unexpected lexer errors: {lex_errors:#?}");
+
     let parser = JsavParser::new(&tokens);
-    let (expr, _errors) = parser.parse();
-    checker.check(&expr)
+    parser.parse()
+}
+
+fn typecheck_with(ast: &str, mut checker: TypeChecker) -> Vec<CompileError> {
+    let (mut unit, mut parse_errors) = parse_source(ast);
+
+    if !parse_errors.is_empty() {
+        // Function declarations remain top-level. Only their trailing call
+        // expression belongs in main.
+        let source = if ast.starts_with("fun ") {
+            if let Some(function_end) = ast.find("}\n") {
+                let (declarations, statements) = ast.split_at(function_end + 2);
+                format!("{declarations}main {{\\n{statements}\\n}}")
+            } else {
+                format!("main {{\\n{ast}\\n}}")
+            }
+        } else {
+            // These tests exercise statement-level type checking. The parser
+            // now correctly requires executable statements to be in main.
+            format!("main {{\\n{ast}\\n}}")
+        };
+
+        (unit, parse_errors) = parse_source(&source);
+    }
+
+    assert!(
+        parse_errors.is_empty(),
+        "unexpected parser errors while setting up type-checker test: {parse_errors:#?}"
+    );
+    checker.check(&unit)
 }
 
 fn typecheck(ast: &str) -> Vec<CompileError> {
