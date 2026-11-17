@@ -3,6 +3,7 @@ use crate::error::compile_error::CompileError;
 use crate::error::error_code::ErrorCode;
 use crate::location::source_span::SourceSpan;
 use crate::syntax::ast::assignment_op::AssignmentOp;
+use crate::syntax::ast::compilation_unit::CompilationUnit;
 use crate::syntax::ast::binary_op::BinaryOp;
 use crate::syntax::ast::else_branch::ElseBranch;
 use crate::syntax::ast::expr::Expr;
@@ -22,6 +23,7 @@ pub struct JsavParser<'a> {
     current: usize,
     errors: Vec<CompileError>,
     recursion_depth: usize,
+    main_declared: bool,
 }
 
 impl<'a> JsavParser<'a> {
@@ -56,31 +58,78 @@ impl<'a> JsavParser<'a> {
 
     #[must_use]
     pub fn new(tokens: &'a [Token]) -> Self {
-        Self { tokens, current: 0, errors: Vec::with_capacity(8), recursion_depth: 0 }
+        Self { tokens, current: 0, errors: Vec::with_capacity(8), recursion_depth: 0, main_declared: false }
     }
 
     #[must_use]
-    pub fn parse(mut self) -> (Vec<Stmt>, Vec<CompileError>) {
-        let mut statements = Vec::with_capacity(self.tokens.len() / 4);
+    pub fn parse(mut self) -> (CompilationUnit, Vec<CompileError>) {
+        let mut declarations = Vec::with_capacity(self.tokens.len() / 4);
         while !self.is_at_end() {
-            if let Some(stmt) = self.parse_stmt() {
-                statements.push(stmt);
-            } else {
-                // Error recovery: skip the problematic token
+            let Some(token) = self.peek().cloned() else { break };
+            let declaration = match token.kind {
+                TokenKind::KeywordFun => self.parse_function(),
+                TokenKind::KeywordMain => {
+                    let parsed = self.parse_main_function();
+                    if self.main_declared {
+                        self.syntax_error(
+                            "A compilation unit can contain only one main declaration",
+                            &token,
+                            Some("Remove the duplicate main declaration"),
+                            Some(ErrorCode::E1004),
+                        );
+                        None
+                    } else {
+                        self.main_declared = parsed.is_some();
+                        parsed
+                    }
+                }
+                TokenKind::KeywordVar | TokenKind::KeywordConst => self.parse_var_declaration(),
+                _ => {
+                    self.syntax_error(
+                        "Expected a top-level declaration",
+                        &token,
+                        Some("Only global variables, functions, and main are allowed at compilation-unit level"),
+                        Some(ErrorCode::E1004),
+                    );
+                    self.synchronize_top_level();
+                    None
+                }
+            };
+            if let Some(declaration) = declaration {
+                declarations.push(declaration);
+            } else if !self.is_at_end() && self.peek().is_some_and(|next| next.span == token.span) {
                 self.advance();
             }
         }
-        statements.shrink_to_fit();
+        declarations.shrink_to_fit();
         self.errors.shrink_to_fit();
-        (statements, self.errors)
+        (CompilationUnit::new(declarations), self.errors)
+    }
+
+    /// Skips invalid top-level input until the next declaration starter.
+    fn synchronize_top_level(&mut self) {
+        while let Some(token) = self.peek() {
+            if matches!(token.kind, TokenKind::KeywordFun | TokenKind::KeywordMain | TokenKind::KeywordVar | TokenKind::KeywordConst) {
+                break;
+            }
+            self.advance();
+        }
     }
 
     #[inline]
     fn parse_stmt(&mut self) -> Option<Stmt> {
         let token = self.peek()?;
         match token.kind {
-            TokenKind::KeywordFun => self.parse_function(),
-            TokenKind::KeywordMain => self.parse_main_function(),
+            TokenKind::KeywordFun | TokenKind::KeywordMain => {
+                let token = self.advance()?.clone();
+                self.syntax_error(
+                    "Nested function and main declarations are not allowed",
+                    &token,
+                    Some("Move this declaration to compilation-unit level"),
+                    Some(ErrorCode::E1004),
+                );
+                None
+            }
             TokenKind::KeywordIf => self.parse_if(),
             TokenKind::KeywordVar | TokenKind::KeywordConst => self.parse_var_declaration(),
             TokenKind::KeywordReturn => self.parse_return(),
