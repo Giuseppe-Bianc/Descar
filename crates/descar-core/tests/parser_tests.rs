@@ -524,21 +524,23 @@ fn expression_spans_cover_all_operands_and_operators() {
     let Stmt::Expression { expr } = &statements[0] else { panic!("expected expression statement") };
     let Expr::Binary { left, right, span, .. } = expr.as_ref() else { panic!("expected outer binary expression") };
 
-    assert_eq!(span.start().offset(), 0);
-    assert_eq!(span.end().offset(), 9);
-    assert_eq!(left.span().start().offset(), 0);
-    assert_eq!(left.span().end().offset(), 1);
-    assert_eq!(right.span().start().offset(), 4);
-    assert_eq!(right.span().end().offset(), 9);
+    // The test helper parses statement fragments inside "main { ... }".
+    const WRAPPER_PREFIX: usize = "main { ".len();
+    assert_eq!(span.start().offset(), WRAPPER_PREFIX);
+    assert_eq!(span.end().offset(), WRAPPER_PREFIX + 9);
+    assert_eq!(left.span().start().offset(), WRAPPER_PREFIX);
+    assert_eq!(left.span().end().offset(), WRAPPER_PREFIX + 1);
+    assert_eq!(right.span().start().offset(), WRAPPER_PREFIX + 4);
+    assert_eq!(right.span().end().offset(), WRAPPER_PREFIX + 9);
 
     let (statements, errors) = parse("!ready");
     assert_no_errors(&errors);
     let Stmt::Expression { expr } = &statements[0] else { panic!("expected unary expression statement") };
     let Expr::Unary { expr: operand, span, .. } = expr.as_ref() else { panic!("expected prefix unary expression") };
-    assert_eq!(span.start().offset(), 0);
-    assert_eq!(span.end().offset(), 6);
-    assert_eq!(operand.span().start().offset(), 1);
-    assert_eq!(operand.span().end().offset(), 6);
+    assert_eq!(span.start().offset(), WRAPPER_PREFIX);
+    assert_eq!(span.end().offset(), WRAPPER_PREFIX + 6);
+    assert_eq!(operand.span().start().offset(), WRAPPER_PREFIX + 1);
+    assert_eq!(operand.span().end().offset(), WRAPPER_PREFIX + 6);
 }
 
 #[test]
@@ -565,18 +567,19 @@ fn call_and_array_access_spans_include_their_base_expression() {
     assert_no_errors(&errors);
     let Stmt::Expression { expr } = &statements[0] else { panic!("expected call expression statement") };
     let Expr::Call { callee, arguments, span } = expr.as_ref() else { panic!("expected call expression") };
-    assert_eq!(span.start().offset(), 0);
-    assert_eq!(span.end().offset(), 15);
-    assert_eq!(callee.span().start().offset(), 0);
-    assert_eq!(callee.span().end().offset(), 5);
+    const WRAPPER_PREFIX: usize = "main { ".len();
+    assert_eq!(span.start().offset(), WRAPPER_PREFIX);
+    assert_eq!(span.end().offset(), WRAPPER_PREFIX + 15);
+    assert_eq!(callee.span().start().offset(), WRAPPER_PREFIX);
+    assert_eq!(callee.span().end().offset(), WRAPPER_PREFIX + 5);
 
     let Expr::ArrayAccess { array, span: access_span, .. } = &arguments[0] else {
         panic!("expected array access argument")
     };
-    assert_eq!(access_span.start().offset(), 6);
-    assert_eq!(access_span.end().offset(), 14);
-    assert_eq!(array.span().start().offset(), 6);
-    assert_eq!(array.span().end().offset(), 11);
+    assert_eq!(access_span.start().offset(), WRAPPER_PREFIX + 6);
+    assert_eq!(access_span.end().offset(), WRAPPER_PREFIX + 14);
+    assert_eq!(array.span().start().offset(), WRAPPER_PREFIX + 6);
+    assert_eq!(array.span().end().offset(), WRAPPER_PREFIX + 11);
 }
 
 #[test]
