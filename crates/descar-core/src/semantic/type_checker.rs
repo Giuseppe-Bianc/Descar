@@ -1345,7 +1345,7 @@ mod tests {
         let statements = [Stmt::Function {
             name: "for_return".into(),
             parameters: vec![],
-            return_type: Type::I64,
+            return_type: TypeSyntax::I64,
             body: Box::new(Stmt::For {
                 initializer: None,
                 condition: Some(Expr::new_bool_literal(true, span.clone())),
@@ -1429,7 +1429,7 @@ mod tests {
             let statements = [
                 Stmt::VarDeclaration {
                     bindings: vec![VarBinding { name: "value".into(), initializer: Some(number(span.clone())) }],
-                    type_annotation: Type::I64,
+                    type_annotation: TypeSyntax::I64,
                     is_mutable: true,
                     span: span.clone(),
                 },
@@ -1468,7 +1468,7 @@ mod tests {
             let statements = [
                 Stmt::VarDeclaration {
                     bindings: vec![VarBinding { name: "value".into(), initializer: Some(number(span.clone())) }],
-                    type_annotation: Type::I64,
+                    type_annotation: TypeSyntax::I64,
                     is_mutable: false,
                     span: span.clone(),
                 },
@@ -1499,7 +1499,7 @@ mod tests {
                 name: "value".into(),
                 initializer: Some(Expr::new_number_literal(Number::I8(1), span.clone())),
             }],
-            type_annotation: Type::I8,
+            type_annotation: TypeSyntax::I8,
             is_mutable: true,
             span: span.clone(),
         }];
@@ -1534,7 +1534,7 @@ mod tests {
                     name: "flag".into(),
                     initializer: Some(Expr::new_bool_literal(true, span.clone())),
                 }],
-                type_annotation: Type::Bool,
+                type_annotation: TypeSyntax::Bool,
                 is_mutable: true,
                 span: span.clone(),
             },
