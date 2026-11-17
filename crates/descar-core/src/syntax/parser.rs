@@ -369,7 +369,8 @@ impl<'a> JsavParser<'a> {
 
         let mut variables = Vec::new();
         while let Some(name) = self.consume_identifier() {
-            variables.push(name);
+            let name_span = self.previous().map_or_else(|| start_token.span.clone(), |token| token.span.clone());
+            variables.push((name, name_span));
             if !self.match_token(&TokenKind::Comma) {
                 break;
             }
@@ -423,7 +424,10 @@ impl<'a> JsavParser<'a> {
         let bindings = variables
             .into_iter()
             .zip(initializers.into_iter().map(Some).chain(std::iter::repeat(None)))
-            .map(|(name, initializer)| VarBinding { name: name.to_string(), initializer })
+            .map(|((name, name_span), initializer)| {
+                let span = initializer.as_ref().map_or_else(|| name_span.clone(), |expr| name_span.merge(expr.span()));
+                VarBinding { name: name.to_string(), initializer, span }
+            })
             .collect();
 
         Some(Stmt::VarDeclaration {
