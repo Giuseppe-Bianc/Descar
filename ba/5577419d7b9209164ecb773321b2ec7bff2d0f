@@ -1,0 +1,32 @@
+crates/descar-core/src/semantic/type_checker.rs
+  h_361662506da91f 975
+crates/descar-core/src/printers/ast_printer.rs
+  h_361662506da91f 78
+crates/descar-core/tests/ast_printer_snapshot.rs
+  s_6ae50175a31a75::t_c7685ff16015f2 8
+crates/descar-core/tests/ast_printer_test.rs
+  s_6ae50175a31a75::t_934d36ba549b11 9
+crates/descar-core/tests/parser_tests.rs
+  s_6ae50175a31a75::t_df5de980c15be1 6-7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "ba5577419d7b9209164ecb773321b2ec7bff2d0f",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_6ae50175a31a75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70d3af98-5b5d-41ba-9ae6-e35dcf4ff3a3",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
