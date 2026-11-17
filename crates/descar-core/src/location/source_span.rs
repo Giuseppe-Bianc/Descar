@@ -209,3 +209,50 @@ pub fn truncate_path(path: &Path, depth: usize) -> String {
 
     truncated.display().to_string()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::SourceSpan;
+    use crate::location::source_location::SourceLocation;
+    use std::sync::Arc;
+
+    fn span(file: &str, start: usize, end: usize) -> SourceSpan {
+        SourceSpan::new(
+            Arc::from(file),
+            SourceLocation::new(1, start + 1, start, start, start, start),
+            SourceLocation::new(1, end + 1, end, end, end, end),
+        )
+    }
+
+    #[test]
+    fn merge_preserves_complete_bounds_and_file() {
+        let left = span("main.dr", 2, 5);
+        let right = span("main.dr", 8, 12);
+        let merged = left.merge(&right);
+
+        assert_eq!(merged.file_path(), "main.dr");
+        assert_eq!(merged.start().offset(), 2);
+        assert_eq!(merged.end().offset(), 12);
+        assert!(merged.is_valid());
+    }
+
+    #[test]
+    fn spans_from_different_files_do_not_overlap() {
+        let first = span("first.dr", 0, 4);
+        let second = span("second.dr", 1, 3);
+
+        assert!(!first.overlaps(&second));
+    }
+
+    #[test]
+    #[should_panic(expected = "cannot merge spans from different source files")]
+    fn merging_spans_from_different_files_is_rejected() {
+        span("first.dr", 0, 4).merge(&span("second.dr", 1, 3));
+    }
+
+    #[test]
+    fn reversed_offsets_are_invalid() {
+        let reversed = span("main.dr", 8, 2);
+        assert!(!reversed.is_valid());
+    }
+}
