@@ -91,6 +91,12 @@ impl SourceSpan {
         self.end.offset().saturating_sub(self.start.offset())
     }
 
+    /// Indicates whether the span has ordered, non-reversed byte offsets.
+    #[must_use]
+    pub const fn is_valid(&self) -> bool {
+        self.start.offset() <= self.end.offset()
+    }
+
     /// Indicates whether the span has zero length (i.e. `start == end`).
     #[must_use]
     pub const fn is_empty(&self) -> bool {
@@ -112,23 +118,29 @@ impl SourceSpan {
     }
 
     /// Indicates whether two spans share at least one character, i.e.
-    /// whether their `[start, end)` intervals intersect.
+    /// whether their `[start, end)` intervals intersect. Spans from different
+    /// source files never overlap.
     ///
     /// Two adjacent spans (e.g. `[0, 3)` and `[3, 5)`) are not considered
     /// overlapping.
     #[must_use]
     pub const fn overlaps(&self, other: &Self) -> bool {
-        self.start.offset() < other.end.offset() && other.start.offset() < self.end.offset()
+        self.file_path == other.file_path
+            && self.start.offset() < other.end.offset()
+            && other.start.offset() < self.end.offset()
     }
 
     /// Returns the smallest span that contains both spans (`self` and
     /// `other`), by taking the minimum of the start positions and the
     /// maximum of the end positions.
     ///
-    /// The resulting `file_path` is that of `self`: it is assumed that both
-    /// spans belong to the same file.
+    /// Both spans must belong to the same file. Their offsets are compared
+    /// only after this invariant has been checked.
     #[must_use]
     pub fn merge(&self, other: &Self) -> Self {
+        assert_eq!(self.file_path, other.file_path, "cannot merge spans from different source files");
+        assert!(self.is_valid() && other.is_valid(), "cannot merge invalid source spans");
+
         let merged_start = if self.start.offset() <= other.start.offset() { self.start } else { other.start };
         let merged_end = if self.end.offset() >= other.end.offset() { self.end } else { other.end };
 
