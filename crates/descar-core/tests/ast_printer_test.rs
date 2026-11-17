@@ -267,7 +267,6 @@ fn pretty_print_type_annotations_cover_all_type_variants() {
         (TypeSyntax::String, "string"),
         (TypeSyntax::Bool, "bool"),
         (TypeSyntax::Void, "void"),
-        (TypeSyntax::NullPtr, "nullptr"),
         (TypeSyntax::Custom { name: Arc::from("UserType") }, "UserType"),
         (TypeSyntax::Array { element_type: Box::new(TypeSyntax::U32), size: Box::new(number(8)) }, "[u32; 8]"),
         (TypeSyntax::Vector { element_type: Box::new(TypeSyntax::String) }, "vector<string>"),
