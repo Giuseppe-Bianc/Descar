@@ -1294,6 +1294,30 @@ mod tests {
     }
 
     #[test]
+    fn resolves_nested_type_syntax_into_semantic_types() {
+        let span = SourceSpan::default();
+        let size = number(span.clone());
+        let syntax = TypeSyntax::Array {
+            element_type: Box::new(TypeSyntax::Vector {
+                element_type: Box::new(TypeSyntax::Custom { name: Arc::from("Record") }),
+            }),
+            size: Box::new(size.clone()),
+        };
+
+        let resolved = TypeChecker::resolve_type_syntax(&syntax);
+
+        assert_eq!(
+            resolved,
+            Type::Array {
+                element_type: Box::new(Type::Vector {
+                    element_type: Box::new(Type::Custom { name: Arc::from("Record") }),
+                }),
+                size: Box::new(size),
+            }
+        );
+    }
+
+    #[test]
     fn function_return_inside_while_body_counts_as_return() {
         let span = SourceSpan::default();
         let statements = [Stmt::Function {
