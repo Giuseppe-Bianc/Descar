@@ -536,3 +536,23 @@ fn variable_binding_spans_cover_names_and_initializers() {
     assert_eq!(bindings[1].span.start().offset(), second_start);
     assert_eq!(bindings[1].span.end().offset(), second_end);
 }
+
+#[test]
+fn call_and_array_access_spans_include_their_base_expression() {
+    let (statements, errors) = parse("print(items[1])");
+    assert_no_errors(&errors);
+    let Stmt::Expression { expr } = &statements[0] else { panic!("expected call expression statement") };
+    let Expr::Call { callee, arguments, span } = expr.as_ref() else { panic!("expected call expression") };
+    assert_eq!(span.start().offset(), 0);
+    assert_eq!(span.end().offset(), 15);
+    assert_eq!(callee.span().start().offset(), 0);
+    assert_eq!(callee.span().end().offset(), 5);
+
+    let Expr::ArrayAccess { array, span: access_span, .. } = &arguments[0] else {
+        panic!("expected array access argument")
+    };
+    assert_eq!(access_span.start().offset(), 6);
+    assert_eq!(access_span.end().offset(), 14);
+    assert_eq!(array.span().start().offset(), 6);
+    assert_eq!(array.span().end().offset(), 11);
+}
