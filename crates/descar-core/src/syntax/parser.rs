@@ -112,7 +112,10 @@ impl<'a> JsavParser<'a> {
 
     /// Skips invalid top-level input until the next declaration starter.
     fn synchronize_top_level(&mut self) {
-        while let Some(token) = self.peek() {
+        while !self.is_at_end() {
+            let Some(token) = self.peek() else {
+                break;
+            };
             if matches!(
                 token.kind,
                 TokenKind::KeywordFun | TokenKind::KeywordMain | TokenKind::KeywordVar | TokenKind::KeywordConst
