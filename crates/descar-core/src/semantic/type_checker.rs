@@ -35,13 +35,13 @@
 use crate::error::compile_error::CompileError;
 use crate::error::error_code::ErrorCode;
 use crate::location::source_span::SourceSpan;
-use crate::semantic::symbol_table::{FunctionSymbol, ScopeKind, Symbol, SymbolTable, VariableSymbol};
+use crate::semantic::symbol_table::{FunctionSymbol, ResolvedParameter, ScopeKind, Symbol, SymbolTable, VariableSymbol};
 use crate::syntax::ast::assignment_op::AssignmentOp;
 use crate::syntax::ast::binary_op::BinaryOp;
 use crate::syntax::ast::else_branch::ElseBranch;
 use crate::syntax::ast::stmt::VarBinding;
 use crate::syntax::ast::unary_op::UnaryOp;
-use crate::syntax::ast::{Expr, LiteralValue, Parameter, Stmt, Type};
+use crate::syntax::ast::{Expr, LiteralValue, Parameter, Stmt, Type, TypeSyntax};
 use crate::tokens::number::Number;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
@@ -184,6 +184,37 @@ impl TypeChecker {
     ///
     /// The visitor handles expressions, declarations, functions, control-flow
     /// constructs, blocks, returns, and loop-control statements.
+    /// Lowers a source-level type annotation into the semantic type model.
+    ///
+    /// Array extent expressions remain attached to the semantic array type because
+    /// this language currently permits non-literal extent expressions.
+    fn resolve_type_syntax(type_syntax: &TypeSyntax) -> Type {
+        match type_syntax {
+            TypeSyntax::I8 => Type::I8,
+            TypeSyntax::I16 => Type::I16,
+            TypeSyntax::I32 => Type::I32,
+            TypeSyntax::I64 => Type::I64,
+            TypeSyntax::U8 => Type::U8,
+            TypeSyntax::U16 => Type::U16,
+            TypeSyntax::U32 => Type::U32,
+            TypeSyntax::U64 => Type::U64,
+            TypeSyntax::F32 => Type::F32,
+            TypeSyntax::F64 => Type::F64,
+            TypeSyntax::Char => Type::Char,
+            TypeSyntax::String => Type::String,
+            TypeSyntax::Bool => Type::Bool,
+            TypeSyntax::Custom { name } => Type::Custom { name: name.clone() },
+            TypeSyntax::Array { element_type, size } => Type::Array {
+                element_type: Box::new(Self::resolve_type_syntax(element_type)),
+                size: size.clone(),
+            },
+            TypeSyntax::Vector { element_type } => {
+                Type::Vector { element_type: Box::new(Self::resolve_type_syntax(element_type)) }
+            }
+            TypeSyntax::Void => Type::Void,
+        }
+    }
+
     fn visit_stmt(&mut self, stmt: &Stmt) {
         match stmt {
             Stmt::Expression { expr } => {
@@ -220,8 +251,9 @@ impl TypeChecker {
     /// then inserted into the current scope with its type, mutability, and source
     /// location.
     fn visit_var_declaration(
-        &mut self, bindings: &[VarBinding], type_annotation: &Type, is_mutable: bool, span: &SourceSpan,
+        &mut self, bindings: &[VarBinding], type_syntax: &TypeSyntax, is_mutable: bool, span: &SourceSpan,
     ) {
+        let type_annotation = Self::resolve_type_syntax(type_syntax);
         for binding in bindings {
             if let Some(init_expr) = binding.initializer.as_ref()
                 && let Some(init_type) = self.visit_expr(init_expr)
@@ -254,28 +286,37 @@ impl TypeChecker {
     /// parameters, checks the function body, and verifies that non-void functions
     /// contain a valid return path.
     fn visit_function(
-        &mut self, name: &str, parameters: &[Parameter], return_type: &Type, body: &Stmt, span: &SourceSpan,
+        &mut self, name: &str, parameters: &[Parameter], return_type: &TypeSyntax, body: &Stmt, span: &SourceSpan,
     ) {
+        let resolved_return_type = Self::resolve_type_syntax(return_type);
+        let resolved_parameters = parameters
+            .iter()
+            .map(|parameter| ResolvedParameter {
+                name: parameter.name.clone().into(),
+                ty: Self::resolve_type_syntax(&parameter.type_annotation),
+                defined_at: parameter.span.clone(),
+            })
+            .collect::<Vec<_>>();
         let func_symbol = FunctionSymbol {
             name: name.into(),
-            parameters: parameters.to_vec(),
-            return_type: return_type.clone(),
+            parameters: resolved_parameters.clone(),
+            return_type: resolved_return_type.clone(),
             defined_at: span.clone(),
         };
         self.declare_symbol(name, Symbol::Function(func_symbol), span);
         self.symbol_table.push_scope(ScopeKind::Function, Some(span.clone()));
-        self.return_type_stack.push(return_type.clone());
-        for param in parameters {
+        self.return_type_stack.push(resolved_return_type.clone());
+        for param in &resolved_parameters {
             self.declare_symbol(
                 &param.name,
                 Symbol::Variable(VariableSymbol {
-                    name: param.name.clone().into(),
-                    ty: param.type_annotation.clone(),
+                    name: param.name.clone(),
+                    ty: param.ty.clone(),
                     mutable: true,
-                    defined_at: param.span.clone(),
+                    defined_at: param.defined_at.clone(),
                     last_assignment: None,
                 }),
-                &param.span,
+                &param.defined_at,
             );
         }
         match body {
@@ -283,11 +324,11 @@ impl TypeChecker {
             _ => self.visit_stmt(body),
         }
 
-        if *return_type != Type::Void && !self.function_has_return(body) {
+        if resolved_return_type != Type::Void && !self.function_has_return(body) {
             self.type_error_with_code(
                 Some(ErrorCode::E2003),
                 format!(
-                    "Function '{name}' may not return value in all code paths (expected return type: {return_type})"
+                    "Function '{name}' may not return value in all code paths (expected return type: {resolved_return_type})"
                 ),
                 span,
             );
@@ -301,7 +342,7 @@ impl TypeChecker {
     /// The main function is analyzed using the regular function checking logic
     /// with no parameters and a Void return type.
     fn visit_main_function(&mut self, body: &Stmt, span: &SourceSpan) {
-        self.visit_function("main", &[], &Type::Void, body, span);
+        self.visit_function("main", &[], &TypeSyntax::Void, body, span);
     }
 
     /// Validates that a control-flow condition has boolean type.
@@ -454,7 +495,10 @@ impl TypeChecker {
     fn visit_expr(&mut self, expr: &Expr) -> Option<Type> {
         match expr {
             Expr::Binary { left, op, right, span } => self.visit_binary_expr(left, *op, right, span),
-            Expr::Cast { expr, target_type, span } => self.visit_cast_expr(expr, target_type, span),
+            Expr::Cast { expr, target_type, span } => {
+                let resolved_target = Self::resolve_type_syntax(target_type);
+                self.visit_cast_expr(expr, &resolved_target, span)
+            },
             Expr::Unary { op, expr, span, .. } => self.visit_unary_expr(*op, expr, span),
             Expr::Grouping { expr, span: _ } => self.visit_expr(expr),
             Expr::Literal { value, span } => self.visit_literal(value, span),
@@ -1004,11 +1048,11 @@ impl TypeChecker {
         }
         for (i, (arg, param)) in arguments.iter().zip(&func.parameters).enumerate() {
             if let Some(arg_type) = self.visit_expr(arg)
-                && !self.is_assignable(&arg_type, &param.type_annotation)
+                && !self.is_assignable(&arg_type, &param.ty)
             {
                 self.type_error_with_code(
                     Some(ErrorCode::E2029),
-                    format!("Argument {} type mismatch: expected {}, found {}", i + 1, param.type_annotation, arg_type),
+                    format!("Argument {} type mismatch: expected {}, found {}", i + 1, param.ty, arg_type),
                     arg.span(),
                 );
             }
