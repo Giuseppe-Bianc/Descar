@@ -1,4 +1,3 @@
-//use std::fmt;
 use std::sync::Arc;
 
 use crate::error::compile_error::CompileError;
@@ -11,67 +10,40 @@ use crate::tokens::token_kind::TokenKind;
 pub enum BinaryOp {
     /// Addition operator (+).
     Add,
-
-
     /// Subtraction operator (-).
     Subtract,
-
-
     /// Multiplication operator (*).
     Multiply,
-
-
     /// Division operator (/).
     Divide,
-
-
     /// Modulo operator (%).
     Modulo,
-
-
     /// Equality comparison operator (==).
     Equal,
-
     /// Inequality comparison operator (!=).
     NotEqual,
-
     /// Less-than comparison operator (<).
     Less,
-
     /// Less-than-or-equal comparison operator (<=).
     LessEqual,
-
     /// Greater-than comparison operator (>).
     Greater,
-
     /// Greater-than-or-equal comparison operator (>=).
     GreaterEqual,
-
     /// Logical AND operator (&&).
     And,
-
     /// Logical OR operator (||).
     Or,
-
     /// Bitwise AND operator (&).
     BitwiseAnd,
-
-
     /// Bitwise OR operator (|).
     BitwiseOr,
-
-
     /// Bitwise XOR operator (^).
     BitwiseXor,
-
-
     /// Shift left operator (<<).
     ShiftLeft,
-
-
     /// Shift right operator (>>).
     ShiftRight,
-
 }
 
 impl BinaryOp {
@@ -85,37 +57,23 @@ impl BinaryOp {
     pub fn get_op(token: &Token) -> Result<Self, CompileError> {
         Ok(match token.kind {
             TokenKind::Plus => Self::Add,
-
             TokenKind::Minus => Self::Subtract,
-
             TokenKind::Star => Self::Multiply,
-
             TokenKind::Slash => Self::Divide,
-
             TokenKind::Percent => Self::Modulo,
-
             TokenKind::EqualEqual => Self::Equal,
             TokenKind::NotEqual => Self::NotEqual,
-
             TokenKind::Less => Self::Less,
             TokenKind::LessEqual => Self::LessEqual,
-
             TokenKind::Greater => Self::Greater,
             TokenKind::GreaterEqual => Self::GreaterEqual,
-
             TokenKind::AndAnd => Self::And,
             TokenKind::OrOr => Self::Or,
-
             TokenKind::And => Self::BitwiseAnd,
-
             TokenKind::Or => Self::BitwiseOr,
-
             TokenKind::Xor => Self::BitwiseXor,
-
             TokenKind::ShiftLeft => Self::ShiftLeft,
-
             TokenKind::ShiftRight => Self::ShiftRight,
-
             _ => {
                 return Err(CompileError::SyntaxError {
                     code: Some(ErrorCode::E1005),
