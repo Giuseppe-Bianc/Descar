@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use descar_core::location::source_span::SourceSpan;
 use descar_core::syntax::ast::{
-    ast_type::Type, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr, literal_value::LiteralValue, stmt::Stmt,
+    ast_type::Type, assignment_op::AssignmentOp, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr, literal_value::LiteralValue, stmt::Stmt,
     unary_op::UnaryOp, unary_op_side::UnaryOpSide,
 };
 use descar_core::tokens::number::Number;
@@ -38,6 +38,7 @@ fn snapshots_expression_variants() {
         },
         variable.clone(),
         Expr::Assign {
+            op: AssignmentOp::Assign,
             target: Box::new(variable.clone()),
             value: Box::new(literal(LiteralValue::StringLit("hello".into()))),
             span: SourceSpan::default(),
@@ -194,15 +195,10 @@ fn snapshots_types_and_branches() {
 fn snapshots_operator_representations() {
     let binary = [
         BinaryOp::Add,
-        BinaryOp::AddEqual,
         BinaryOp::Subtract,
-        BinaryOp::SubtractEqual,
         BinaryOp::Multiply,
-        BinaryOp::MultiplyEqual,
         BinaryOp::Divide,
-        BinaryOp::DivideEqual,
         BinaryOp::Modulo,
-        BinaryOp::ModuloEqual,
         BinaryOp::Equal,
         BinaryOp::NotEqual,
         BinaryOp::Less,
@@ -212,21 +208,30 @@ fn snapshots_operator_representations() {
         BinaryOp::And,
         BinaryOp::Or,
         BinaryOp::BitwiseAnd,
-        BinaryOp::BitwiseAndEqual,
         BinaryOp::BitwiseOr,
-        BinaryOp::BitwiseOrEqual,
         BinaryOp::BitwiseXor,
-        BinaryOp::BitwiseXorEqual,
         BinaryOp::ShiftLeft,
-        BinaryOp::ShiftLeftEqual,
         BinaryOp::ShiftRight,
-        BinaryOp::ShiftRightEqual,
+    ];
+    let assignment = [
+        AssignmentOp::Assign,
+        AssignmentOp::AddAssign,
+        AssignmentOp::SubtractAssign,
+        AssignmentOp::MultiplyAssign,
+        AssignmentOp::DivideAssign,
+        AssignmentOp::ModuloAssign,
+        AssignmentOp::BitwiseAndAssign,
+        AssignmentOp::BitwiseOrAssign,
+        AssignmentOp::BitwiseXorAssign,
+        AssignmentOp::ShiftLeftAssign,
+        AssignmentOp::ShiftRightAssign,
     ];
     let unary = [UnaryOp::Negate, UnaryOp::Not, UnaryOp::BitwiseNot, UnaryOp::Increment, UnaryOp::Decrement];
     let sides = [UnaryOpSide::Prefix, UnaryOpSide::Postfix];
     let rendered = format!(
-        "binary:\n{}\nunary:\n{}\nsides:\n{}",
+        "binary:\n{}\nassignment:\n{}\nunary:\n{}\nsides:\n{}",
         binary.iter().map(|value| format!("{value:?}")).collect::<Vec<_>>().join("\n"),
+        assignment.iter().map(|value| format!("{value:?}")).collect::<Vec<_>>().join("\n"),
         unary.iter().map(|value| format!("{value:?}")).collect::<Vec<_>>().join("\n"),
         sides.iter().map(|value| format!("{value:?}")).collect::<Vec<_>>().join("\n")
     );
