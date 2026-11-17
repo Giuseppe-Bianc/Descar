@@ -3,8 +3,8 @@ use std::sync::Arc;
 use descar_core::{
     error::{compile_error::CompileError, error_code::ErrorCode},
     location::{source_location::SourceLocation, source_span::SourceSpan},
-    semantic::symbol_table::{FunctionSymbol, ScopeKind, Symbol, SymbolTable, VariableSymbol},
-    syntax::ast::{Parameter, Type},
+    semantic::symbol_table::{FunctionSymbol, ResolvedParameter, ScopeKind, Symbol, SymbolTable, VariableSymbol},
+    syntax::ast::Type,
 };
 
 fn span(start_offset: usize, end_offset: usize) -> SourceSpan {
@@ -21,7 +21,7 @@ fn variable_symbol(
 }
 
 fn function_symbol(
-    name: &str, parameters: Vec<Parameter>, return_type: Type, defined_at: SourceSpan,
+    name: &str, parameters: Vec<ResolvedParameter>, return_type: Type, defined_at: SourceSpan,
 ) -> FunctionSymbol {
     FunctionSymbol { name: Arc::from(name), parameters, return_type, defined_at }
 }
@@ -91,7 +91,7 @@ fn declare_and_lookup_preserve_variable_function_and_type_alias_metadata() {
         variable_symbol("value", Type::I32, true, variable_definition.clone(), Some(variable_assignment.clone()));
     let function = function_symbol(
         "compute",
-        vec![Parameter::new("input".into(), Type::U16, parameter_span.clone())],
+        vec![ResolvedParameter { name: Arc::from("input"), ty: Type::U16, defined_at: parameter_span.clone() }],
         Type::F64,
         function_definition.clone(),
     );
@@ -369,7 +369,7 @@ fn current_scope_exposes_read_only_scope_state() {
 fn current_function_context_starts_empty_can_be_replaced_and_can_be_cleared() {
     let mut table = SymbolTable::new();
     let first =
-        function_symbol("first", vec![Parameter::new("arg".into(), Type::I8, span(1, 2))], Type::I32, span(0, 5));
+        function_symbol("first", vec![ResolvedParameter { name: Arc::from("arg"), ty: Type::I8, defined_at: span(1, 2) }], Type::I32, span(0, 5));
     let second = function_symbol("second", vec![], Type::Void, span(8, 14));
 
     table.exit_function();
