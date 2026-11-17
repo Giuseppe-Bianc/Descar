@@ -121,13 +121,18 @@ impl<'a> JsavParser<'a> {
         let token = self.peek()?;
         match token.kind {
             TokenKind::KeywordFun | TokenKind::KeywordMain => {
-                let token = self.advance()?.clone();
+                let token = self.peek()?.clone();
                 self.syntax_error(
                     "Nested function and main declarations are not allowed",
                     &token,
                     Some("Move this declaration to compilation-unit level"),
                     Some(ErrorCode::E1004),
                 );
+                if matches!(token.kind, TokenKind::KeywordFun) {
+                    let _ = self.parse_function();
+                } else {
+                    let _ = self.parse_main_function();
+                }
                 None
             }
             TokenKind::KeywordIf => self.parse_if(),
