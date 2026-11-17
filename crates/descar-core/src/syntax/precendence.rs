@@ -30,34 +30,25 @@ impl Precedence {
             | TokenKind::ShiftLeftEqual
             | TokenKind::ShiftRightEqual => Self::new(2, 1),
 
-            // Left-associative: a op b op c parses as (a op b) op c.
+            // Binary operators are left-associative: a op b op c parses as (a op b) op c.
             TokenKind::OrOr => Self::new(4, 4),
 
-            // Left-associative: a op b op c parses as (a op b) op c.
             TokenKind::AndAnd => Self::new(6, 6),
 
-            // Left-associative: a op b op c parses as (a op b) op c.
             TokenKind::EqualEqual | TokenKind::NotEqual => Self::new(8, 8),
 
-            // Left-associative: a op b op c parses as (a op b) op c.
             TokenKind::Less | TokenKind::LessEqual | TokenKind::Greater | TokenKind::GreaterEqual => Self::new(10, 10),
 
-            // Left-associative: a op b op c parses as (a op b) op c.
             TokenKind::Or => Self::new(12, 12),
 
-            // Left-associative: a op b op c parses as (a op b) op c.
             TokenKind::Xor => Self::new(14, 14),
 
-            // Left-associative: a op b op c parses as (a op b) op c.
             TokenKind::And => Self::new(16, 16),
 
-            // Left-associative: a op b op c parses as (a op b) op c.
             TokenKind::ShiftLeft | TokenKind::ShiftRight => Self::new(18, 18),
 
-            // Left-associative: a op b op c parses as (a op b) op c.
             TokenKind::Plus | TokenKind::Minus => Self::new(20, 20),
 
-            // Left-associative: a op b op c parses as (a op b) op c.
             TokenKind::Star | TokenKind::Slash | TokenKind::Percent => Self::new(22, 22),
 
             TokenKind::OpenParen
