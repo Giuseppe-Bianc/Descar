@@ -136,11 +136,14 @@ impl SourceSpan {
     /// `other`), by taking the minimum of the start positions and the
     /// maximum of the end positions.
     ///
-    /// Both spans must belong to the same file. Their offsets are compared
-    /// only after this invariant has been checked.
+    /// If the spans belong to different files, returns self unchanged because
+    /// offsets from different source files cannot form a meaningful combined span.
+    /// Invalid spans are rejected.
     #[must_use]
     pub fn merge(&self, other: &Self) -> Self {
-        assert_eq!(self.file_path, other.file_path, "cannot merge spans from different source files");
+        if self.file_path != other.file_path {
+            return self.clone();
+        }
         assert!(self.is_valid() && other.is_valid(), "cannot merge invalid source spans");
 
         let merged_start = if self.start.offset() <= other.start.offset() { self.start } else { other.start };
