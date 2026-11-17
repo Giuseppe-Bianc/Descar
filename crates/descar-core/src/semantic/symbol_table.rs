@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use crate::{
     error::{compile_error::CompileError, error_code::ErrorCode},
     location::source_span::SourceSpan,
-    syntax::ast::{Parameter, Type},
+    syntax::ast::Type,
 };
 
 /// Represents a symbol in the symbol table.
@@ -39,6 +39,17 @@ pub struct VariableSymbol {
     pub last_assignment: Option<SourceSpan>,
 }
 
+/// A function parameter after its source type annotation has been resolved.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedParameter {
+    /// Parameter name.
+    pub name: Arc<str>,
+    /// Resolved parameter type.
+    pub ty: Type,
+    /// Source location of the parameter declaration.
+    pub defined_at: SourceSpan,
+}
+
 /// Metadata for a function symbol.
 ///
 /// Contains the function signature including parameters and return type,
@@ -48,7 +59,7 @@ pub struct FunctionSymbol {
     /// The name of the function
     pub name: Arc<str>,
     /// The function's parameters with their types
-    pub parameters: Vec<Parameter>,
+    pub parameters: Vec<ResolvedParameter>,
     /// The return type of the function
     pub return_type: Type,
     /// Source location where the function was defined
