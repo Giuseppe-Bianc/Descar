@@ -27,3 +27,20 @@ impl CompilationUnit {
         self.declarations.len()
     }
 }
+
+impl std::ops::Deref for CompilationUnit {
+    type Target = [Stmt];
+
+    fn deref(&self) -> &Self::Target {
+        &self.declarations
+    }
+}
+
+impl<'a> IntoIterator for &'a CompilationUnit {
+    type Item = &'a Stmt;
+    type IntoIter = std::slice::Iter<'a, Stmt>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.declarations.iter()
+    }
+}
