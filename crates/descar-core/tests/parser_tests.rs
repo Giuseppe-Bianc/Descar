@@ -12,38 +12,34 @@ use descar_core::{
     },
 };
 
-fn parse(input: &str) -> (descar_core::syntax::ast::CompilationUnit, Vec<CompileError>) {
+fn parse_unit(input: &str) -> (descar_core::syntax::ast::CompilationUnit, Vec<CompileError>) {
     let mut lexer = Lexer::new("parser_test", input);
     let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);
     assert!(lexer_errors.is_empty(), "unexpected lexer errors: {lexer_errors:#?}");
+    JsavParser::new(&tokens).parse()
+}
 
-    let (unit, errors) = JsavParser::new(&tokens).parse();
-    if errors.is_empty() {
-        return (unit, errors);
-    }
-
-    // These parser unit tests exercise statement parsing directly. Put legacy
-    // statement-only snippets in main, while retaining top-level declaration tests.
-    if input.trim_start().starts_with("fun ")
-        || input.trim_start().starts_with("main ")
-        || input.trim_start().starts_with("var ")
-        || input.trim_start().starts_with("const ")
+fn parse(input: &str) -> (descar_core::syntax::ast::CompilationUnit, Vec<CompileError>) {
+    let trimmed = input.trim_start();
+    if trimmed.is_empty()
+        || trimmed.starts_with("fun ")
+        || trimmed.starts_with("main ")
+        || trimmed.starts_with("var ")
+        || trimmed.starts_with("const ")
     {
-        return (unit, errors);
+        return parse_unit(input);
     }
 
+    // Most tests in this module exercise statement parsing. Parse those
+    // statements in a main body so the compilation-unit grammar stays strict.
     let wrapped = format!("main {{ {input} }}");
-    let mut wrapped_lexer = Lexer::new("parser_test", &wrapped);
-    let (wrapped_tokens, wrapped_lexer_errors) = lexer_tokenize_with_errors(&mut wrapped_lexer);
-    assert!(wrapped_lexer_errors.is_empty(), "unexpected lexer errors: {wrapped_lexer_errors:#?}");
-    let (mut wrapped_unit, wrapped_errors) = JsavParser::new(&wrapped_tokens).parse();
-    if wrapped_errors.is_empty()
-        && let Some(Stmt::MainFunction { body, .. }) = wrapped_unit.declarations.pop()
+    let (mut unit, errors) = parse_unit(&wrapped);
+    if let Some(Stmt::MainFunction { body, .. }) = unit.declarations.pop()
         && let Stmt::Block { statements, .. } = *body
     {
-        wrapped_unit.declarations = statements;
+        unit.declarations = statements;
     }
-    (wrapped_unit, wrapped_errors)
+    (unit, errors)
 }
 
 fn assert_no_errors(errors: &[CompileError]) {
@@ -585,7 +581,7 @@ fn call_and_array_access_spans_include_their_base_expression() {
 
 #[test]
 fn rejects_executable_statements_at_compilation_unit_level() {
-    let (_, errors) = parse("print(1)");
+    let (_, errors) = parse_unit("print(1)");
     assert_has_error(&errors, ErrorCode::E1004);
 }
 
