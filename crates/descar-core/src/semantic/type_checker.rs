@@ -1271,12 +1271,12 @@ mod tests {
     }
 
     fn immutable_declarations(span: &SourceSpan) -> Vec<Stmt> {
-        let array_type = Type::Array { element_type: Box::new(Type::I64), size: Box::new(number(span.clone())) };
+        let array_type = TypeSyntax::Array { element_type: Box::new(TypeSyntax::I64), size: Box::new(number(span.clone())) };
 
         vec![
             Stmt::VarDeclaration {
                 bindings: vec![VarBinding { name: "value".into(), initializer: Some(number(span.clone())) }],
-                type_annotation: Type::I64,
+                type_annotation: TypeSyntax::I64,
                 is_mutable: false,
                 span: span.clone(),
             },
@@ -1299,7 +1299,7 @@ mod tests {
         let statements = [Stmt::Function {
             name: "while_return".into(),
             parameters: vec![],
-            return_type: Type::I64,
+            return_type: TypeSyntax::I64,
             body: Box::new(Stmt::While {
                 condition: Box::new(Expr::new_bool_literal(true, span.clone())),
                 body: Box::new(Stmt::Return { value: Some(number(span.clone())), span: span.clone() }),
