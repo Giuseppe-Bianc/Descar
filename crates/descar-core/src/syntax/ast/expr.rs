@@ -1,5 +1,6 @@
 use crate::location::source_span::SourceSpan;
 use crate::syntax::ast::ast_type::Type;
+use crate::syntax::ast::assignment_op::AssignmentOp;
 use crate::syntax::ast::binary_op::BinaryOp;
 use crate::syntax::ast::literal_value::LiteralValue;
 use crate::syntax::ast::unary_op::UnaryOp;
@@ -87,8 +88,10 @@ pub enum Expr {
         span: SourceSpan,
     },
 
-    /// Assignment expression.
+    /// Assignment expression, including compound assignment.
     Assign {
+        /// Assignment operator.
+        op: AssignmentOp,
         /// Assignment target.
         target: Box<Self>,
 
