@@ -16,7 +16,30 @@ fn parse(input: &str) -> (descar_core::syntax::ast::CompilationUnit, Vec<Compile
         return (descar_core::syntax::ast::CompilationUnit::default(), lexer_errors);
     }
 
-    JsavParser::new(&tokens).parse()
+    let (unit, errors) = JsavParser::new(&tokens).parse();
+    if errors.is_empty()
+        || input.trim_start().starts_with("fun ")
+        || input.trim_start().starts_with("main ")
+        || input.trim_start().starts_with("var ")
+        || input.trim_start().starts_with("const ")
+    {
+        return (unit, errors);
+    }
+
+    let wrapped = format!("main {{ {input} }}");
+    let mut wrapped_lexer = Lexer::new("parser_snapshot", &wrapped);
+    let (wrapped_tokens, wrapped_lexer_errors) = lexer_tokenize_with_errors(&mut wrapped_lexer);
+    if !wrapped_lexer_errors.is_empty() {
+        return (unit, errors);
+    }
+    let (mut wrapped_unit, wrapped_errors) = JsavParser::new(&wrapped_tokens).parse();
+    if wrapped_errors.is_empty()
+        && let Some(Stmt::MainFunction { body, .. }) = wrapped_unit.declarations.pop()
+        && let Stmt::Block { statements, .. } = *body
+    {
+        wrapped_unit.declarations = statements;
+    }
+    (wrapped_unit, wrapped_errors)
 }
 
 fn summarize_type(type_: &TypeSyntax) -> String {
