@@ -6,6 +6,7 @@ use descar_core::{
     syntax::ast::{
         assignment_op::AssignmentOp,
         ast_type::Type,
+        type_syntax::TypeSyntax,
         binary_op::BinaryOp,
         else_branch::ElseBranch,
         expr::Expr,
@@ -142,7 +143,7 @@ fn expression_span_returns_node_span_for_every_variant() {
             right: Box::new(literal.clone()),
             span: node_span.clone(),
         },
-        Expr::Cast { expr: Box::new(literal.clone()), target_type: Type::I32, span: node_span.clone() },
+        Expr::Cast { expr: Box::new(literal.clone()), target_type: TypeSyntax::I32, span: node_span.clone() },
         Expr::Unary {
             op: UnaryOp::Negate,
             side: UnaryOpSide::Prefix,
@@ -202,19 +203,19 @@ fn expression_edge_cases_preserve_empty_collections_and_deep_nesting() {
 fn statement_span_returns_expected_span_for_every_variant() {
     let statement_span = span(4, 12);
     let expression = Expr::Literal { value: LiteralValue::Bool(false), span: statement_span.clone() };
-    let parameter = Parameter::new("value".into(), Type::I64, statement_span.clone());
+    let parameter = Parameter::new("value".into(), TypeSyntax::I64, statement_span.clone());
     let statements = [
         Stmt::Expression { expr: Box::new(expression.clone()) },
         Stmt::VarDeclaration {
             bindings: vec![VarBinding { name: "value".into(), initializer: Some(expression.clone()) }],
-            type_annotation: Type::I64,
+            type_annotation: TypeSyntax::I64,
             is_mutable: true,
             span: statement_span.clone(),
         },
         Stmt::Function {
             name: "f".into(),
             parameters: vec![parameter],
-            return_type: Type::Void,
+            return_type: TypeSyntax::Void,
             body: Box::new(Stmt::Block { statements: Vec::new(), span: statement_span.clone() }),
             span: statement_span.clone(),
         },
@@ -263,7 +264,7 @@ fn statement_edge_cases_support_empty_and_optional_components() {
     let node_span = span(0, 0);
     let empty_declaration = Stmt::VarDeclaration {
         bindings: Vec::new(),
-        type_annotation: Type::Void,
+        type_annotation: TypeSyntax::Void,
         is_mutable: false,
         span: node_span.clone(),
     };
@@ -289,10 +290,10 @@ fn statement_edge_cases_support_empty_and_optional_components() {
 #[test]
 fn parameter_new_preserves_name_type_and_span() {
     let expected_span = span(7, 11);
-    let parameter = Parameter::new("count".into(), Type::U32, expected_span.clone());
+    let parameter = Parameter::new("count".into(), TypeSyntax::U32, expected_span.clone());
 
     assert_eq!(parameter.name, "count");
-    assert_eq!(parameter.type_annotation, Type::U32);
+    assert_eq!(parameter.type_annotation, TypeSyntax::U32);
     assert_eq!(parameter.span, expected_span);
 }
 
