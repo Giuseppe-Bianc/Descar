@@ -1,3 +1,5 @@
+const WRAPPER_PREFIX: usize = "main { ".len();
+
 use descar_core::{
     error::{compile_error::CompileError, error_code::ErrorCode},
     lex::lexer::{Lexer, lexer_tokenize_with_errors},
@@ -525,7 +527,6 @@ fn expression_spans_cover_all_operands_and_operators() {
     let Expr::Binary { left, right, span, .. } = expr.as_ref() else { panic!("expected outer binary expression") };
 
     // The test helper parses statement fragments inside "main { ... }".
-    const WRAPPER_PREFIX: usize = "main { ".len();
     assert_eq!(span.start().offset(), WRAPPER_PREFIX);
     assert_eq!(span.end().offset(), WRAPPER_PREFIX + 9);
     assert_eq!(left.span().start().offset(), WRAPPER_PREFIX);
@@ -567,7 +568,6 @@ fn call_and_array_access_spans_include_their_base_expression() {
     assert_no_errors(&errors);
     let Stmt::Expression { expr } = &statements[0] else { panic!("expected call expression statement") };
     let Expr::Call { callee, arguments, span } = expr.as_ref() else { panic!("expected call expression") };
-    const WRAPPER_PREFIX: usize = "main { ".len();
     assert_eq!(span.start().offset(), WRAPPER_PREFIX);
     assert_eq!(span.end().offset(), WRAPPER_PREFIX + 15);
     assert_eq!(callee.span().start().offset(), WRAPPER_PREFIX);
