@@ -5,6 +5,7 @@ use descar_core::{
     printers::ast_printer::{pretty_print, pretty_print_stmt},
     syntax::ast::{
         ast_type::Type,
+        assignment_op::AssignmentOp,
         binary_op::BinaryOp,
         else_branch::ElseBranch,
         expr::Expr,
@@ -70,6 +71,7 @@ fn snapshot_literal_values() {
 #[test]
 fn snapshot_nested_expression_printer() {
     let expression = Expr::Assign {
+        op: AssignmentOp::Assign,
         target: Box::new(Expr::ArrayAccess {
             array: Box::new(Expr::Grouping { expr: Box::new(variable("items")), span: span() }),
             index: Box::new(Expr::Binary {
