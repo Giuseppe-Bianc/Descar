@@ -502,11 +502,11 @@ fn pretty_print_output_is_deterministic_and_ansi_stripping_is_safe() {
 
 #[test]
 fn branch_config_new_initializes_all_branch_types() {
-    let config = BranchConfig::new(BranchTypeSyntax::Middle, BranchTypeSyntax::Last, BranchTypeSyntax::Middle);
+    let config = BranchConfig::new(BranchType::Middle, BranchType::Last, BranchType::Middle);
 
-    assert_eq!(config.parent_type, BranchTypeSyntax::Middle);
-    assert_eq!(config.current_type, BranchTypeSyntax::Last);
-    assert_eq!(config.child_type, BranchTypeSyntax::Middle);
+    assert_eq!(config.parent_type, BranchType::Middle);
+    assert_eq!(config.current_type, BranchType::Last);
+    assert_eq!(config.child_type, BranchType::Middle);
 }
 
 #[test]
