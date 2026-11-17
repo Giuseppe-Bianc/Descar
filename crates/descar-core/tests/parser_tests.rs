@@ -17,7 +17,33 @@ fn parse(input: &str) -> (descar_core::syntax::ast::CompilationUnit, Vec<Compile
     let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);
     assert!(lexer_errors.is_empty(), "unexpected lexer errors: {lexer_errors:#?}");
 
-    JsavParser::new(&tokens).parse()
+    let (unit, errors) = JsavParser::new(&tokens).parse();
+    if errors.is_empty() {
+        return (unit, errors);
+    }
+
+    // These parser unit tests exercise statement parsing directly. Put legacy
+    // statement-only snippets in main, while retaining top-level declaration tests.
+    if input.trim_start().starts_with("fun ")
+        || input.trim_start().starts_with("main ")
+        || input.trim_start().starts_with("var ")
+        || input.trim_start().starts_with("const ")
+    {
+        return (unit, errors);
+    }
+
+    let wrapped = format!("main {{ {input} }}");
+    let mut wrapped_lexer = Lexer::new("parser_test", &wrapped);
+    let (wrapped_tokens, wrapped_lexer_errors) = lexer_tokenize_with_errors(&mut wrapped_lexer);
+    assert!(wrapped_lexer_errors.is_empty(), "unexpected lexer errors: {wrapped_lexer_errors:#?}");
+    let (mut wrapped_unit, wrapped_errors) = JsavParser::new(&wrapped_tokens).parse();
+    if wrapped_errors.is_empty()
+        && let Some(Stmt::MainFunction { body, .. }) = wrapped_unit.declarations.pop()
+        && let Stmt::Block { statements, .. } = *body
+    {
+        wrapped_unit.declarations = statements;
+    }
+    (wrapped_unit, wrapped_errors)
 }
 
 fn assert_no_errors(errors: &[CompileError]) {
@@ -555,4 +581,35 @@ fn call_and_array_access_spans_include_their_base_expression() {
     assert_eq!(access_span.end().offset(), 14);
     assert_eq!(array.span().start().offset(), 6);
     assert_eq!(array.span().end().offset(), 11);
+}
+
+#[test]
+fn rejects_executable_statements_at_compilation_unit_level() {
+    let (_, errors) = parse("print(1)");
+    assert_has_error(&errors, ErrorCode::E1004);
+}
+
+#[test]
+fn rejects_nested_function_and_main_declarations() {
+    for input in [
+        "main { fun nested() {} }",
+        "fun outer() { fun nested() {} }",
+        "main { main {} }",
+    ] {
+        let (_, errors) = parse(input);
+        assert_has_error(&errors, ErrorCode::E1004);
+    }
+}
+
+#[test]
+fn rejects_duplicate_main_declarations() {
+    let (_, errors) = parse("main {} main {}");
+    assert_has_error(&errors, ErrorCode::E1004);
+}
+
+#[test]
+fn accepts_global_variables_and_local_variables() {
+    let (unit, errors) = parse("var global: i32 = 1\nmain { var local: i32 = 2 }");
+    assert_no_errors(&errors);
+    assert_eq!(unit.len(), 2);
 }
