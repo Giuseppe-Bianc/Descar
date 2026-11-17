@@ -6,6 +6,7 @@ use descar_core::{
     printers::branch_type::{BranchConfig, BranchType},
     syntax::ast::{
         ast_type::Type,
+        assignment_op::AssignmentOp,
         binary_op::BinaryOp,
         else_branch::ElseBranch,
         expr::Expr,
@@ -68,15 +69,10 @@ fn pretty_print_literals_and_variable_values() {
 fn pretty_print_binary_expression_covers_every_operator() {
     let operators = [
         (BinaryOp::Add, "ADD"),
-        (BinaryOp::AddEqual, "ADDEQUAL"),
         (BinaryOp::Subtract, "SUBTRACT"),
-        (BinaryOp::SubtractEqual, "SUBTRACTEQUAL"),
         (BinaryOp::Multiply, "MULTIPLY"),
-        (BinaryOp::MultiplyEqual, "MULTIPLYEQUAL"),
         (BinaryOp::Divide, "DIVIDE"),
-        (BinaryOp::DivideEqual, "DIVIDEEQUAL"),
         (BinaryOp::Modulo, "MODULO"),
-        (BinaryOp::ModuloEqual, "MODULOEQUAL"),
         (BinaryOp::Equal, "EQUAL"),
         (BinaryOp::NotEqual, "NOTEQUAL"),
         (BinaryOp::Less, "LESS"),
@@ -86,17 +82,11 @@ fn pretty_print_binary_expression_covers_every_operator() {
         (BinaryOp::And, "AND"),
         (BinaryOp::Or, "OR"),
         (BinaryOp::BitwiseAnd, "BITWISEAND"),
-        (BinaryOp::BitwiseAndEqual, "BITWISEANDEQUAL"),
         (BinaryOp::BitwiseOr, "BITWISEOR"),
-        (BinaryOp::BitwiseOrEqual, "BITWISEOREQUAL"),
         (BinaryOp::BitwiseXor, "BITWISEXOR"),
-        (BinaryOp::BitwiseXorEqual, "BITWISEXOREQUAL"),
         (BinaryOp::ShiftLeft, "SHIFTLEFT"),
-        (BinaryOp::ShiftLeftEqual, "SHIFTLEFTEQUAL"),
         (BinaryOp::ShiftRight, "SHIFTRIGHT"),
-        (BinaryOp::ShiftRightEqual, "SHIFTRIGHTEQUAL"),
     ];
-
     for (operator, expected) in operators {
         let expression = Expr::Binary {
             left: Box::new(variable("left")),
@@ -109,6 +99,34 @@ fn pretty_print_binary_expression_covers_every_operator() {
         assert!(output.starts_with(&format!("└── BinaryOp {expected}\n")));
         assert!(output.contains("├── Left:\n"));
         assert!(output.contains("└── Right:\n"));
+    }
+}
+
+#[test]
+fn pretty_print_assignment_expression_covers_simple_and_compound_operators() {
+    let operators = [
+        (AssignmentOp::Assign, "="),
+        (AssignmentOp::AddAssign, "+="),
+        (AssignmentOp::SubtractAssign, "-="),
+        (AssignmentOp::MultiplyAssign, "*="),
+        (AssignmentOp::DivideAssign, "/="),
+        (AssignmentOp::ModuloAssign, "%="),
+        (AssignmentOp::BitwiseAndAssign, "&="),
+        (AssignmentOp::BitwiseOrAssign, "|="),
+        (AssignmentOp::BitwiseXorAssign, "^="),
+        (AssignmentOp::ShiftLeftAssign, "<<="),
+        (AssignmentOp::ShiftRightAssign, ">>="),
+    ];
+
+    for (op, expected) in operators {
+        let expression = Expr::Assign {
+            op,
+            target: Box::new(variable("left")),
+            value: Box::new(variable("right")),
+            span: span(0, 8),
+        };
+        let output = rendered_expr(&expression);
+        assert!(output.starts_with(&format!("└── Assignment {expected}\n")));
     }
 }
 
@@ -137,6 +155,7 @@ fn pretty_print_unary_expression_covers_all_operators_and_sides() {
 #[test]
 fn pretty_print_nested_expression_structures_keep_labels_and_order() {
     let expression = Expr::Assign {
+        op: AssignmentOp::Assign,
         target: Box::new(Expr::ArrayAccess {
             array: Box::new(Expr::Grouping { expr: Box::new(variable("items")), span: span(0, 7) }),
             index: Box::new(Expr::Binary {
@@ -569,6 +588,7 @@ fn pretty_print_array_type_with_assignment_size_covers_format_type_size_assignme
     let array_type = Type::Array {
         element_type: Box::new(Type::I32),
         size: Box::new(Expr::Assign {
+            op: AssignmentOp::Assign,
             target: Box::new(variable("length")),
             value: Box::new(number(4)),
             span: span(0, 8),
