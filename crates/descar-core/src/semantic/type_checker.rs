@@ -1277,7 +1277,11 @@ mod tests {
 
         vec![
             Stmt::VarDeclaration {
-                bindings: vec![VarBinding { name: "value".into(), initializer: Some(number(span.clone())), span: span.clone() }],
+                bindings: vec![VarBinding {
+                    name: "value".into(),
+                    initializer: Some(number(span.clone())),
+                    span: span.clone(),
+                }],
                 type_annotation: TypeSyntax::I64,
                 is_mutable: false,
                 span: span.clone(),
@@ -1430,7 +1434,11 @@ mod tests {
         for op in operators {
             let statements = [
                 Stmt::VarDeclaration {
-                    bindings: vec![VarBinding { name: "value".into(), initializer: Some(number(span.clone())), span: span.clone() }],
+                    bindings: vec![VarBinding {
+                        name: "value".into(),
+                        initializer: Some(number(span.clone())),
+                        span: span.clone(),
+                    }],
                     type_annotation: TypeSyntax::I64,
                     is_mutable: true,
                     span: span.clone(),
@@ -1469,7 +1477,11 @@ mod tests {
         for op in operators {
             let statements = [
                 Stmt::VarDeclaration {
-                    bindings: vec![VarBinding { name: "value".into(), initializer: Some(number(span.clone())), span: span.clone() }],
+                    bindings: vec![VarBinding {
+                        name: "value".into(),
+                        initializer: Some(number(span.clone())),
+                        span: span.clone(),
+                    }],
                     type_annotation: TypeSyntax::I64,
                     is_mutable: false,
                     span: span.clone(),

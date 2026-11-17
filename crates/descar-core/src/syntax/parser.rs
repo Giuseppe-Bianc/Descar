@@ -3,8 +3,8 @@ use crate::error::compile_error::CompileError;
 use crate::error::error_code::ErrorCode;
 use crate::location::source_span::SourceSpan;
 use crate::syntax::ast::assignment_op::AssignmentOp;
-use crate::syntax::ast::compilation_unit::CompilationUnit;
 use crate::syntax::ast::binary_op::BinaryOp;
+use crate::syntax::ast::compilation_unit::CompilationUnit;
 use crate::syntax::ast::else_branch::ElseBranch;
 use crate::syntax::ast::expr::Expr;
 use crate::syntax::ast::parameter::Parameter;
@@ -113,7 +113,10 @@ impl<'a> JsavParser<'a> {
     /// Skips invalid top-level input until the next declaration starter.
     fn synchronize_top_level(&mut self) {
         while let Some(token) = self.peek() {
-            if matches!(token.kind, TokenKind::KeywordFun | TokenKind::KeywordMain | TokenKind::KeywordVar | TokenKind::KeywordConst) {
+            if matches!(
+                token.kind,
+                TokenKind::KeywordFun | TokenKind::KeywordMain | TokenKind::KeywordVar | TokenKind::KeywordConst
+            ) {
                 break;
             }
             self.advance();
@@ -703,7 +706,7 @@ impl<'a> JsavParser<'a> {
 
     // Parsing operations
     fn parse_unary(&mut self, op: UnaryOp, token: &Token) -> Expr {
-        let rbp = Precedence::unary_binding_power(&token).right;
+        let rbp = Precedence::unary_binding_power(token).right;
         let expr = self.parse_expr(rbp).unwrap_or_else(|| Expr::null_expr(token.span.clone()));
         Expr::Unary { op, side: UnaryOpSide::Prefix, span: token.span.merge(expr.span()), expr: Box::new(expr) }
     }
@@ -731,7 +734,7 @@ impl<'a> JsavParser<'a> {
     }
 
     fn parse_binary(&mut self, left: Expr, token: &Token) -> Option<Expr> {
-        let op = match BinaryOp::get_op(&token) {
+        let op = match BinaryOp::get_op(token) {
             Ok(op) => op,
             Err(e) => {
                 self.errors.push(e);
@@ -740,7 +743,7 @@ impl<'a> JsavParser<'a> {
         };
 
         let right = self
-            .parse_expr(Precedence::binding_power(&token).right)
+            .parse_expr(Precedence::binding_power(token).right)
             .unwrap_or_else(|| Expr::null_expr(token.span.clone()));
         let span = left.span().merge(right.span());
         Some(Expr::Binary { left: Box::new(left), op, right: Box::new(right), span })

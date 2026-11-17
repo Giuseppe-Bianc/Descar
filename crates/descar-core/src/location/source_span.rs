@@ -128,8 +128,7 @@ impl SourceSpan {
         self.is_valid()
             && other.is_valid()
             && self.file_path == other.file_path
-            && self.start.offset().max(other.start.offset())
-                < self.end.offset().min(other.end.offset())
+            && self.start.offset().max(other.start.offset()) < self.end.offset().min(other.end.offset())
     }
 
     /// Returns the smallest span that contains both spans (`self` and

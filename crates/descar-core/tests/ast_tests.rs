@@ -207,7 +207,11 @@ fn statement_span_returns_expected_span_for_every_variant() {
     let statements = [
         Stmt::Expression { expr: Box::new(expression.clone()) },
         Stmt::VarDeclaration {
-            bindings: vec![VarBinding { name: "value".into(), initializer: Some(expression.clone()), span: statement_span.clone() }],
+            bindings: vec![VarBinding {
+                name: "value".into(),
+                initializer: Some(expression.clone()),
+                span: statement_span.clone(),
+            }],
             type_annotation: TypeSyntax::I64,
             is_mutable: true,
             span: statement_span.clone(),

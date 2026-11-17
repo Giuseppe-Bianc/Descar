@@ -553,7 +553,7 @@ fn variable_binding_spans_cover_names_and_initializers() {
     let Stmt::VarDeclaration { bindings, .. } = &statements[0] else { panic!("expected variable declaration") };
 
     let first_start = input.find("first").unwrap();
-    let first_end = input.find("1").unwrap() + 1;
+    let first_end = input.find('1').unwrap() + 1;
     let second_start = input.find("second").unwrap();
     let second_end = input.rfind('2').unwrap() + 1;
 
@@ -591,11 +591,7 @@ fn rejects_executable_statements_at_compilation_unit_level() {
 
 #[test]
 fn rejects_nested_function_and_main_declarations() {
-    for input in [
-        "main { fun nested() {} }",
-        "fun outer() { fun nested() {} }",
-        "main { main {} }",
-    ] {
+    for input in ["main { fun nested() {} }", "fun outer() { fun nested() {} }", "main { main {} }"] {
         let (_, errors) = parse(input);
         assert_has_error(&errors, ErrorCode::E1004);
     }
