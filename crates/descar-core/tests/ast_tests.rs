@@ -5,6 +5,7 @@ use descar_core::{
     location::{source_location::SourceLocation, source_span::SourceSpan},
     syntax::ast::{
         ast_type::Type,
+        assignment_op::AssignmentOp,
         binary_op::BinaryOp,
         else_branch::ElseBranch,
         expr::Expr,
@@ -27,15 +28,10 @@ fn span(start_offset: usize, end_offset: usize) -> SourceSpan {
 fn binary_op_get_op_maps_supported_tokens() {
     let cases = [
         (TokenKind::Plus, BinaryOp::Add),
-        (TokenKind::PlusEqual, BinaryOp::AddEqual),
         (TokenKind::Minus, BinaryOp::Subtract),
-        (TokenKind::MinusEqual, BinaryOp::SubtractEqual),
         (TokenKind::Star, BinaryOp::Multiply),
-        (TokenKind::StarEqual, BinaryOp::MultiplyEqual),
         (TokenKind::Slash, BinaryOp::Divide),
-        (TokenKind::SlashEqual, BinaryOp::DivideEqual),
         (TokenKind::Percent, BinaryOp::Modulo),
-        (TokenKind::PercentEqual, BinaryOp::ModuloEqual),
         (TokenKind::EqualEqual, BinaryOp::Equal),
         (TokenKind::NotEqual, BinaryOp::NotEqual),
         (TokenKind::Less, BinaryOp::Less),
@@ -45,21 +41,56 @@ fn binary_op_get_op_maps_supported_tokens() {
         (TokenKind::AndAnd, BinaryOp::And),
         (TokenKind::OrOr, BinaryOp::Or),
         (TokenKind::And, BinaryOp::BitwiseAnd),
-        (TokenKind::AndEqual, BinaryOp::BitwiseAndEqual),
         (TokenKind::Or, BinaryOp::BitwiseOr),
-        (TokenKind::OrEqual, BinaryOp::BitwiseOrEqual),
         (TokenKind::Xor, BinaryOp::BitwiseXor),
-        (TokenKind::XorEqual, BinaryOp::BitwiseXorEqual),
         (TokenKind::ShiftLeft, BinaryOp::ShiftLeft),
-        (TokenKind::ShiftLeftEqual, BinaryOp::ShiftLeftEqual),
         (TokenKind::ShiftRight, BinaryOp::ShiftRight),
-        (TokenKind::ShiftRightEqual, BinaryOp::ShiftRightEqual),
     ];
-
     for (kind, expected) in cases {
         let token = Token { kind, span: span(0, 1) };
 
         assert_eq!(BinaryOp::get_op(&token).unwrap(), expected);
+    }
+}
+
+#[test]
+fn assignment_op_get_op_maps_supported_tokens() {
+    let cases = [
+        (TokenKind::Equal, AssignmentOp::Assign),
+        (TokenKind::PlusEqual, AssignmentOp::AddAssign),
+        (TokenKind::MinusEqual, AssignmentOp::SubtractAssign),
+        (TokenKind::StarEqual, AssignmentOp::MultiplyAssign),
+        (TokenKind::SlashEqual, AssignmentOp::DivideAssign),
+        (TokenKind::PercentEqual, AssignmentOp::ModuloAssign),
+        (TokenKind::AndEqual, AssignmentOp::BitwiseAndAssign),
+        (TokenKind::OrEqual, AssignmentOp::BitwiseOrAssign),
+        (TokenKind::XorEqual, AssignmentOp::BitwiseXorAssign),
+        (TokenKind::ShiftLeftEqual, AssignmentOp::ShiftLeftAssign),
+        (TokenKind::ShiftRightEqual, AssignmentOp::ShiftRightAssign),
+    ];
+
+    for (kind, expected) in cases {
+        let token = Token { kind, span: span(0, 1) };
+        assert_eq!(AssignmentOp::get_op(&token).unwrap(), expected);
+    }
+}
+
+#[test]
+fn assignment_operators_are_not_binary_operators() {
+    for kind in [
+        TokenKind::PlusEqual,
+        TokenKind::MinusEqual,
+        TokenKind::StarEqual,
+        TokenKind::SlashEqual,
+        TokenKind::PercentEqual,
+        TokenKind::AndEqual,
+        TokenKind::OrEqual,
+        TokenKind::XorEqual,
+        TokenKind::ShiftLeftEqual,
+        TokenKind::ShiftRightEqual,
+    ] {
+        let token = Token { kind, span: span(0, 1) };
+        assert!(BinaryOp::get_op(&token).is_err());
     }
 }
 
@@ -123,6 +154,7 @@ fn expression_span_returns_node_span_for_every_variant() {
         Expr::ArrayLiteral { elements: Vec::new(), span: node_span.clone() },
         variable,
         Expr::Assign {
+            op: AssignmentOp::Assign,
             target: Box::new(Expr::Variable { name: "value".into(), span: node_span.clone() }),
             value: Box::new(literal.clone()),
             span: node_span.clone(),
