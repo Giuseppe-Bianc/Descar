@@ -124,7 +124,7 @@ impl SourceSpan {
     /// Two adjacent spans (e.g. `[0, 3)` and `[3, 5)`) are not considered
     /// overlapping.
     #[must_use]
-    pub const fn overlaps(&self, other: &Self) -> bool {
+    pub fn overlaps(&self, other: &Self) -> bool {
         self.is_valid()
             && other.is_valid()
             && self.file_path == other.file_path
