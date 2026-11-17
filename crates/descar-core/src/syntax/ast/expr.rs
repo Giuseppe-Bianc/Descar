@@ -1,6 +1,6 @@
 use crate::location::source_span::SourceSpan;
 use crate::syntax::ast::assignment_op::AssignmentOp;
-use crate::syntax::ast::ast_type::Type;
+use crate::syntax::ast::type_syntax::TypeSyntax;
 use crate::syntax::ast::binary_op::BinaryOp;
 use crate::syntax::ast::literal_value::LiteralValue;
 use crate::syntax::ast::unary_op::UnaryOp;
@@ -31,7 +31,7 @@ pub enum Expr {
         expr: Box<Self>,
 
         /// Numeric type to convert to.
-        target_type: Type,
+        target_type: TypeSyntax,
 
         /// Source extent, including the cast target.
         span: SourceSpan,
