@@ -20,13 +20,13 @@ impl CompilationUnit {
 
     /// Returns true when the unit contains no declarations.
     #[must_use]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.declarations.is_empty()
     }
 
     /// Returns the number of top-level declarations.
     #[must_use]
-    pub fn len(&self) -> usize {
+    pub const fn len(&self) -> usize {
         self.declarations.len()
     }
 }
