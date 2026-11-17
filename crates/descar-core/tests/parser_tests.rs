@@ -12,7 +12,7 @@ use descar_core::{
     },
 };
 
-fn parse(input: &str) -> (Vec<Stmt>, Vec<CompileError>) {
+fn parse(input: &str) -> (descar_core::syntax::ast::CompilationUnit, Vec<CompileError>) {
     let mut lexer = Lexer::new("parser_test", input);
     let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);
     assert!(lexer_errors.is_empty(), "unexpected lexer errors: {lexer_errors:#?}");
@@ -35,7 +35,7 @@ fn assert_has_error(errors: &[CompileError], expected: ErrorCode) {
 fn empty_input_produces_no_statements_or_errors() {
     let (statements, errors) = parse("");
 
-    assert_eq!(statements, [] as [Stmt; 0]);
+    assert!(statements.is_empty());
     assert_no_errors(&errors);
 }
 
