@@ -119,8 +119,8 @@ fn snapshot_collection_expression_printer() {
 fn snapshot_declaration_and_function_printers() {
     let declaration = Stmt::VarDeclaration {
         bindings: vec![
-            VarBinding { name: "first".into(), initializer: Some(number(1)) },
-            VarBinding { name: "second".into(), initializer: Some(Expr::new_bool_literal(true, span())) },
+            VarBinding { name: "first".into(), initializer: Some(number(1)), span: span() },
+            VarBinding { name: "second".into(), initializer: Some(Expr::new_bool_literal(true, span())), span: span() },
         ],
         type_annotation: TypeSyntax::Array { element_type: Box::new(TypeSyntax::U32), size: Box::new(number(8)) },
         is_mutable: true,
@@ -165,7 +165,7 @@ fn snapshot_control_flow_printer() {
         }),
         else_branch: ElseBranch::ElseIf(Box::new(Stmt::For {
             initializer: Some(Box::new(Stmt::VarDeclaration {
-                bindings: vec![VarBinding { name: "i".into(), initializer: Some(number(0)) }],
+                bindings: vec![VarBinding { name: "i".into(), initializer: Some(number(0)), span: span() }],
                 type_annotation: TypeSyntax::I32,
                 is_mutable: true,
                 span: span(),
