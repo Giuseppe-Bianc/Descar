@@ -245,9 +245,8 @@ impl<'a> JsavParser<'a> {
         let start_token = self.advance()?.clone(); // 'while'
         let condition = self.parse_condition("while")?;
         let body = self.parse_block_stmt()?;
-        let end_span = body.span();
-        let function_span = start_token.span.merge(end_span);
-        Some(Stmt::While { condition: Box::new(condition), body: Box::new(body), span: function_span })
+        let span = start_token.span.merge(body.span());
+        Some(Stmt::While { condition: Box::new(condition), body: Box::new(body), span })
     }
 
     fn parse_for_initializer(&mut self) -> Option<Box<Stmt>> {
@@ -642,7 +641,7 @@ impl<'a> JsavParser<'a> {
     fn parse_unary(&mut self, op: UnaryOp, token: Token) -> Expr {
         let rbp = Precedence::unary_binding_power(&token).right;
         let expr = self.parse_expr(rbp).unwrap_or_else(|| Expr::null_expr(token.span.clone()));
-        Expr::Unary { op, side: UnaryOpSide::Prefix, expr: Box::new(expr), span: token.span }
+        Expr::Unary { op, side: UnaryOpSide::Prefix, span: token.span.merge(expr.span()), expr: Box::new(expr) }
     }
 
     fn parse_array_literal(&mut self, start_token: &Token) -> Option<Expr> {
@@ -679,7 +678,8 @@ impl<'a> JsavParser<'a> {
         let right = self
             .parse_expr(Precedence::binding_power(&token).right)
             .unwrap_or_else(|| Expr::null_expr(token.span.clone()));
-        Some(Expr::Binary { left: Box::new(left), op, right: Box::new(right), span: token.span })
+        let span = left.span().merge(right.span());
+        Some(Expr::Binary { left: Box::new(left), op, right: Box::new(right), span })
     }
 
     fn parse_grouping(&mut self, start_token: &Token) -> Option<Expr> {
