@@ -3,7 +3,7 @@ use descar_core::{
     lex::lexer::{Lexer, lexer_tokenize_with_errors},
     syntax::{
         ast::{
-            assignment_op::AssignmentOp, ast_type::Type, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr,
+            assignment_op::AssignmentOp, type_syntax::TypeSyntax, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr,
             literal_value::LiteralValue, stmt::Stmt, unary_op::UnaryOp, unary_op_side::UnaryOpSide,
         },
         parser::JsavParser,
@@ -192,7 +192,7 @@ fn parses_variable_and_const_declarations_with_multiple_bindings() {
     match &statements[0] {
         Stmt::VarDeclaration { bindings, type_annotation, is_mutable, .. } => {
             assert!(*is_mutable);
-            assert_eq!(*type_annotation, Type::I32);
+            assert_eq!(*type_annotation, TypeSyntax::I32);
             assert_eq!(bindings.len(), 2);
             assert_eq!(bindings[0].name, "first");
             assert_eq!(bindings[1].name, "second");
@@ -205,7 +205,7 @@ fn parses_variable_and_const_declarations_with_multiple_bindings() {
     match &statements[1] {
         Stmt::VarDeclaration { bindings, type_annotation, is_mutable, .. } => {
             assert!(!*is_mutable);
-            assert_eq!(*type_annotation, Type::I64);
+            assert_eq!(*type_annotation, TypeSyntax::I64);
             assert_eq!(bindings.len(), 1);
             assert_eq!(bindings[0].name, "answer");
             assert!(bindings[0].initializer.is_some());
@@ -226,10 +226,10 @@ fn parses_functions_and_main_with_parameters_and_return_type() {
             assert_eq!(name, "add");
             assert_eq!(parameters.len(), 2);
             assert_eq!(parameters[0].name, "a");
-            assert_eq!(parameters[0].type_annotation, Type::I32);
+            assert_eq!(parameters[0].type_annotation, TypeSyntax::I32);
             assert_eq!(parameters[1].name, "b");
-            assert_eq!(parameters[1].type_annotation, Type::I32);
-            assert_eq!(*return_type, Type::I32);
+            assert_eq!(parameters[1].type_annotation, TypeSyntax::I32);
+            assert_eq!(*return_type, TypeSyntax::I32);
             assert!(
                 matches!(body.as_ref(), Stmt::Block { statements, .. } if matches!(statements.as_slice(), [Stmt::Return { value: Some(_), .. }]))
             );
@@ -252,7 +252,7 @@ fn parses_array_vector_custom_and_unicode_types() {
     match &statements[0] {
         Stmt::VarDeclaration { type_annotation, bindings, .. } => {
             assert!(
-                matches!(type_annotation, Type::Array { element_type, size, .. } if matches!(element_type.as_ref(), Type::Array { element_type, .. } if matches!(element_type.as_ref(), Type::I32)) && matches!(size.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. }))
+                matches!(type_annotation, TypeSyntax::Array { element_type, size, .. } if matches!(element_type.as_ref(), TypeSyntax::Array { element_type, .. } if matches!(element_type.as_ref(), TypeSyntax::I32)) && matches!(size.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. }))
             );
             assert!(bindings[0].initializer.is_some());
         }
@@ -260,10 +260,10 @@ fn parses_array_vector_custom_and_unicode_types() {
     }
 
     assert!(
-        matches!(&statements[1], Stmt::VarDeclaration { type_annotation: Type::Vector { element_type }, .. } if matches!(element_type.as_ref(), Type::String))
+        matches!(&statements[1], Stmt::VarDeclaration { type_annotation: TypeSyntax::Vector { element_type }, .. } if matches!(element_type.as_ref(), TypeSyntax::String))
     );
     assert!(
-        matches!(&statements[2], Stmt::VarDeclaration { type_annotation: Type::Custom { name }, .. } if name.as_ref() == "Record")
+        matches!(&statements[2], Stmt::VarDeclaration { type_annotation: TypeSyntax::Custom { name }, .. } if name.as_ref() == "Record")
     );
     assert!(matches!(&statements[3], Stmt::VarDeclaration { bindings, .. } if bindings[0].name == "變數"));
 }
@@ -416,20 +416,20 @@ fn parses_explicit_numeric_casts_and_preserves_precedence() {
     assert!(matches!(
         &statements[0],
         Stmt::Expression { expr }
-            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::I32, expr: inner, .. }
+            if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::I32, expr: inner, .. }
                 if matches!(inner.as_ref(), Expr::Variable { name, .. } if name == "value"))
     ));
     assert!(matches!(
         &statements[1],
         Stmt::Expression { expr }
             if matches!(expr.as_ref(), Expr::Binary { op: BinaryOp::Add, right, .. }
-                if matches!(right.as_ref(), Expr::Cast { target_type: Type::F64, .. }))
+                if matches!(right.as_ref(), Expr::Cast { target_type: TypeSyntax::F64, .. }))
     ));
     assert!(matches!(
         &statements[2],
         Stmt::Expression { expr }
-            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::F64, expr: inner, .. }
-                if matches!(inner.as_ref(), Expr::Cast { target_type: Type::I32, .. }))
+            if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::F64, expr: inner, .. }
+                if matches!(inner.as_ref(), Expr::Cast { target_type: TypeSyntax::I32, .. }))
     ));
 }
 
@@ -460,11 +460,11 @@ fn parses_char_and_bool_cast_targets() {
     assert_eq!(statements.len(), 2);
     assert!(matches!(
         &statements[0],
-        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Char, .. })
+        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::Char, .. })
     ));
     assert!(matches!(
         &statements[1],
-        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Bool, .. })
+        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::Bool, .. })
     ));
 }
 
@@ -475,21 +475,21 @@ fn parses_string_array_vector_and_custom_cast_targets() {
     assert_eq!(statements.len(), 4);
     assert!(matches!(
         &statements[0],
-        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: Type::String, .. })
+        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::String, .. })
     ));
     assert!(matches!(
         &statements[1],
         Stmt::Expression { expr }
-            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Array { .. }, .. })
+            if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::Array { .. }, .. })
     ));
     assert!(matches!(
         &statements[2],
         Stmt::Expression { expr }
-            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Vector { .. }, .. })
+            if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::Vector { .. }, .. })
     ));
     assert!(matches!(
         &statements[3],
         Stmt::Expression { expr }
-            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Custom { name }, .. } if name.as_ref() == "Record")
+            if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::Custom { name }, .. } if name.as_ref() == "Record")
     ));
 }
