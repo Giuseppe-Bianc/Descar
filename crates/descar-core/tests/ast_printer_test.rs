@@ -5,8 +5,8 @@ use descar_core::{
     printers::ast_printer::{pretty_print, pretty_print_stmt},
     printers::branch_type::{BranchConfig, BranchType},
     syntax::ast::{
-        ast_type::Type,
         assignment_op::AssignmentOp,
+        ast_type::Type,
         binary_op::BinaryOp,
         else_branch::ElseBranch,
         expr::Expr,

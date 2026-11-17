@@ -2,8 +2,8 @@
 use crate::error::compile_error::CompileError;
 use crate::error::error_code::ErrorCode;
 use crate::location::source_span::SourceSpan;
-use crate::syntax::ast::ast_type::Type;
 use crate::syntax::ast::assignment_op::AssignmentOp;
+use crate::syntax::ast::ast_type::Type;
 use crate::syntax::ast::binary_op::BinaryOp;
 use crate::syntax::ast::else_branch::ElseBranch;
 use crate::syntax::ast::expr::Expr;

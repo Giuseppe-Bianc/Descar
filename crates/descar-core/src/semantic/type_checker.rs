@@ -517,8 +517,7 @@ impl TypeChecker {
     /// This is shared by binary expressions and compound assignments. It does
     /// not traverse expressions or perform assignment-target mutability checks.
     fn check_binary_operation(
-        &mut self, op: BinaryOp, mut left_type: Type, mut right_type: Type, span: &SourceSpan,
-        left_span: &SourceSpan,
+        &mut self, op: BinaryOp, mut left_type: Type, mut right_type: Type, span: &SourceSpan, left_span: &SourceSpan,
     ) -> Option<Type> {
         // Bitwise and shift operators require integer operands.
         if matches!(
@@ -580,11 +579,7 @@ impl TypeChecker {
                     ))
                 }
             }
-            BinaryOp::Add
-            | BinaryOp::Subtract
-            | BinaryOp::Multiply
-            | BinaryOp::Divide
-            | BinaryOp::Modulo => {
+            BinaryOp::Add | BinaryOp::Subtract | BinaryOp::Multiply | BinaryOp::Divide | BinaryOp::Modulo => {
                 if self.are_compatible(&left_type, &right_type) {
                     None
                 } else {
@@ -947,9 +942,7 @@ impl TypeChecker {
     /// Target resolution and mutability validation are always assignment
     /// responsibilities. Compound assignments then apply the corresponding
     /// binary operation's type rules to the resolved target and value types.
-    fn visit_assign(
-        &mut self, target: &Expr, op: AssignmentOp, value: &Expr, span: &SourceSpan,
-    ) -> Option<Type> {
+    fn visit_assign(&mut self, target: &Expr, op: AssignmentOp, value: &Expr, span: &SourceSpan) -> Option<Type> {
         let target_type = self.visit_assignment_target(target);
         let value_type = self.visit_expr(value);
         let (Some(target_type), Some(value_type)) = (target_type, value_type) else {
@@ -979,9 +972,7 @@ impl TypeChecker {
     /// argument's assignability to the corresponding parameter type are checked,
     /// and the function return type is returned on success.
     fn visit_call(&mut self, callee: &Expr, arguments: &[Expr], span: &SourceSpan) -> Option<Type> {
-        let callee_name = if let Expr::Variable { name, .. } = callee {
-            name
-        } else {
+        let Expr::Variable { name: callee_name, .. } = callee else {
             self.type_error_with_code(Some(ErrorCode::E2026), "Callee must be a function name", callee.span());
             for arg in arguments {
                 self.visit_expr(arg);

@@ -4,8 +4,8 @@ use descar_core::{
     error::{compile_error::CompileError, error_code::ErrorCode},
     location::{source_location::SourceLocation, source_span::SourceSpan},
     syntax::ast::{
-        ast_type::Type,
         assignment_op::AssignmentOp,
+        ast_type::Type,
         binary_op::BinaryOp,
         else_branch::ElseBranch,
         expr::Expr,

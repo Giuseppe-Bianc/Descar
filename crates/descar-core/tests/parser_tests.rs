@@ -3,8 +3,8 @@ use descar_core::{
     lex::lexer::{Lexer, lexer_tokenize_with_errors},
     syntax::{
         ast::{
-            ast_type::Type, assignment_op::AssignmentOp, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr, literal_value::LiteralValue,
-            stmt::Stmt, unary_op::UnaryOp, unary_op_side::UnaryOpSide,
+            assignment_op::AssignmentOp, ast_type::Type, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr,
+            literal_value::LiteralValue, stmt::Stmt, unary_op::UnaryOp, unary_op_side::UnaryOpSide,
         },
         parser::JsavParser,
         precendence::Precedence,

@@ -75,7 +75,7 @@ fn format_binary_op(op: &impl std::fmt::Debug) -> String {
     format!("{op:?}").to_uppercase()
 }
 
-fn format_assignment_op(op: AssignmentOp) -> &'static str {
+const fn format_assignment_op(op: AssignmentOp) -> &'static str {
     match op {
         AssignmentOp::Assign => "=",
         AssignmentOp::AddAssign => "+=",
