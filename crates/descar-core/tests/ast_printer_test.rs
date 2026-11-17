@@ -222,8 +222,8 @@ fn pretty_print_declarations_cover_mutability_bindings_initializers_and_types() 
         (
             Stmt::VarDeclaration {
                 bindings: vec![
-                    VarBinding { name: "first".into(), initializer: Some(number(1)) },
-                    VarBinding { name: "second".into(), initializer: None },
+                    VarBinding { name: "first".into(), initializer: Some(number(1)), span: span(0, 1) },
+                    VarBinding { name: "second".into(), initializer: None, span: span(2, 3) },
                 ],
                 type_annotation: TypeSyntax::I32,
                 is_mutable: true,
@@ -403,7 +403,7 @@ fn pretty_print_control_flow_cover_while_for_and_all_for_option_combinations() {
     ] {
         let initializer = has_initializer.then(|| {
             Box::new(Stmt::VarDeclaration {
-                bindings: vec![VarBinding { name: "i".into(), initializer: Some(number(0)) }],
+                bindings: vec![VarBinding { name: "i".into(), initializer: Some(number(0)), span: span(0, 1) }],
                 type_annotation: TypeSyntax::I32,
                 is_mutable: true,
                 span: span(0, 1),
