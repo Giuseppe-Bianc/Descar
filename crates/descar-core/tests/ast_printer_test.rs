@@ -6,7 +6,7 @@ use descar_core::{
     printers::branch_type::{BranchConfig, BranchType},
     syntax::ast::{
         assignment_op::AssignmentOp,
-        ast_type::Type,
+        type_syntax::TypeSyntax,
         binary_op::BinaryOp,
         else_branch::ElseBranch,
         expr::Expr,
@@ -225,7 +225,7 @@ fn pretty_print_declarations_cover_mutability_bindings_initializers_and_types() 
                     VarBinding { name: "first".into(), initializer: Some(number(1)) },
                     VarBinding { name: "second".into(), initializer: None },
                 ],
-                type_annotation: Type::I32,
+                type_annotation: TypeSyntax::I32,
                 is_mutable: true,
                 span: span(0, 12),
             },
@@ -234,7 +234,7 @@ fn pretty_print_declarations_cover_mutability_bindings_initializers_and_types() 
         (
             Stmt::VarDeclaration {
                 bindings: vec![],
-                type_annotation: Type::Custom { name: Arc::from("Widget") },
+                type_annotation: TypeSyntax::Custom { name: Arc::from("Widget") },
                 is_mutable: false,
                 span: span(0, 1),
             },
@@ -253,24 +253,24 @@ fn pretty_print_declarations_cover_mutability_bindings_initializers_and_types() 
 #[test]
 fn pretty_print_type_annotations_cover_all_type_variants() {
     let cases = [
-        (Type::I8, "i8"),
-        (Type::I16, "i16"),
-        (Type::I32, "i32"),
-        (Type::I64, "i64"),
-        (Type::U8, "u8"),
-        (Type::U16, "u16"),
-        (Type::U32, "u32"),
-        (Type::U64, "u64"),
-        (Type::F32, "f32"),
-        (Type::F64, "f64"),
-        (Type::Char, "char"),
-        (Type::String, "string"),
-        (Type::Bool, "bool"),
-        (Type::Void, "void"),
-        (Type::NullPtr, "nullptr"),
-        (Type::Custom { name: Arc::from("UserType") }, "UserType"),
-        (Type::Array { element_type: Box::new(Type::U32), size: Box::new(number(8)) }, "[u32; 8]"),
-        (Type::Vector { element_type: Box::new(Type::String) }, "vector<string>"),
+        (TypeSyntax::I8, "i8"),
+        (TypeSyntax::I16, "i16"),
+        (TypeSyntax::I32, "i32"),
+        (TypeSyntax::I64, "i64"),
+        (TypeSyntax::U8, "u8"),
+        (TypeSyntax::U16, "u16"),
+        (TypeSyntax::U32, "u32"),
+        (TypeSyntax::U64, "u64"),
+        (TypeSyntax::F32, "f32"),
+        (TypeSyntax::F64, "f64"),
+        (TypeSyntax::Char, "char"),
+        (TypeSyntax::String, "string"),
+        (TypeSyntax::Bool, "bool"),
+        (TypeSyntax::Void, "void"),
+        (TypeSyntax::NullPtr, "nullptr"),
+        (TypeSyntax::Custom { name: Arc::from("UserType") }, "UserType"),
+        (TypeSyntax::Array { element_type: Box::new(TypeSyntax::U32), size: Box::new(number(8)) }, "[u32; 8]"),
+        (TypeSyntax::Vector { element_type: Box::new(TypeSyntax::String) }, "vector<string>"),
     ];
 
     for (type_annotation, expected) in cases {
@@ -284,11 +284,11 @@ fn pretty_print_type_annotations_cover_all_type_variants() {
 #[test]
 fn pretty_print_array_types_formats_literal_and_unevaluated_sizes() {
     let cases = [
-        (Type::Array { element_type: Box::new(Type::I16), size: Box::new(number(4)) }, "[i16; 4]"),
-        (Type::Array { element_type: Box::new(Type::Bool), size: Box::new(variable("length")) }, "[bool; ?]"),
+        (TypeSyntax::Array { element_type: Box::new(TypeSyntax::I16), size: Box::new(number(4)) }, "[i16; 4]"),
+        (TypeSyntax::Array { element_type: Box::new(TypeSyntax::Bool), size: Box::new(variable("length")) }, "[bool; ?]"),
         (
-            Type::Vector {
-                element_type: Box::new(Type::Array { element_type: Box::new(Type::U8), size: Box::new(number(2)) }),
+            TypeSyntax::Vector {
+                element_type: Box::new(TypeSyntax::Array { element_type: Box::new(TypeSyntax::U8), size: Box::new(number(2)) }),
             },
             "vector<[u8; 2]>",
         ),
@@ -302,13 +302,13 @@ fn pretty_print_array_types_formats_literal_and_unevaluated_sizes() {
 #[test]
 fn type_display_covers_scalar_custom_and_array_size_paths() {
     let cases = [
-        (Type::I8, "i8"),
-        (Type::U16, "u16"),
-        (Type::U32, "u32"),
-        (Type::Custom { name: Arc::from("Widget") }, "Widget"),
-        (Type::Void, "void"),
-        (Type::Array { element_type: Box::new(Type::I32), size: Box::new(number(3)) }, "[i32; 3]"),
-        (Type::Array { element_type: Box::new(Type::I32), size: Box::new(variable("size")) }, "[i32; ?]"),
+        (TypeSyntax::I8, "i8"),
+        (TypeSyntax::U16, "u16"),
+        (TypeSyntax::U32, "u32"),
+        (TypeSyntax::Custom { name: Arc::from("Widget") }, "Widget"),
+        (TypeSyntax::Void, "void"),
+        (TypeSyntax::Array { element_type: Box::new(TypeSyntax::I32), size: Box::new(number(3)) }, "[i32; 3]"),
+        (TypeSyntax::Array { element_type: Box::new(TypeSyntax::I32), size: Box::new(variable("size")) }, "[i32; ?]"),
     ];
 
     for (type_annotation, expected) in cases {
@@ -318,19 +318,19 @@ fn type_display_covers_scalar_custom_and_array_size_paths() {
 
 #[test]
 fn pretty_print_functions_cover_empty_and_populated_parameters_and_bodies() {
-    let parameter_a = Parameter::new("left".into(), Type::I32, span(0, 1));
-    let parameter_b = Parameter::new("right".into(), Type::Vector { element_type: Box::new(Type::Bool) }, span(0, 1));
+    let parameter_a = Parameter::new("left".into(), TypeSyntax::I32, span(0, 1));
+    let parameter_b = Parameter::new("right".into(), TypeSyntax::Vector { element_type: Box::new(TypeSyntax::Bool) }, span(0, 1));
     let empty_function = Stmt::Function {
         name: "empty".into(),
         parameters: vec![],
-        return_type: Type::Void,
+        return_type: TypeSyntax::Void,
         body: Box::new(statement_block(vec![])),
         span: span(0, 1),
     };
     let populated_function = Stmt::Function {
         name: "compute".into(),
         parameters: vec![parameter_a, parameter_b],
-        return_type: Type::F64,
+        return_type: TypeSyntax::F64,
         body: Box::new(statement_block(vec![Stmt::Return { value: Some(number(42)), span: span(0, 1) }])),
         span: span(0, 10),
     };
@@ -398,7 +398,7 @@ fn pretty_print_control_flow_cover_while_for_and_all_for_option_combinations() {
         let initializer = has_initializer.then(|| {
             Box::new(Stmt::VarDeclaration {
                 bindings: vec![VarBinding { name: "i".into(), initializer: Some(number(0)) }],
-                type_annotation: Type::I32,
+                type_annotation: TypeSyntax::I32,
                 is_mutable: true,
                 span: span(0, 1),
             })
@@ -503,27 +503,27 @@ fn pretty_print_output_is_deterministic_and_ansi_stripping_is_safe() {
 
 #[test]
 fn branch_config_new_initializes_all_branch_types() {
-    let config = BranchConfig::new(BranchType::Middle, BranchType::Last, BranchType::Middle);
+    let config = BranchConfig::new(BranchTypeSyntax::Middle, BranchTypeSyntax::Last, BranchTypeSyntax::Middle);
 
-    assert_eq!(config.parent_type, BranchType::Middle);
-    assert_eq!(config.current_type, BranchType::Last);
-    assert_eq!(config.child_type, BranchType::Middle);
+    assert_eq!(config.parent_type, BranchTypeSyntax::Middle);
+    assert_eq!(config.current_type, BranchTypeSyntax::Last);
+    assert_eq!(config.child_type, BranchTypeSyntax::Middle);
 }
 
 #[test]
 fn pretty_print_array_types_covers_variable_grouping_and_binary_sizes() {
     let cases = [
-        (Type::Array { element_type: Box::new(Type::I32), size: Box::new(variable("length")) }, "[i32; length]"),
+        (TypeSyntax::Array { element_type: Box::new(TypeSyntax::I32), size: Box::new(variable("length")) }, "[i32; length]"),
         (
-            Type::Array {
-                element_type: Box::new(Type::I32),
+            TypeSyntax::Array {
+                element_type: Box::new(TypeSyntax::I32),
                 size: Box::new(Expr::Grouping { expr: Box::new(variable("length")), span: span(0, 8) }),
             },
             "[i32; (length)]",
         ),
         (
-            Type::Array {
-                element_type: Box::new(Type::I32),
+            TypeSyntax::Array {
+                element_type: Box::new(TypeSyntax::I32),
                 size: Box::new(Expr::Binary {
                     left: Box::new(variable("length")),
                     op: BinaryOp::Add,
@@ -548,8 +548,8 @@ fn pretty_print_array_types_covers_variable_grouping_and_binary_sizes() {
 fn pretty_print_array_types_cover_unary_prefix_and_postfix_sizes() {
     let prefix_array = Stmt::VarDeclaration {
         bindings: vec![],
-        type_annotation: Type::Array {
-            element_type: Box::new(Type::I32),
+        type_annotation: TypeSyntax::Array {
+            element_type: Box::new(TypeSyntax::I32),
             size: Box::new(Expr::Unary {
                 op: UnaryOp::Negate,
                 side: UnaryOpSide::Prefix,
@@ -563,8 +563,8 @@ fn pretty_print_array_types_cover_unary_prefix_and_postfix_sizes() {
 
     let postfix_array = Stmt::VarDeclaration {
         bindings: vec![],
-        type_annotation: Type::Array {
-            element_type: Box::new(Type::I32),
+        type_annotation: TypeSyntax::Array {
+            element_type: Box::new(TypeSyntax::I32),
             size: Box::new(Expr::Unary {
                 op: UnaryOp::Negate,
                 side: UnaryOpSide::Postfix,
@@ -585,8 +585,8 @@ fn pretty_print_array_types_cover_unary_prefix_and_postfix_sizes() {
 
 #[test]
 fn pretty_print_array_type_with_assignment_size_covers_format_type_size_assignment() {
-    let array_type = Type::Array {
-        element_type: Box::new(Type::I32),
+    let array_type = TypeSyntax::Array {
+        element_type: Box::new(TypeSyntax::I32),
         size: Box::new(Expr::Assign {
             op: AssignmentOp::Assign,
             target: Box::new(variable("length")),
@@ -607,8 +607,8 @@ fn pretty_print_array_type_with_assignment_size_covers_format_type_size_assignme
 
 #[test]
 fn pretty_print_array_type_with_call_size_covers_format_type_size_call() {
-    let array_type = Type::Array {
-        element_type: Box::new(Type::I32),
+    let array_type = TypeSyntax::Array {
+        element_type: Box::new(TypeSyntax::I32),
         size: Box::new(Expr::Call {
             callee: Box::new(variable("get_size")),
             arguments: vec![number(4), variable("length")],
@@ -627,8 +627,8 @@ fn pretty_print_array_type_with_call_size_covers_format_type_size_call() {
 
 #[test]
 fn pretty_print_array_type_with_array_access_size_covers_format_type_size_array_access() {
-    let array_type = Type::Array {
-        element_type: Box::new(Type::I32),
+    let array_type = TypeSyntax::Array {
+        element_type: Box::new(TypeSyntax::I32),
         size: Box::new(Expr::ArrayAccess {
             array: Box::new(variable("lengths")),
             index: Box::new(number(0)),
@@ -650,8 +650,8 @@ fn pretty_print_array_type_with_array_access_size_covers_format_type_size_array_
 fn pretty_print_array_type_size_handles_array_literal() {
     let populated_array_size = Stmt::VarDeclaration {
         bindings: vec![],
-        type_annotation: Type::Array {
-            element_type: Box::new(Type::I32),
+        type_annotation: TypeSyntax::Array {
+            element_type: Box::new(TypeSyntax::I32),
             size: Box::new(Expr::ArrayLiteral {
                 elements: vec![
                     number(1),
@@ -667,8 +667,8 @@ fn pretty_print_array_type_size_handles_array_literal() {
 
     let empty_array_size = Stmt::VarDeclaration {
         bindings: vec![],
-        type_annotation: Type::Array {
-            element_type: Box::new(Type::I32),
+        type_annotation: TypeSyntax::Array {
+            element_type: Box::new(TypeSyntax::I32),
             size: Box::new(Expr::ArrayLiteral { elements: vec![], span: span(0, 2) }),
         },
         is_mutable: false,
@@ -696,7 +696,7 @@ fn pretty_print_main_function_with_empty_body_covers_empty_stmt_body() {
 
 #[test]
 fn pretty_print_cast_expression_shows_target_type_and_operand() {
-    let expression = Expr::Cast { expr: Box::new(variable("value")), target_type: Type::I32, span: span(0, 13) };
+    let expression = Expr::Cast { expr: Box::new(variable("value")), target_type: TypeSyntax::I32, span: span(0, 13) };
 
     let output = rendered_expr(&expression);
     assert!(output.starts_with("└── Cast to i32\n"));
@@ -708,7 +708,7 @@ fn pretty_print_cast_expression_shows_target_type_and_operand() {
 fn pretty_print_cast_to_array_type() {
     let expression = Expr::Cast {
         expr: Box::new(variable("arr")),
-        target_type: Type::Array { element_type: Box::new(Type::I32), size: Box::new(number(4)) },
+        target_type: TypeSyntax::Array { element_type: Box::new(TypeSyntax::I32), size: Box::new(number(4)) },
         span: span(0, 10),
     };
     let output = rendered_expr(&expression);
@@ -720,7 +720,7 @@ fn pretty_print_cast_to_array_type() {
 fn pretty_print_cast_to_custom_type() {
     let expression = Expr::Cast {
         expr: Box::new(number(1)),
-        target_type: Type::Custom { name: Arc::from("MyType") },
+        target_type: TypeSyntax::Custom { name: Arc::from("MyType") },
         span: span(0, 5),
     };
     let output = rendered_expr(&expression);
