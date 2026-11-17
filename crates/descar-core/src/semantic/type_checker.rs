@@ -1277,13 +1277,13 @@ mod tests {
 
         vec![
             Stmt::VarDeclaration {
-                bindings: vec![VarBinding { name: "value".into(), initializer: Some(number(span.clone())) }],
+                bindings: vec![VarBinding { name: "value".into(), initializer: Some(number(span.clone())), span: span.clone() }],
                 type_annotation: TypeSyntax::I64,
                 is_mutable: false,
                 span: span.clone(),
             },
             Stmt::VarDeclaration {
-                bindings: vec![VarBinding { name: "items".into(), initializer: None }],
+                bindings: vec![VarBinding { name: "items".into(), initializer: None, span: span.clone() }],
                 type_annotation: array_type,
                 is_mutable: false,
                 span: span.clone(),
@@ -1535,6 +1535,7 @@ mod tests {
                 bindings: vec![VarBinding {
                     name: "flag".into(),
                     initializer: Some(Expr::new_bool_literal(true, span.clone())),
+                    span: span.clone(),
                 }],
                 type_annotation: TypeSyntax::Bool,
                 is_mutable: true,
