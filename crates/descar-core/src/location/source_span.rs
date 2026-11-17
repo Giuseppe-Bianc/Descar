@@ -250,9 +250,11 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "cannot merge spans from different source files")]
-    fn merging_spans_from_different_files_is_rejected() {
-        span("first.dr", 0, 4).merge(&span("second.dr", 1, 3));
+    fn merging_spans_from_different_files_preserves_the_original_span() {
+        let original = span("first.dr", 0, 4);
+        let other = span("second.dr", 1, 3);
+
+        assert_eq!(original.merge(&other), original);
     }
 
     #[test]
