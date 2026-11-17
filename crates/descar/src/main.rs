@@ -10,7 +10,7 @@ use std::{fs, process};
 use clap::{CommandFactory, Parser};
 use descar_cli::cli::{Args, Command, CompileArgs, OptimizationLevel};
 use descar_core::error::error_reporter::ErrorReporter;
-use descar_core::syntax::ast::Stmt;
+use descar_core::syntax::ast::CompilationUnit;
 use descar_core::syntax::parser::JsavParser;
 use tracing::{debug, error_span, info, trace, warn};
 
@@ -68,7 +68,7 @@ fn stop_frontend(stage: &'static str, error_reporter: &ErrorReporter, errors: Ve
 ///
 /// Returns the parsed statements when all stages succeed. If any stage reports
 /// diagnostics, prints them and exits with status code 1.
-fn run_frontend(file_path: &str, input: &str) -> Vec<Stmt> {
+fn run_frontend(file_path: &str, input: &str) -> CompilationUnit {
     trace!(source_len = input.len(), "lexing started");
     let mut lexer = Lexer::new(file_path, input);
     let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);
@@ -88,7 +88,7 @@ fn run_frontend(file_path: &str, input: &str) -> Vec<Stmt> {
 
     trace!(statements = statements.len(), "type checking started");
     let mut type_checker = TypeChecker::new();
-    let type_checker_errors = type_checker.check(&statements);
+    let type_checker_errors = type_checker.check(&statements.declarations);
     debug!(errors = type_checker_errors.len(), "type checking finished");
     if !type_checker_errors.is_empty() {
         stop_frontend("type checking", &error_reporter, type_checker_errors);
@@ -98,7 +98,7 @@ fn run_frontend(file_path: &str, input: &str) -> Vec<Stmt> {
 }
 
 /// Reads a source file and runs the frontend on it.
-fn analyze(path: &Path) -> Vec<Stmt> {
+fn analyze(path: &Path) -> CompilationUnit {
     let input = read_input(path);
     let file_path_str = path_to_str(path);
     run_frontend(file_path_str, &input)
