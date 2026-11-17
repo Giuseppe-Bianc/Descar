@@ -3,6 +3,7 @@ use crate::error::compile_error::CompileError;
 use crate::error::error_code::ErrorCode;
 use crate::location::source_span::SourceSpan;
 use crate::syntax::ast::ast_type::Type;
+use crate::syntax::ast::assignment_op::AssignmentOp;
 use crate::syntax::ast::binary_op::BinaryOp;
 use crate::syntax::ast::else_branch::ElseBranch;
 use crate::syntax::ast::expr::Expr;
@@ -553,18 +554,6 @@ impl<'a> JsavParser<'a> {
             | TokenKind::ShiftLeft
             | TokenKind::ShiftRight => self.parse_binary(left, token),
 
-            // Compound assignment
-            TokenKind::PlusEqual
-            | TokenKind::MinusEqual
-            | TokenKind::StarEqual
-            | TokenKind::SlashEqual
-            | TokenKind::PercentEqual
-            | TokenKind::AndEqual
-            | TokenKind::OrEqual
-            | TokenKind::XorEqual
-            | TokenKind::ShiftLeftEqual
-            | TokenKind::ShiftRightEqual => self.parse_compound_assignment(left, token),
-
             TokenKind::PlusPlus => {
                 let span = left.span().merge(&token.span);
                 Some(Expr::Unary { op: UnaryOp::Increment, side: UnaryOpSide::Postfix, expr: Box::new(left), span })
@@ -574,8 +563,18 @@ impl<'a> JsavParser<'a> {
                 Some(Expr::Unary { op: UnaryOp::Decrement, side: UnaryOpSide::Postfix, expr: Box::new(left), span })
             }
 
-            // Assignment
-            TokenKind::Equal => self.parse_assignment(left, &token),
+            // Simple and compound assignment
+            TokenKind::Equal
+            | TokenKind::PlusEqual
+            | TokenKind::MinusEqual
+            | TokenKind::StarEqual
+            | TokenKind::SlashEqual
+            | TokenKind::PercentEqual
+            | TokenKind::AndEqual
+            | TokenKind::OrEqual
+            | TokenKind::XorEqual
+            | TokenKind::ShiftLeftEqual
+            | TokenKind::ShiftRightEqual => self.parse_assignment(left, &token),
             // Explicit numeric cast
             TokenKind::KeywordAs => self.parse_cast(left),
             // Function call
@@ -619,16 +618,6 @@ impl<'a> JsavParser<'a> {
         let target_end = self.previous().map_or_else(|| target_start.span.clone(), |token| token.span.clone());
         let span = expr.span().merge(&target_start.span.merge(&target_end));
         Some(Expr::Cast { expr: Box::new(expr), target_type, span })
-    }
-
-    /// Validates a compound-assignment target and preserves its `Expr::Binary` representation.
-    fn parse_compound_assignment(&mut self, left: Expr, token: Token) -> Option<Expr> {
-        if !Self::is_valid_assignment_target(&left) {
-            self.report_invalid_assignment_target(&left);
-            return None;
-        }
-
-        self.parse_binary(left, token)
     }
 
     #[inline]
@@ -701,9 +690,18 @@ impl<'a> JsavParser<'a> {
         Some(Expr::Grouping { expr: Box::new(expr?), span: self.merge_span(start_token) })
     }
 
-    /// Parses a simple `=` assignment after validating its left-hand side.
+    /// Parses simple or compound assignment after validating its left-hand side.
     fn parse_assignment(&mut self, left: Expr, token: &Token) -> Option<Expr> {
-        let value = self.parse_expr(1).unwrap_or_else(|| Expr::null_expr(token.span.clone()));
+        let op = match AssignmentOp::get_op(token) {
+            Ok(op) => op,
+            Err(error) => {
+                self.errors.push(error);
+                return None;
+            }
+        };
+        let value = self
+            .parse_expr(Precedence::binding_power(token).right)
+            .unwrap_or_else(|| Expr::null_expr(token.span.clone()));
 
         let span = left.span().merge(value.span());
 
@@ -712,7 +710,7 @@ impl<'a> JsavParser<'a> {
             return None;
         }
 
-        Some(Expr::Assign { target: Box::new(left), value: Box::new(value), span })
+        Some(Expr::Assign { op, target: Box::new(left), value: Box::new(value), span })
     }
 
     fn parse_call(&mut self, callee: Expr, start_token: &Token) -> Option<Expr> {
