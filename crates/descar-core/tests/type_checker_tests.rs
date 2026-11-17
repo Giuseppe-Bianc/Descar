@@ -1470,6 +1470,49 @@ fn test_compound_assignment_to_immutable_variable_is_rejected() {
 }
 
 #[test]
+fn test_compound_arithmetic_assignment_rejects_non_numeric_target() {
+    let ast = "var flag: bool = true\nflag += 1i32";
+    let errors = typecheck(ast);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(
+        errors[0].message(),
+        Some("Binary operator 'Add' requires numeric operands, found bool and i32")
+    );
+}
+
+#[test]
+fn test_compound_bitwise_assignment_requires_integer_target_and_value() {
+    let ast = "var flag: bool = true\nflag |= 1i32";
+    let errors = typecheck(ast);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].error_code(), Some(&ErrorCode::E2011));
+    assert_eq!(
+        errors[0].message(),
+        Some("Bitwise operator 'BitwiseOr' require integer operand types, found bool and i32")
+    );
+}
+
+#[test]
+fn test_compound_assignment_supports_mutable_array_elements() {
+    let ast = "var values: i32[2] = {1i32, 2i32}\nvalues[0] += 1i32";
+    let errors = typecheck(ast);
+
+    assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
+}
+
+#[test]
+fn test_compound_assignment_rejects_immutable_array_elements() {
+    let ast = "const values: i32[2] = {1i32, 2i32}\nvalues[0] += 1i32";
+    let errors = typecheck(ast);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].error_code(), Some(&ErrorCode::E2024));
+    assert_eq!(errors[0].message(), Some("Cannot assign to immutable variable 'values'"));
+}
+
+#[test]
 fn test_mutable_compound_assignment_reaches_mutability_check_path() {
     let ast = "var x: i32 = 1i32\nx += 2i32";
     let errors = typecheck(ast);
