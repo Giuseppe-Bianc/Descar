@@ -1,6 +1,6 @@
 use crate::{
     location::source_span::SourceSpan,
-    syntax::ast::{type_syntax::TypeSyntax, else_branch::ElseBranch, expr::Expr, parameter::Parameter},
+    syntax::ast::{else_branch::ElseBranch, expr::Expr, parameter::Parameter, type_syntax::TypeSyntax},
 };
 
 /// Abstract syntax tree node representing a statement.

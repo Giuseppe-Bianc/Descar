@@ -2,7 +2,7 @@ use descar_core::{
     error::compile_error::CompileError,
     lex::lexer::{Lexer, lexer_tokenize_with_errors},
     syntax::{
-        ast::{type_syntax::TypeSyntax, else_branch::ElseBranch, expr::Expr, stmt::Stmt},
+        ast::{else_branch::ElseBranch, expr::Expr, stmt::Stmt, type_syntax::TypeSyntax},
         parser::JsavParser,
     },
 };

@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use descar_core::location::source_span::SourceSpan;
 use descar_core::syntax::ast::{
-    assignment_op::AssignmentOp, type_syntax::TypeSyntax, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr,
-    literal_value::LiteralValue, stmt::Stmt, unary_op::UnaryOp, unary_op_side::UnaryOpSide,
+    assignment_op::AssignmentOp, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr, literal_value::LiteralValue,
+    stmt::Stmt, type_syntax::TypeSyntax, unary_op::UnaryOp, unary_op_side::UnaryOpSide,
 };
 use descar_core::tokens::number::Number;
 use insta::assert_snapshot;

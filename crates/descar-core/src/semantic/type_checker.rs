@@ -35,7 +35,9 @@
 use crate::error::compile_error::CompileError;
 use crate::error::error_code::ErrorCode;
 use crate::location::source_span::SourceSpan;
-use crate::semantic::symbol_table::{FunctionSymbol, ResolvedParameter, ScopeKind, Symbol, SymbolTable, VariableSymbol};
+use crate::semantic::symbol_table::{
+    FunctionSymbol, ResolvedParameter, ScopeKind, Symbol, SymbolTable, VariableSymbol,
+};
 use crate::syntax::ast::assignment_op::AssignmentOp;
 use crate::syntax::ast::binary_op::BinaryOp;
 use crate::syntax::ast::else_branch::ElseBranch;
@@ -204,10 +206,9 @@ impl TypeChecker {
             TypeSyntax::String => Type::String,
             TypeSyntax::Bool => Type::Bool,
             TypeSyntax::Custom { name } => Type::Custom { name: name.clone() },
-            TypeSyntax::Array { element_type, size } => Type::Array {
-                element_type: Box::new(Self::resolve_type_syntax(element_type)),
-                size: size.clone(),
-            },
+            TypeSyntax::Array { element_type, size } => {
+                Type::Array { element_type: Box::new(Self::resolve_type_syntax(element_type)), size: size.clone() }
+            }
             TypeSyntax::Vector { element_type } => {
                 Type::Vector { element_type: Box::new(Self::resolve_type_syntax(element_type)) }
             }
@@ -498,7 +499,7 @@ impl TypeChecker {
             Expr::Cast { expr, target_type, span } => {
                 let resolved_target = Self::resolve_type_syntax(target_type);
                 self.visit_cast_expr(expr, &resolved_target, span)
-            },
+            }
             Expr::Unary { op, expr, span, .. } => self.visit_unary_expr(*op, expr, span),
             Expr::Grouping { expr, span: _ } => self.visit_expr(expr),
             Expr::Literal { value, span } => self.visit_literal(value, span),
@@ -1271,7 +1272,8 @@ mod tests {
     }
 
     fn immutable_declarations(span: &SourceSpan) -> Vec<Stmt> {
-        let array_type = TypeSyntax::Array { element_type: Box::new(TypeSyntax::I64), size: Box::new(number(span.clone())) };
+        let array_type =
+            TypeSyntax::Array { element_type: Box::new(TypeSyntax::I64), size: Box::new(number(span.clone())) };
 
         vec![
             Stmt::VarDeclaration {
@@ -1296,7 +1298,7 @@ mod tests {
     #[test]
     fn resolves_nested_type_syntax_into_semantic_types() {
         let span = SourceSpan::default();
-        let size = number(span.clone());
+        let size = number(span);
         let syntax = TypeSyntax::Array {
             element_type: Box::new(TypeSyntax::Vector {
                 element_type: Box::new(TypeSyntax::Custom { name: Arc::from("Record") }),

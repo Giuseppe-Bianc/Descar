@@ -6,12 +6,12 @@ use descar_core::{
     printers::branch_type::{BranchConfig, BranchType},
     syntax::ast::{
         assignment_op::AssignmentOp,
-        type_syntax::TypeSyntax,
         binary_op::BinaryOp,
         else_branch::ElseBranch,
         expr::Expr,
         parameter::Parameter,
         stmt::{Stmt, VarBinding},
+        type_syntax::TypeSyntax,
         unary_op::UnaryOp,
         unary_op_side::UnaryOpSide,
     },
@@ -284,10 +284,16 @@ fn pretty_print_type_annotations_cover_all_type_variants() {
 fn pretty_print_array_types_formats_literal_and_unevaluated_sizes() {
     let cases = [
         (TypeSyntax::Array { element_type: Box::new(TypeSyntax::I16), size: Box::new(number(4)) }, "[i16; 4]"),
-        (TypeSyntax::Array { element_type: Box::new(TypeSyntax::Bool), size: Box::new(variable("length")) }, "[bool; ?]"),
+        (
+            TypeSyntax::Array { element_type: Box::new(TypeSyntax::Bool), size: Box::new(variable("length")) },
+            "[bool; ?]",
+        ),
         (
             TypeSyntax::Vector {
-                element_type: Box::new(TypeSyntax::Array { element_type: Box::new(TypeSyntax::U8), size: Box::new(number(2)) }),
+                element_type: Box::new(TypeSyntax::Array {
+                    element_type: Box::new(TypeSyntax::U8),
+                    size: Box::new(number(2)),
+                }),
             },
             "vector<[u8; 2]>",
         ),
@@ -318,7 +324,8 @@ fn type_display_covers_scalar_custom_and_array_size_paths() {
 #[test]
 fn pretty_print_functions_cover_empty_and_populated_parameters_and_bodies() {
     let parameter_a = Parameter::new("left".into(), TypeSyntax::I32, span(0, 1));
-    let parameter_b = Parameter::new("right".into(), TypeSyntax::Vector { element_type: Box::new(TypeSyntax::Bool) }, span(0, 1));
+    let parameter_b =
+        Parameter::new("right".into(), TypeSyntax::Vector { element_type: Box::new(TypeSyntax::Bool) }, span(0, 1));
     let empty_function = Stmt::Function {
         name: "empty".into(),
         parameters: vec![],
@@ -512,7 +519,10 @@ fn branch_config_new_initializes_all_branch_types() {
 #[test]
 fn pretty_print_array_types_covers_variable_grouping_and_binary_sizes() {
     let cases = [
-        (TypeSyntax::Array { element_type: Box::new(TypeSyntax::I32), size: Box::new(variable("length")) }, "[i32; length]"),
+        (
+            TypeSyntax::Array { element_type: Box::new(TypeSyntax::I32), size: Box::new(variable("length")) },
+            "[i32; length]",
+        ),
         (
             TypeSyntax::Array {
                 element_type: Box::new(TypeSyntax::I32),

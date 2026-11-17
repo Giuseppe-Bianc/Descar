@@ -5,13 +5,13 @@ use descar_core::{
     printers::ast_printer::{pretty_print, pretty_print_stmt},
     syntax::ast::{
         assignment_op::AssignmentOp,
-        type_syntax::TypeSyntax,
         binary_op::BinaryOp,
         else_branch::ElseBranch,
         expr::Expr,
         literal_value::LiteralValue,
         parameter::Parameter,
         stmt::{Stmt, VarBinding},
+        type_syntax::TypeSyntax,
         unary_op::UnaryOp,
         unary_op_side::UnaryOpSide,
     },
@@ -210,8 +210,11 @@ fn snapshot_cast_to_array_type() {
 
 #[test]
 fn snapshot_cast_to_custom_type() {
-    let expression =
-        Expr::Cast { expr: Box::new(number(1)), target_type: TypeSyntax::Custom { name: Arc::from("MyType") }, span: span() };
+    let expression = Expr::Cast {
+        expr: Box::new(number(1)),
+        target_type: TypeSyntax::Custom { name: Arc::from("MyType") },
+        span: span(),
+    };
     assert_snapshot!("cast_to_custom_type", strip_ansi_codes(&pretty_print(&expression)));
 }
 

@@ -368,8 +368,12 @@ fn current_scope_exposes_read_only_scope_state() {
 #[test]
 fn current_function_context_starts_empty_can_be_replaced_and_can_be_cleared() {
     let mut table = SymbolTable::new();
-    let first =
-        function_symbol("first", vec![ResolvedParameter { name: Arc::from("arg"), ty: Type::I8, defined_at: span(1, 2) }], Type::I32, span(0, 5));
+    let first = function_symbol(
+        "first",
+        vec![ResolvedParameter { name: Arc::from("arg"), ty: Type::I8, defined_at: span(1, 2) }],
+        Type::I32,
+        span(0, 5),
+    );
     let second = function_symbol("second", vec![], Type::Void, span(8, 14));
 
     table.exit_function();

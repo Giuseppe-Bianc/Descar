@@ -17,9 +17,16 @@ pub enum TypeSyntax {
     Char,
     String,
     Bool,
-    Custom { name: Arc<str> },
-    Array { element_type: Box<Self>, size: Box<Expr> },
-    Vector { element_type: Box<Self> },
+    Custom {
+        name: Arc<str>,
+    },
+    Array {
+        element_type: Box<Self>,
+        size: Box<Expr>,
+    },
+    Vector {
+        element_type: Box<Self>,
+    },
     /// Implicit return type used when a function has no return annotation.
     Void,
 }
