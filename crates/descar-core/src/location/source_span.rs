@@ -141,10 +141,10 @@ impl SourceSpan {
     /// Invalid spans are rejected.
     #[must_use]
     pub fn merge(&self, other: &Self) -> Self {
+        assert!(self.is_valid() && other.is_valid(), "cannot merge invalid source spans");
         if self.file_path != other.file_path {
             return self.clone();
         }
-        assert!(self.is_valid() && other.is_valid(), "cannot merge invalid source spans");
 
         let merged_start = if self.start.offset() <= other.start.offset() { self.start } else { other.start };
         let merged_end = if self.end.offset() >= other.end.offset() { self.end } else { other.end };
