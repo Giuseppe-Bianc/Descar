@@ -174,9 +174,11 @@ impl<'a> JsavParser<'a> {
         let mut statements = Vec::new();
 
         while !self.check(&TokenKind::CloseBrace) && !self.is_at_end() {
+            let before = self.current;
             if let Some(stmt) = self.parse_stmt() {
                 statements.push(stmt);
-            } else {
+            }
+            if self.current == before {
                 self.advance();
             }
         }
