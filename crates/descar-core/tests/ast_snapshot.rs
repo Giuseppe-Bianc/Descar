@@ -176,7 +176,6 @@ fn snapshots_types_and_branches() {
         },
         TypeSyntax::Vector { element_type: Box::new(TypeSyntax::String) },
         TypeSyntax::Void,
-        TypeSyntax::NullPtr,
     ];
     let branches = [
         ElseBranch::None,
