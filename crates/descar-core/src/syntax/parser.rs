@@ -728,7 +728,8 @@ impl<'a> JsavParser<'a> {
         }
         arguments.shrink_to_fit();
 
-        Some(Expr::Call { callee: Box::new(callee), arguments, span: self.merge_span(start_token) })
+        let span = callee.span().merge(&self.merge_span(start_token));
+        Some(Expr::Call { callee: Box::new(callee), arguments, span })
     }
 
     fn parse_array_access(&mut self, array: Expr, start_token: &Token) -> Option<Expr> {
@@ -736,7 +737,8 @@ impl<'a> JsavParser<'a> {
         if !self.expect(&TokenKind::CloseBracket, "end of array access") {
             return None;
         }
-        Some(Expr::ArrayAccess { array: Box::new(array), index: Box::new(index), span: self.merge_span(start_token) })
+        let span = array.span().merge(&self.merge_span(start_token));
+        Some(Expr::ArrayAccess { array: Box::new(array), index: Box::new(index), span })
     }
 
     #[inline]
