@@ -392,7 +392,7 @@ impl<'a> JsavParser<'a> {
                 "Invalid type specification",
                 Some("Try using a primitive type or a custom type identifier"),
             );
-            Type::Void
+            TypeSyntax::Void
         });
 
         self.expect(&TokenKind::Equal, "after type annotation");
