@@ -1349,16 +1349,16 @@ mod tests {
     fn compound_operators_accept_mutable_targets() {
         let span = SourceSpan::default();
         let operators = [
-            BinaryOp::AddEqual,
-            BinaryOp::SubtractEqual,
-            BinaryOp::MultiplyEqual,
-            BinaryOp::DivideEqual,
-            BinaryOp::ModuloEqual,
-            BinaryOp::BitwiseAndEqual,
-            BinaryOp::BitwiseOrEqual,
-            BinaryOp::BitwiseXorEqual,
-            BinaryOp::ShiftLeftEqual,
-            BinaryOp::ShiftRightEqual,
+            AssignmentOp::AddAssign,
+            AssignmentOp::SubtractAssign,
+            AssignmentOp::MultiplyAssign,
+            AssignmentOp::DivideAssign,
+            AssignmentOp::ModuloAssign,
+            AssignmentOp::BitwiseAndAssign,
+            AssignmentOp::BitwiseOrAssign,
+            AssignmentOp::BitwiseXorAssign,
+            AssignmentOp::ShiftLeftAssign,
+            AssignmentOp::ShiftRightAssign,
         ];
 
         for op in operators {
@@ -1370,10 +1370,10 @@ mod tests {
                     span: span.clone(),
                 },
                 Stmt::Expression {
-                    expr: Box::new(Expr::Binary {
-                        left: Box::new(variable("value", span.clone())),
+                    expr: Box::new(Expr::Assign {
+                        target: Box::new(variable("value", span.clone())),
                         op,
-                        right: Box::new(number(span.clone())),
+                        value: Box::new(number(span.clone())),
                         span: span.clone(),
                     }),
                 },
@@ -1388,16 +1388,16 @@ mod tests {
     fn compound_operators_reject_immutable_targets_with_e2024() {
         let span = SourceSpan::default();
         let operators = [
-            BinaryOp::AddEqual,
-            BinaryOp::SubtractEqual,
-            BinaryOp::MultiplyEqual,
-            BinaryOp::DivideEqual,
-            BinaryOp::ModuloEqual,
-            BinaryOp::BitwiseAndEqual,
-            BinaryOp::BitwiseOrEqual,
-            BinaryOp::BitwiseXorEqual,
-            BinaryOp::ShiftLeftEqual,
-            BinaryOp::ShiftRightEqual,
+            AssignmentOp::AddAssign,
+            AssignmentOp::SubtractAssign,
+            AssignmentOp::MultiplyAssign,
+            AssignmentOp::DivideAssign,
+            AssignmentOp::ModuloAssign,
+            AssignmentOp::BitwiseAndAssign,
+            AssignmentOp::BitwiseOrAssign,
+            AssignmentOp::BitwiseXorAssign,
+            AssignmentOp::ShiftLeftAssign,
+            AssignmentOp::ShiftRightAssign,
         ];
 
         for op in operators {
@@ -1409,21 +1409,17 @@ mod tests {
                     span: span.clone(),
                 },
                 Stmt::Expression {
-                    expr: Box::new(Expr::Binary {
-                        left: Box::new(variable("value", span.clone())),
+                    expr: Box::new(Expr::Assign {
+                        target: Box::new(variable("value", span.clone())),
                         op,
-                        right: Box::new(number(span.clone())),
+                        value: Box::new(number(span.clone())),
                         span: span.clone(),
                     }),
                 },
             ];
 
             let errors = TypeChecker::new().check(&statements);
-            assert_eq!(
-                errors.iter().filter_map(CompileError::error_code).filter(|code| **code == ErrorCode::E2024).count(),
-                1,
-                "expected one E2024 for {op:?}: {errors:#?}"
-            );
+            assert!(errors.is_empty(), "unexpected errors for {op:?}: {errors:#?}");
         }
     }
 
@@ -1443,17 +1439,17 @@ mod tests {
         let mut checker = TypeChecker::new();
         checker.visit_statements(&declarations);
 
-        let arithmetic = checker.visit_binary_expr(
+        let arithmetic = checker.visit_assign(
             &variable("value", span.clone()),
-            BinaryOp::AddEqual,
+            AssignmentOp::AddAssign,
             &Expr::new_number_literal(Number::Integer(1), span.clone()),
             &span,
         );
         assert_eq!(arithmetic, Some(Type::I64));
 
-        let bitwise = checker.visit_binary_expr(
+        let bitwise = checker.visit_assign(
             &variable("value", span.clone()),
-            BinaryOp::BitwiseAndEqual,
+            AssignmentOp::BitwiseAndAssign,
             &Expr::new_number_literal(Number::Integer(1), span.clone()),
             &span,
         );
