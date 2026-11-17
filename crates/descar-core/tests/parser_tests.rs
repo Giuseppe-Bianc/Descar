@@ -331,6 +331,63 @@ fn token_from(input: &str) -> descar_core::tokens::token::Token {
 }
 
 #[test]
+fn binary_operators_are_left_associative() {
+    let cases = [
+        ("a - b - c", BinaryOp::Subtract),
+        ("a / b / c", BinaryOp::Divide),
+        ("a % b % c", BinaryOp::Modulo),
+        ("a << b << c", BinaryOp::ShiftLeft),
+        ("a & b & c", BinaryOp::BitwiseAnd),
+        ("a ^ b ^ c", BinaryOp::BitwiseXor),
+        ("a | b | c", BinaryOp::BitwiseOr),
+        ("a == b == c", BinaryOp::Equal),
+        ("a && b && c", BinaryOp::And),
+        ("a || b || c", BinaryOp::Or),
+    ];
+
+    for (input, expected_op) in cases {
+        let (statements, errors) = parse(input);
+        assert_no_errors(&errors);
+        assert!(
+            matches!(
+                statements.as_slice(),
+                [Stmt::Expression { expr }]
+                    if matches!(
+                        expr.as_ref(),
+                        Expr::Binary { op, left, .. }
+                            if *op == expected_op
+                                && matches!(
+                                    left.as_ref(),
+                                    Expr::Binary { op: inner_op, .. } if *inner_op == expected_op
+                                )
+                    )
+            ),
+            "expected left-associated AST for {input:?}, got {statements:#?}"
+        );
+    }
+}
+
+#[test]
+fn assignment_operators_are_right_associative() {
+    for input in ["a = b = c", "a += b += c"] {
+        let (statements, errors) = parse(input);
+        assert_no_errors(&errors);
+        assert!(
+            matches!(
+                statements.as_slice(),
+                [Stmt::Expression { expr }]
+                    if matches!(
+                        expr.as_ref(),
+                        Expr::Assign { value, .. }
+                            if matches!(value.as_ref(), Expr::Assign { .. })
+                    )
+            ),
+            "expected right-associated AST for {input:?}, got {statements:#?}"
+        );
+    }
+}
+
+#[test]
 fn unary_binding_power_returns_zero_for_non_unary_operator() {
     let token = token_from("+");
 
