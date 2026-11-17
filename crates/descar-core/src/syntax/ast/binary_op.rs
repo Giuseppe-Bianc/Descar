@@ -12,32 +12,22 @@ pub enum BinaryOp {
     /// Addition operator (+).
     Add,
 
-    /// Addition assignment operator (+=).
-    AddEqual,
 
     /// Subtraction operator (-).
     Subtract,
 
-    /// Subtraction assignment operator (-=).
-    SubtractEqual,
 
     /// Multiplication operator (*).
     Multiply,
 
-    /// Multiplication assignment operator (*=).
-    MultiplyEqual,
 
     /// Division operator (/).
     Divide,
 
-    /// Division assignment operator (/=).
-    DivideEqual,
 
     /// Modulo operator (%).
     Modulo,
 
-    /// Modulo assignment operator (%=).
-    ModuloEqual,
 
     /// Equality comparison operator (==).
     Equal,
@@ -66,32 +56,22 @@ pub enum BinaryOp {
     /// Bitwise AND operator (&).
     BitwiseAnd,
 
-    /// Bitwise AND assignment operator (&=).
-    BitwiseAndEqual,
 
     /// Bitwise OR operator (|).
     BitwiseOr,
 
-    /// Bitwise OR assignment operator (|=).
-    BitwiseOrEqual,
 
     /// Bitwise XOR operator (^).
     BitwiseXor,
 
-    /// Bitwise XOR assignment operator (^=).
-    BitwiseXorEqual,
 
     /// Shift left operator (<<).
     ShiftLeft,
 
-    /// Shift left assignment operator (<<=).
-    ShiftLeftEqual,
 
     /// Shift right operator (>>).
     ShiftRight,
 
-    /// Shift right assignment operator (>>=).
-    ShiftRightEqual,
 }
 
 impl BinaryOp {
@@ -105,19 +85,14 @@ impl BinaryOp {
     pub fn get_op(token: &Token) -> Result<Self, CompileError> {
         Ok(match token.kind {
             TokenKind::Plus => Self::Add,
-            TokenKind::PlusEqual => Self::AddEqual,
 
             TokenKind::Minus => Self::Subtract,
-            TokenKind::MinusEqual => Self::SubtractEqual,
 
             TokenKind::Star => Self::Multiply,
-            TokenKind::StarEqual => Self::MultiplyEqual,
 
             TokenKind::Slash => Self::Divide,
-            TokenKind::SlashEqual => Self::DivideEqual,
 
             TokenKind::Percent => Self::Modulo,
-            TokenKind::PercentEqual => Self::ModuloEqual,
 
             TokenKind::EqualEqual => Self::Equal,
             TokenKind::NotEqual => Self::NotEqual,
@@ -132,19 +107,14 @@ impl BinaryOp {
             TokenKind::OrOr => Self::Or,
 
             TokenKind::And => Self::BitwiseAnd,
-            TokenKind::AndEqual => Self::BitwiseAndEqual,
 
             TokenKind::Or => Self::BitwiseOr,
-            TokenKind::OrEqual => Self::BitwiseOrEqual,
 
             TokenKind::Xor => Self::BitwiseXor,
-            TokenKind::XorEqual => Self::BitwiseXorEqual,
 
             TokenKind::ShiftLeft => Self::ShiftLeft,
-            TokenKind::ShiftLeftEqual => Self::ShiftLeftEqual,
 
             TokenKind::ShiftRight => Self::ShiftRight,
-            TokenKind::ShiftRightEqual => Self::ShiftRightEqual,
 
             _ => {
                 return Err(CompileError::SyntaxError {
