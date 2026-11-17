@@ -2,7 +2,7 @@ use descar_core::error::compile_error::CompileError;
 use descar_core::error::error_code::ErrorCode;
 use descar_core::lex::lexer::{Lexer, lexer_tokenize_with_errors};
 use descar_core::semantic::type_checker::TypeChecker;
-use descar_core::syntax::ast::binary_op::BinaryOp;
+use descar_core::syntax::ast::assignment_op::AssignmentOp;
 use descar_core::syntax::ast::{Expr, LiteralValue, Stmt, Type};
 use descar_core::syntax::parser::JsavParser;
 use descar_core::tokens::number::Number;
@@ -1460,6 +1460,16 @@ fn test_all_compound_assignments_typecheck_from_source() {
 }
 
 #[test]
+fn test_compound_assignment_to_immutable_variable_is_rejected() {
+    let ast = "const x: i32 = 1i32\nx += 2i32";
+    let errors = typecheck(ast);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].error_code(), Some(&ErrorCode::E2024));
+    assert_eq!(errors[0].message(), Some("Cannot assign to immutable variable 'x'"));
+}
+
+#[test]
 fn test_mutable_compound_assignment_reaches_mutability_check_path() {
     let ast = "var x: i32 = 1i32\nx += 2i32";
     let errors = typecheck(ast);
@@ -1521,10 +1531,10 @@ fn test_return_unknown_expression_reaches_none_branch() {
 
 #[test]
 fn test_compound_assignment_unknown_target_reaches_lookup_none() {
-    let checker_input = Expr::Binary {
-        left: Box::new(Expr::Variable { name: "missing".into(), span: dummy_span() }),
-        op: BinaryOp::AddEqual,
-        right: Box::new(Expr::Literal { value: LiteralValue::Numeric(Number::I32(1)), span: dummy_span() }),
+    let checker_input = Expr::Assign {
+        op: AssignmentOp::AddAssign,
+        target: Box::new(Expr::Variable { name: "missing".into(), span: dummy_span() }),
+        value: Box::new(Expr::Literal { value: LiteralValue::Numeric(Number::I32(1)), span: dummy_span() }),
         span: dummy_span(),
     };
 
@@ -1619,6 +1629,7 @@ fn test_immutable_array_element_assignment() {
 fn test_assign_to_non_lvalue_target_reports_e1003() {
     let statements = [Stmt::Expression {
         expr: Box::new(Expr::Assign {
+            op: AssignmentOp::Assign,
             target: Box::new(Expr::new_number_literal(Number::Integer(1), dummy_span())),
             value: Box::new(Expr::new_number_literal(Number::Integer(2), dummy_span())),
             span: dummy_span(),
