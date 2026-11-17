@@ -8,12 +8,12 @@ use descar_core::{
 };
 use insta::assert_snapshot;
 
-fn parse(input: &str) -> (Vec<Stmt>, Vec<CompileError>) {
+fn parse(input: &str) -> (descar_core::syntax::ast::CompilationUnit, Vec<CompileError>) {
     let mut lexer = Lexer::new("parser_snapshot", input);
     let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);
 
     if !lexer_errors.is_empty() {
-        return (Vec::new(), lexer_errors);
+        return (descar_core::syntax::ast::CompilationUnit::default(), lexer_errors);
     }
 
     JsavParser::new(&tokens).parse()
