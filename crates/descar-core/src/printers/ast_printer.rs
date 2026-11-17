@@ -1,4 +1,5 @@
 use crate::printers::branch_type::{BranchType, StyleManager, append_line, get_indent, print_children};
+use crate::syntax::ast::assignment_op::AssignmentOp;
 use crate::syntax::ast::unary_op_side::UnaryOpSide;
 use crate::syntax::ast::{ElseBranch, Expr, LiteralValue, Stmt, Type};
 
@@ -53,8 +54,8 @@ fn format_type_size(expr: &Expr) -> String {
             UnaryOpSide::Prefix => format!("{}{}", format_unary_op(op), format_type_size(expr)),
             UnaryOpSide::Postfix => format!("{}{}", format_type_size(expr), format_unary_op(op)),
         },
-        Expr::Assign { target, value, .. } => {
-            format!("{} = {}", format_type_size(target), format_type_size(value))
+        Expr::Assign { target, op, value, .. } => {
+            format!("{} {} {}", format_type_size(target), format_assignment_op(*op), format_type_size(value))
         }
         Expr::Call { callee, arguments, .. } => {
             let args = arguments.iter().map(format_type_size).collect::<Vec<_>>().join(", ");
@@ -72,6 +73,22 @@ fn format_type_size(expr: &Expr) -> String {
 
 fn format_binary_op(op: &impl std::fmt::Debug) -> String {
     format!("{op:?}").to_uppercase()
+}
+
+fn format_assignment_op(op: AssignmentOp) -> &'static str {
+    match op {
+        AssignmentOp::Assign => "=",
+        AssignmentOp::AddAssign => "+=",
+        AssignmentOp::SubtractAssign => "-=",
+        AssignmentOp::MultiplyAssign => "*=",
+        AssignmentOp::DivideAssign => "/=",
+        AssignmentOp::ModuloAssign => "%=",
+        AssignmentOp::BitwiseAndAssign => "&=",
+        AssignmentOp::BitwiseOrAssign => "|=",
+        AssignmentOp::BitwiseXorAssign => "^=",
+        AssignmentOp::ShiftLeftAssign => "<<=",
+        AssignmentOp::ShiftRightAssign => ">>=",
+    }
 }
 
 fn format_unary_op(op: &impl std::fmt::Debug) -> String {
@@ -175,8 +192,14 @@ fn print_expr(expr: &Expr, indent: &str, branch_type: BranchType, output: &mut S
         Expr::Variable { name, .. } => {
             append_line(output, indent, branch_type, &styles.variable, &format!("Variable '{name}'"));
         }
-        Expr::Assign { target, value, .. } => {
-            append_line(output, indent, branch_type, &styles.variable, "Assignment");
+        Expr::Assign { target, op, value, .. } => {
+            append_line(
+                output,
+                indent,
+                branch_type,
+                &styles.variable,
+                &format!("Assignment {}", format_assignment_op(*op)),
+            );
             let new_indent = get_indent(indent, &branch_type);
             print_labeled_expr("Target:", target, &new_indent, BranchType::Middle, output, styles);
             print_labeled_expr("Value:", value, &new_indent, BranchType::Last, output, styles);
