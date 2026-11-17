@@ -32,7 +32,6 @@ fn format_type(type_annotation: &TypeSyntax) -> String {
         TypeSyntax::String => "string".to_string(),
         TypeSyntax::Bool => "bool".to_string(),
         TypeSyntax::Void => "void".to_string(),
-        TypeSyntax::NullPtr => "nullptr".to_string(),
         TypeSyntax::Custom { name } => name.to_string(),
         TypeSyntax::Array { element_type, size } => {
             format!("[{}; {}]", format_type(element_type), format_type_size(size))
