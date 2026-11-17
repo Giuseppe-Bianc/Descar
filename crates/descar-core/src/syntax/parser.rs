@@ -3,7 +3,7 @@ use crate::error::compile_error::CompileError;
 use crate::error::error_code::ErrorCode;
 use crate::location::source_span::SourceSpan;
 use crate::syntax::ast::assignment_op::AssignmentOp;
-use crate::syntax::ast::ast_type::Type;
+use crate::syntax::ast::type_syntax::TypeSyntax;
 use crate::syntax::ast::binary_op::BinaryOp;
 use crate::syntax::ast::else_branch::ElseBranch;
 use crate::syntax::ast::expr::Expr;
@@ -195,7 +195,7 @@ impl<'a> JsavParser<'a> {
         Some(Stmt::Function {
             name: name.to_string(),
             parameters: params,
-            return_type: return_type.unwrap_or(Type::Void),
+            return_type: return_type.unwrap_or(TypeSyntax::Void),
             body: Box::new(body),
             span: function_span,
         })
@@ -302,24 +302,24 @@ impl<'a> JsavParser<'a> {
         Some(Stmt::For { initializer, condition, increment, body: Box::new(body_stmt), span })
     }
 
-    fn parse_type(&mut self) -> Option<Type> {
+    fn parse_type(&mut self) -> Option<TypeSyntax> {
         let token = self.advance()?.clone();
         let mut base_type = match &token.kind {
-            TokenKind::TypeI8 => Type::I8,
-            TokenKind::TypeI16 => Type::I16,
-            TokenKind::TypeI32 => Type::I32,
-            TokenKind::TypeI64 => Type::I64,
-            TokenKind::TypeU8 => Type::U8,
-            TokenKind::TypeU16 => Type::U16,
-            TokenKind::TypeU32 => Type::U32,
-            TokenKind::TypeU64 => Type::U64,
-            TokenKind::TypeF32 => Type::F32,
-            TokenKind::TypeF64 => Type::F64,
-            TokenKind::TypeChar => Type::Char,
-            TokenKind::TypeString => Type::String,
-            TokenKind::TypeBool => Type::Bool,
+            TokenKind::TypeI8 => TypeSyntax::I8,
+            TokenKind::TypeI16 => TypeSyntax::I16,
+            TokenKind::TypeI32 => TypeSyntax::I32,
+            TokenKind::TypeI64 => TypeSyntax::I64,
+            TokenKind::TypeU8 => TypeSyntax::U8,
+            TokenKind::TypeU16 => TypeSyntax::U16,
+            TokenKind::TypeU32 => TypeSyntax::U32,
+            TokenKind::TypeU64 => TypeSyntax::U64,
+            TokenKind::TypeF32 => TypeSyntax::F32,
+            TokenKind::TypeF64 => TypeSyntax::F64,
+            TokenKind::TypeChar => TypeSyntax::Char,
+            TokenKind::TypeString => TypeSyntax::String,
+            TokenKind::TypeBool => TypeSyntax::Bool,
             TokenKind::IdentifierAscii(name) | TokenKind::IdentifierUnicode(name) => {
-                Type::Custom { name: name.clone() }
+                TypeSyntax::Custom { name: name.clone() }
             }
             _ => {
                 self.syntax_error(
@@ -343,15 +343,15 @@ impl<'a> JsavParser<'a> {
 
         // Apply dimensions in reverse order
         for size in dimensions.into_iter().rev() {
-            base_type = Type::Array { element_type: Box::new(base_type), size: Box::new(size) };
+            base_type = TypeSyntax::Array { element_type: Box::new(base_type), size: Box::new(size) };
         }
 
         #[allow(clippy::collapsible_if)]
-        if let Type::Custom { name } = &base_type {
+        if let TypeSyntax::Custom { name } = &base_type {
             if **name == *"vector" && self.match_token(&TokenKind::Less) {
                 let inner_type = self.parse_type()?;
                 self.expect(&TokenKind::Greater, "after vector inner type");
-                base_type = Type::Vector { element_type: Box::new(inner_type) };
+                base_type = TypeSyntax::Vector { element_type: Box::new(inner_type) };
             }
         }
 
