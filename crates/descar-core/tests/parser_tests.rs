@@ -494,3 +494,45 @@ fn parses_string_array_vector_and_custom_cast_targets() {
             if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::Custom { name }, .. } if name.as_ref() == "Record")
     ));
 }
+
+#[test]
+fn expression_spans_cover_all_operands_and_operators() {
+    let (statements, errors) = parse("a + b * c");
+    assert_no_errors(&errors);
+    let Stmt::Expression { expr } = &statements[0] else { panic!("expected expression statement") };
+    let Expr::Binary { left, right, span, .. } = expr.as_ref() else { panic!("expected outer binary expression") };
+
+    assert_eq!(span.start().offset(), 0);
+    assert_eq!(span.end().offset(), 9);
+    assert_eq!(left.span().start().offset(), 0);
+    assert_eq!(left.span().end().offset(), 1);
+    assert_eq!(right.span().start().offset(), 4);
+    assert_eq!(right.span().end().offset(), 9);
+
+    let (statements, errors) = parse("!ready");
+    assert_no_errors(&errors);
+    let Stmt::Expression { expr } = &statements[0] else { panic!("expected unary expression statement") };
+    let Expr::Unary { expr: operand, span, .. } = expr.as_ref() else { panic!("expected prefix unary expression") };
+    assert_eq!(span.start().offset(), 0);
+    assert_eq!(span.end().offset(), 6);
+    assert_eq!(operand.span().start().offset(), 1);
+    assert_eq!(operand.span().end().offset(), 6);
+}
+
+#[test]
+fn variable_binding_spans_cover_names_and_initializers() {
+    let input = "var first, second: i32 = 1, 2";
+    let (statements, errors) = parse(input);
+    assert_no_errors(&errors);
+    let Stmt::VarDeclaration { bindings, .. } = &statements[0] else { panic!("expected variable declaration") };
+
+    let first_start = input.find("first").unwrap();
+    let first_end = input.find("1").unwrap() + 1;
+    let second_start = input.find("second").unwrap();
+    let second_end = input.rfind('2').unwrap() + 1;
+
+    assert_eq!(bindings[0].span.start().offset(), first_start);
+    assert_eq!(bindings[0].span.end().offset(), first_end);
+    assert_eq!(bindings[1].span.start().offset(), second_start);
+    assert_eq!(bindings[1].span.end().offset(), second_end);
+}
