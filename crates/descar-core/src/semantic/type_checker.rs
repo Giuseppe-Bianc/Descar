@@ -1419,7 +1419,11 @@ mod tests {
             ];
 
             let errors = TypeChecker::new().check(&statements);
-            assert!(errors.is_empty(), "unexpected errors for {op:?}: {errors:#?}");
+            assert_eq!(
+                errors.iter().filter_map(CompileError::error_code).filter(|code| **code == ErrorCode::E2024).count(),
+                1,
+                "expected one E2024 for {op:?}: {errors:#?}"
+            );
         }
     }
 
