@@ -100,7 +100,7 @@ impl SourceSpan {
     /// Indicates whether the span has zero length (i.e. `start == end`).
     #[must_use]
     pub const fn is_empty(&self) -> bool {
-        self.length() == 0
+        self.start.offset() == self.end.offset()
     }
 
     /// Indicates whether the span spans multiple lines, by comparing the
@@ -125,7 +125,9 @@ impl SourceSpan {
     /// overlapping.
     #[must_use]
     pub const fn overlaps(&self, other: &Self) -> bool {
-        self.file_path == other.file_path
+        self.is_valid()
+            && other.is_valid()
+            && self.file_path == other.file_path
             && self.start.offset() < other.end.offset()
             && other.start.offset() < self.end.offset()
     }
