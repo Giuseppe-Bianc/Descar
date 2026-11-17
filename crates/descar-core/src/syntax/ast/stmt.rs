@@ -138,6 +138,9 @@ pub struct VarBinding {
 
     /// Optional initializer expression.
     pub initializer: Option<Expr>,
+
+    /// Source extent of this binding, including its initializer when present.
+    pub span: SourceSpan,
 }
 
 impl Stmt {
