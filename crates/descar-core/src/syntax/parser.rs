@@ -101,9 +101,13 @@ impl<'a> JsavParser<'a> {
                 self.advance();
             }
         }
+        let unit_span = declarations
+            .first()
+            .zip(declarations.last())
+            .map_or_else(SourceSpan::default, |(first, last)| first.span().merge(last.span()));
         declarations.shrink_to_fit();
         self.errors.shrink_to_fit();
-        (CompilationUnit::new(declarations), self.errors)
+        (CompilationUnit::new(declarations, unit_span), self.errors)
     }
 
     /// Skips invalid top-level input until the next declaration starter.
