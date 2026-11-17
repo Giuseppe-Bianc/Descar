@@ -5,7 +5,7 @@ use descar_core::{
     printers::ast_printer::{pretty_print, pretty_print_stmt},
     syntax::ast::{
         assignment_op::AssignmentOp,
-        ast_type::Type,
+        type_syntax::TypeSyntax,
         binary_op::BinaryOp,
         else_branch::ElseBranch,
         expr::Expr,
@@ -122,17 +122,17 @@ fn snapshot_declaration_and_function_printers() {
             VarBinding { name: "first".into(), initializer: Some(number(1)) },
             VarBinding { name: "second".into(), initializer: Some(Expr::new_bool_literal(true, span())) },
         ],
-        type_annotation: Type::Array { element_type: Box::new(Type::U32), size: Box::new(number(8)) },
+        type_annotation: TypeSyntax::Array { element_type: Box::new(TypeSyntax::U32), size: Box::new(number(8)) },
         is_mutable: true,
         span: span(),
     };
     let function = Stmt::Function {
         name: "compute".into(),
         parameters: vec![
-            Parameter::new("left".into(), Type::I32, span()),
-            Parameter::new("right".into(), Type::Vector { element_type: Box::new(Type::Bool) }, span()),
+            Parameter::new("left".into(), TypeSyntax::I32, span()),
+            Parameter::new("right".into(), TypeSyntax::Vector { element_type: Box::new(TypeSyntax::Bool) }, span()),
         ],
-        return_type: Type::F64,
+        return_type: TypeSyntax::F64,
         body: Box::new(Stmt::Block {
             statements: vec![Stmt::Return { value: Some(number(42)), span: span() }],
             span: span(),
@@ -166,7 +166,7 @@ fn snapshot_control_flow_printer() {
         else_branch: ElseBranch::ElseIf(Box::new(Stmt::For {
             initializer: Some(Box::new(Stmt::VarDeclaration {
                 bindings: vec![VarBinding { name: "i".into(), initializer: Some(number(0)) }],
-                type_annotation: Type::I32,
+                type_annotation: TypeSyntax::I32,
                 is_mutable: true,
                 span: span(),
             })),
@@ -202,7 +202,7 @@ fn snapshot_binary_expression_printer() {
 fn snapshot_cast_to_array_type() {
     let expression = Expr::Cast {
         expr: Box::new(variable("arr")),
-        target_type: Type::Array { element_type: Box::new(Type::I32), size: Box::new(number(4)) },
+        target_type: TypeSyntax::Array { element_type: Box::new(TypeSyntax::I32), size: Box::new(number(4)) },
         span: span(),
     };
     assert_snapshot!("cast_to_array_type", strip_ansi_codes(&pretty_print(&expression)));
@@ -211,7 +211,7 @@ fn snapshot_cast_to_array_type() {
 #[test]
 fn snapshot_cast_to_custom_type() {
     let expression =
-        Expr::Cast { expr: Box::new(number(1)), target_type: Type::Custom { name: Arc::from("MyType") }, span: span() };
+        Expr::Cast { expr: Box::new(number(1)), target_type: TypeSyntax::Custom { name: Arc::from("MyType") }, span: span() };
     assert_snapshot!("cast_to_custom_type", strip_ansi_codes(&pretty_print(&expression)));
 }
 
@@ -237,8 +237,8 @@ fn snapshot_nested_statement_printer() {
 fn snapshot_declaration_type_printer() {
     let statement = Stmt::VarDeclaration {
         bindings: Vec::new(),
-        type_annotation: Type::Array {
-            element_type: Box::new(Type::U32),
+        type_annotation: TypeSyntax::Array {
+            element_type: Box::new(TypeSyntax::U32),
             size: Box::new(Expr::new_number_literal(Number::Integer(8), span())),
         },
         is_mutable: false,
