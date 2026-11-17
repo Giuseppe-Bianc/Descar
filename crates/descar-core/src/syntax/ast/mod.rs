@@ -1,4 +1,5 @@
 pub mod ast_type;
+pub mod assignment_op;
 pub mod binary_op;
 pub mod else_branch;
 pub mod expr;
@@ -9,6 +10,7 @@ pub mod unary_op;
 pub mod unary_op_side;
 
 pub use ast_type::Type;
+pub use assignment_op::AssignmentOp;
 pub use else_branch::ElseBranch;
 pub use expr::Expr;
 pub use literal_value::LiteralValue;
