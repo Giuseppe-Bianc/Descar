@@ -2,7 +2,7 @@ use descar_core::{
     error::compile_error::CompileError,
     lex::lexer::{Lexer, lexer_tokenize_with_errors},
     syntax::{
-        ast::{ast_type::Type, else_branch::ElseBranch, expr::Expr, stmt::Stmt},
+        ast::{type_syntax::TypeSyntax, else_branch::ElseBranch, expr::Expr, stmt::Stmt},
         parser::JsavParser,
     },
 };
@@ -19,13 +19,13 @@ fn parse(input: &str) -> (Vec<Stmt>, Vec<CompileError>) {
     JsavParser::new(&tokens).parse()
 }
 
-fn summarize_type(type_: &Type) -> String {
+fn summarize_type(type_: &TypeSyntax) -> String {
     match type_ {
-        Type::Array { element_type, size } => {
+        TypeSyntax::Array { element_type, size } => {
             format!("Array(size={}, {})", summarize_expr(size), summarize_type(element_type))
         }
-        Type::Vector { element_type } => format!("Vector({})", summarize_type(element_type)),
-        Type::Custom { name } => format!("Custom({name})"),
+        TypeSyntax::Vector { element_type } => format!("Vector({})", summarize_type(element_type)),
+        TypeSyntax::Custom { name } => format!("Custom({name})"),
         other => format!("{other:?}"),
     }
 }
