@@ -257,7 +257,7 @@ impl TypeChecker {
         for binding in bindings {
             if let Some(init_expr) = binding.initializer.as_ref()
                 && let Some(init_type) = self.visit_expr(init_expr)
-                && !self.is_assignable(&init_type, type_annotation)
+                && !self.is_assignable(&init_type, &type_annotation)
             {
                 self.type_error_with_code(
                     Some(ErrorCode::E2002),
