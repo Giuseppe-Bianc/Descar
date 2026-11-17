@@ -73,7 +73,7 @@ fn parses_assignment_calls_and_array_access() {
     assert_eq!(statements.len(), 3);
 
     assert!(
-        matches!(&statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Assign { target, value, .. } if matches!(target.as_ref(), Expr::Variable { name, .. } if name == "items") && matches!(value.as_ref(), Expr::ArrayLiteral { elements, .. } if elements.len() == 3)))
+        matches!(&statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Assign { op: AssignmentOp::Assign, target, value, .. } if matches!(target.as_ref(), Expr::Variable { name, .. } if name == "items") && matches!(value.as_ref(), Expr::ArrayLiteral { elements, .. } if elements.len() == 3)))
     );
     assert!(
         matches!(&statements[1], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::ArrayAccess { array, index, .. } if matches!(array.as_ref(), Expr::Variable { name, .. } if name == "items") && matches!(index.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. })))
