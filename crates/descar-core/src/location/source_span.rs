@@ -253,6 +253,15 @@ mod tests {
     }
 
     #[test]
+    fn invalid_spans_are_not_empty_or_overlapping() {
+        let reversed = span("main.dr", 8, 2);
+        let valid = span("main.dr", 1, 10);
+
+        assert!(!reversed.is_empty());
+        assert!(!reversed.overlaps(&valid));
+    }
+
+    #[test]
     fn reversed_offsets_are_invalid() {
         let reversed = span("main.dr", 8, 2);
         assert!(!reversed.is_valid());
