@@ -210,6 +210,16 @@ fn test_assign_to_undefined_variable() {
 }
 
 #[test]
+fn test_assign_to_function_reports_wrong_symbol_kind() {
+    let ast = "fun target(): i32 { return 1i32 }\ntarget = 2i32";
+
+    let errors = typecheck(ast);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].error_code(), Some(&ErrorCode::E2022));
+    assert_eq!(errors[0].message(), Some("'target' is a function and cannot be used as variable"));
+}
+
+#[test]
 fn test_immutable_assignment() {
     let ast = "const x: i32 = 42i32
     x = 43i32";
