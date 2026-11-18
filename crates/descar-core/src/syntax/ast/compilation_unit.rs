@@ -4,8 +4,10 @@ use crate::location::source_span::SourceSpan;
 /// The complete set of top-level declarations in one source file.
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Default)]
 pub struct CompilationUnit {
-    /// Declarations in source order. Only global variables, functions, and main
-    /// are admitted by the parser at this level.
+    /// Top-level statements in source order. For parses without syntax errors,
+    /// /// the parser admits only global variables, functions, and main at this level.
+    /// Error recovery may preserve invalid top-level statements in a recovered
+    /// compilation unit so downstream analysis can report additional diagnostics.
     pub declarations: Vec<Stmt>,
     /// Source extent spanning the first through last declaration.
     pub span: SourceSpan,
