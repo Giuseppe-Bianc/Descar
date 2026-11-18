@@ -144,12 +144,29 @@ impl<'a> JsavParser<'a> {
     }
     fn parse_main_function(&mut self) -> Option<Stmt> {
         let start_token = self.advance()?.clone(); // 'main'
+        if !self.check(&TokenKind::OpenBrace) {
+            self.expect(&TokenKind::OpenBrace, "after 'main'");
+            self.synchronize_to_top_level_declaration();
+            return None;
+        }
+
         let body = self.parse_block_stmt()?;
         let end_span = body.span();
 
         let function_span = start_token.span.merge(end_span);
 
         Some(Stmt::MainFunction { body: Box::new(body), span: function_span })
+    }
+
+    fn synchronize_to_top_level_declaration(&mut self) {
+        while !self.is_at_end()
+            && !matches!(
+                self.peek().map(|token| &token.kind),
+                Some(TokenKind::KeywordFun | TokenKind::KeywordMain | TokenKind::KeywordVar | TokenKind::KeywordConst)
+            )
+        {
+            self.advance();
+        }
     }
     /// Parses a break statement.
     #[inline]
