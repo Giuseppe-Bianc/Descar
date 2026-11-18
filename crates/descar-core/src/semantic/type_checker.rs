@@ -1527,10 +1527,10 @@ mod tests {
         let declarations = [Stmt::VarDeclaration {
             bindings: vec![VarBinding {
                 name: "value".into(),
-                initializer: Some(Expr::new_number_literal(Number::I8(1), span.clone())),
+                initializer: Some(Expr::new_number_literal(Number::I32(1), span.clone())),
                 span: span.clone(),
             }],
-            type_annotation: TypeSyntax::I8,
+            type_annotation: TypeSyntax::I32,
             is_mutable: true,
             span: span.clone(),
         }];
@@ -1541,18 +1541,18 @@ mod tests {
         let arithmetic = checker.visit_assign(
             &variable("value", span.clone()),
             AssignmentOp::AddAssign,
-            &Expr::new_number_literal(Number::Integer(1), span.clone()),
+            &Expr::new_number_literal(Number::I8(1), span.clone()),
             &span,
         );
-        assert_eq!(arithmetic, Some(Type::I64));
+        assert_eq!(arithmetic, Some(Type::I32));
 
         let bitwise = checker.visit_assign(
             &variable("value", span.clone()),
             AssignmentOp::BitwiseAndAssign,
-            &Expr::new_number_literal(Number::Integer(1), span.clone()),
+            &Expr::new_number_literal(Number::I8(1), span.clone()),
             &span,
         );
-        assert_eq!(bitwise, Some(Type::I64));
+        assert_eq!(bitwise, Some(Type::I32));
         assert!(checker.errors.is_empty(), "unexpected compound operation errors: {:#?}", checker.errors);
     }
 
