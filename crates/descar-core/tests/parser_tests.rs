@@ -597,6 +597,16 @@ fn rejects_nested_function_and_main_declarations() {
 }
 
 #[test]
+fn keeps_if_and_following_statement_after_nested_function_in_else() {
+    let (statements, errors) = parse("if (true) {} else fun nested() {} 42");
+
+    assert_has_error(&errors, ErrorCode::E1004);
+    assert_eq!(statements.len(), 2);
+    assert!(matches!(&statements[0], Stmt::If { else_branch: ElseBranch::None, .. }));
+    assert!(matches!(&statements[1], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. })));
+}
+
+#[test]
 fn rejects_duplicate_main_declarations() {
     let (_, errors) = parse("main {} main {}");
     assert_has_error(&errors, ErrorCode::E1004);
