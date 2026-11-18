@@ -66,6 +66,7 @@ impl<'a> JsavParser<'a> {
         let mut declarations = Vec::with_capacity(self.tokens.len() / 4);
         while !self.is_at_end() {
             let Some(token) = self.peek().cloned() else { break };
+            let before = self.current;
             let declaration = match token.kind {
                 TokenKind::KeywordFun => self.parse_function(),
                 TokenKind::KeywordMain => {
@@ -99,7 +100,7 @@ impl<'a> JsavParser<'a> {
             };
             if let Some(declaration) = declaration {
                 declarations.push(declaration);
-            } else if !self.is_at_end() && self.peek().is_some_and(|next| next.span == token.span) {
+            } else if !self.is_at_end() && self.current == before {
                 self.advance();
             }
         }
