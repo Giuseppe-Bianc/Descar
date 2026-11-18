@@ -980,7 +980,6 @@ fn test_decimal_starting_with_dot() {
 }
 
 #[test]
-
 fn test_invalid_scientific_notation() {
     let mut lex = TokenKind::lexer("1e2e3");
     assert_eq!(lex.next().unwrap(), Err(LexError::InvalidNumberSuffix));

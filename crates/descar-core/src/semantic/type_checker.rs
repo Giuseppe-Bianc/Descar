@@ -1003,7 +1003,8 @@ impl TypeChecker {
         };
 
         if let Some(binary_op) = op.compound_binary_op() {
-            let result_type = self.check_binary_operation(binary_op, target_type.clone(), value_type, span, target.span())?;
+            let result_type =
+                self.check_binary_operation(binary_op, target_type.clone(), value_type, span, target.span())?;
             if !self.is_assignable(&result_type, &target_type) {
                 self.type_error_with_code(
                     Some(ErrorCode::E2002),

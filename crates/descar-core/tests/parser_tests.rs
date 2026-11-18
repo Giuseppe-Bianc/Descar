@@ -603,7 +603,9 @@ fn keeps_if_and_following_statement_after_nested_function_in_else() {
     assert_has_error(&errors, ErrorCode::E1004);
     assert_eq!(statements.len(), 2);
     assert!(matches!(&statements[0], Stmt::If { else_branch: ElseBranch::None, .. }));
-    assert!(matches!(&statements[1], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. })));
+    assert!(
+        matches!(&statements[1], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. }))
+    );
 }
 
 #[test]
