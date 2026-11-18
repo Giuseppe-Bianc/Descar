@@ -30,7 +30,7 @@ pub enum Expr {
         /// Expression whose value is converted.
         expr: Box<Self>,
 
-        /// Numeric type to convert to.
+        /// Written cast target. Conversion validity is checked by the type checker.
         target_type: TypeSyntax,
 
         /// Source extent, including the cast target.
