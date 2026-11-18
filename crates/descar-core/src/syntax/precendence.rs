@@ -17,6 +17,7 @@ impl Precedence {
     #[must_use]
     pub const fn binding_power(token: &Token) -> Self {
         match token.kind {
+            // Assignment is right-associative: a = (b = c).
             TokenKind::Equal
             | TokenKind::PlusEqual
             | TokenKind::MinusEqual
@@ -29,25 +30,26 @@ impl Precedence {
             | TokenKind::ShiftLeftEqual
             | TokenKind::ShiftRightEqual => Self::new(2, 1),
 
-            TokenKind::OrOr => Self::new(4, 3),
+            // Binary operators are left-associative: a op b op c parses as (a op b) op c.
+            TokenKind::OrOr => Self::new(4, 4),
 
-            TokenKind::AndAnd => Self::new(6, 5),
+            TokenKind::AndAnd => Self::new(6, 6),
 
-            TokenKind::EqualEqual | TokenKind::NotEqual => Self::new(8, 7),
+            TokenKind::EqualEqual | TokenKind::NotEqual => Self::new(8, 8),
 
-            TokenKind::Less | TokenKind::LessEqual | TokenKind::Greater | TokenKind::GreaterEqual => Self::new(10, 9),
+            TokenKind::Less | TokenKind::LessEqual | TokenKind::Greater | TokenKind::GreaterEqual => Self::new(10, 10),
 
-            TokenKind::Or => Self::new(12, 11),
+            TokenKind::Or => Self::new(12, 12),
 
-            TokenKind::Xor => Self::new(14, 13),
+            TokenKind::Xor => Self::new(14, 14),
 
-            TokenKind::And => Self::new(16, 15),
+            TokenKind::And => Self::new(16, 16),
 
-            TokenKind::ShiftLeft | TokenKind::ShiftRight => Self::new(18, 17),
+            TokenKind::ShiftLeft | TokenKind::ShiftRight => Self::new(18, 18),
 
-            TokenKind::Plus | TokenKind::Minus => Self::new(20, 19),
+            TokenKind::Plus | TokenKind::Minus => Self::new(20, 20),
 
-            TokenKind::Star | TokenKind::Slash | TokenKind::Percent => Self::new(22, 21),
+            TokenKind::Star | TokenKind::Slash | TokenKind::Percent => Self::new(22, 22),
 
             TokenKind::OpenParen
             | TokenKind::OpenBracket

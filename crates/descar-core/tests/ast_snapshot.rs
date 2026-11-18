@@ -2,8 +2,8 @@ use std::sync::Arc;
 
 use descar_core::location::source_span::SourceSpan;
 use descar_core::syntax::ast::{
-    ast_type::Type, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr, literal_value::LiteralValue, stmt::Stmt,
-    unary_op::UnaryOp, unary_op_side::UnaryOpSide,
+    assignment_op::AssignmentOp, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr, literal_value::LiteralValue,
+    stmt::Stmt, type_syntax::TypeSyntax, unary_op::UnaryOp, unary_op_side::UnaryOpSide,
 };
 use descar_core::tokens::number::Number;
 use insta::assert_snapshot;
@@ -23,7 +23,7 @@ fn snapshots_expression_variants() {
             right: Box::new(number.clone()),
             span: SourceSpan::default(),
         },
-        Expr::Cast { expr: Box::new(variable.clone()), target_type: Type::I32, span: SourceSpan::default() },
+        Expr::Cast { expr: Box::new(variable.clone()), target_type: TypeSyntax::I32, span: SourceSpan::default() },
         Expr::Unary {
             op: UnaryOp::Increment,
             side: UnaryOpSide::Postfix,
@@ -38,6 +38,7 @@ fn snapshots_expression_variants() {
         },
         variable.clone(),
         Expr::Assign {
+            op: AssignmentOp::Assign,
             target: Box::new(variable.clone()),
             value: Box::new(literal(LiteralValue::StringLit("hello".into()))),
             span: SourceSpan::default(),
@@ -83,14 +84,14 @@ fn snapshots_statement_variants() {
         Stmt::Expression { expr: Box::new(condition.clone()) },
         Stmt::VarDeclaration {
             bindings: vec![],
-            type_annotation: Type::I32,
+            type_annotation: TypeSyntax::I32,
             is_mutable: true,
             span: SourceSpan::default(),
         },
         Stmt::Function {
             name: "compute".into(),
             parameters: vec![],
-            return_type: Type::F64,
+            return_type: TypeSyntax::F64,
             body: Box::new(block.clone()),
             span: SourceSpan::default(),
         },
@@ -155,27 +156,26 @@ fn snapshots_statement_variants() {
 #[test]
 fn snapshots_types_and_branches() {
     let types = [
-        Type::I8,
-        Type::I16,
-        Type::I32,
-        Type::I64,
-        Type::U8,
-        Type::U16,
-        Type::U32,
-        Type::U64,
-        Type::F32,
-        Type::F64,
-        Type::Char,
-        Type::String,
-        Type::Bool,
-        Type::Custom { name: Arc::from("UserType") },
-        Type::Array {
-            element_type: Box::new(Type::U32),
+        TypeSyntax::I8,
+        TypeSyntax::I16,
+        TypeSyntax::I32,
+        TypeSyntax::I64,
+        TypeSyntax::U8,
+        TypeSyntax::U16,
+        TypeSyntax::U32,
+        TypeSyntax::U64,
+        TypeSyntax::F32,
+        TypeSyntax::F64,
+        TypeSyntax::Char,
+        TypeSyntax::String,
+        TypeSyntax::Bool,
+        TypeSyntax::Custom { name: Arc::from("UserType") },
+        TypeSyntax::Array {
+            element_type: Box::new(TypeSyntax::U32),
             size: Box::new(literal(LiteralValue::Numeric(Number::Integer(8)))),
         },
-        Type::Vector { element_type: Box::new(Type::String) },
-        Type::Void,
-        Type::NullPtr,
+        TypeSyntax::Vector { element_type: Box::new(TypeSyntax::String) },
+        TypeSyntax::Void,
     ];
     let branches = [
         ElseBranch::None,
@@ -194,15 +194,10 @@ fn snapshots_types_and_branches() {
 fn snapshots_operator_representations() {
     let binary = [
         BinaryOp::Add,
-        BinaryOp::AddEqual,
         BinaryOp::Subtract,
-        BinaryOp::SubtractEqual,
         BinaryOp::Multiply,
-        BinaryOp::MultiplyEqual,
         BinaryOp::Divide,
-        BinaryOp::DivideEqual,
         BinaryOp::Modulo,
-        BinaryOp::ModuloEqual,
         BinaryOp::Equal,
         BinaryOp::NotEqual,
         BinaryOp::Less,
@@ -212,21 +207,30 @@ fn snapshots_operator_representations() {
         BinaryOp::And,
         BinaryOp::Or,
         BinaryOp::BitwiseAnd,
-        BinaryOp::BitwiseAndEqual,
         BinaryOp::BitwiseOr,
-        BinaryOp::BitwiseOrEqual,
         BinaryOp::BitwiseXor,
-        BinaryOp::BitwiseXorEqual,
         BinaryOp::ShiftLeft,
-        BinaryOp::ShiftLeftEqual,
         BinaryOp::ShiftRight,
-        BinaryOp::ShiftRightEqual,
+    ];
+    let assignment = [
+        AssignmentOp::Assign,
+        AssignmentOp::AddAssign,
+        AssignmentOp::SubtractAssign,
+        AssignmentOp::MultiplyAssign,
+        AssignmentOp::DivideAssign,
+        AssignmentOp::ModuloAssign,
+        AssignmentOp::BitwiseAndAssign,
+        AssignmentOp::BitwiseOrAssign,
+        AssignmentOp::BitwiseXorAssign,
+        AssignmentOp::ShiftLeftAssign,
+        AssignmentOp::ShiftRightAssign,
     ];
     let unary = [UnaryOp::Negate, UnaryOp::Not, UnaryOp::BitwiseNot, UnaryOp::Increment, UnaryOp::Decrement];
     let sides = [UnaryOpSide::Prefix, UnaryOpSide::Postfix];
     let rendered = format!(
-        "binary:\n{}\nunary:\n{}\nsides:\n{}",
+        "binary:\n{}\nassignment:\n{}\nunary:\n{}\nsides:\n{}",
         binary.iter().map(|value| format!("{value:?}")).collect::<Vec<_>>().join("\n"),
+        assignment.iter().map(|value| format!("{value:?}")).collect::<Vec<_>>().join("\n"),
         unary.iter().map(|value| format!("{value:?}")).collect::<Vec<_>>().join("\n"),
         sides.iter().map(|value| format!("{value:?}")).collect::<Vec<_>>().join("\n")
     );

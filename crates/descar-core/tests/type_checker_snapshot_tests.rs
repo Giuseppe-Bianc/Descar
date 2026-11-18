@@ -15,7 +15,6 @@ fn typecheck_with(ast: &str, mut checker: TypeChecker) -> Vec<CompileError> {
     let (expr, _errors) = parser.parse();
     checker.check(&expr)
 }
-
 fn typecheck(ast: &str) -> Vec<CompileError> {
     typecheck_with(ast, TypeChecker::new())
 }

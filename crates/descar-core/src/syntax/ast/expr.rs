@@ -1,7 +1,8 @@
 use crate::location::source_span::SourceSpan;
-use crate::syntax::ast::ast_type::Type;
+use crate::syntax::ast::assignment_op::AssignmentOp;
 use crate::syntax::ast::binary_op::BinaryOp;
 use crate::syntax::ast::literal_value::LiteralValue;
+use crate::syntax::ast::type_syntax::TypeSyntax;
 use crate::syntax::ast::unary_op::UnaryOp;
 use crate::syntax::ast::unary_op_side::UnaryOpSide;
 use crate::tokens::number::Number;
@@ -29,8 +30,8 @@ pub enum Expr {
         /// Expression whose value is converted.
         expr: Box<Self>,
 
-        /// Numeric type to convert to.
-        target_type: Type,
+        /// Written cast target. Conversion validity is checked by the type checker.
+        target_type: TypeSyntax,
 
         /// Source extent, including the cast target.
         span: SourceSpan,
@@ -87,8 +88,10 @@ pub enum Expr {
         span: SourceSpan,
     },
 
-    /// Assignment expression.
+    /// Assignment expression, including compound assignment.
     Assign {
+        /// Assignment operator.
+        op: AssignmentOp,
         /// Assignment target.
         target: Box<Self>,
 

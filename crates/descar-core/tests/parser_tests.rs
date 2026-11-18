@@ -1,22 +1,47 @@
+const WRAPPER_PREFIX: usize = "main { ".len();
+
 use descar_core::{
     error::{compile_error::CompileError, error_code::ErrorCode},
     lex::lexer::{Lexer, lexer_tokenize_with_errors},
     syntax::{
         ast::{
-            ast_type::Type, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr, literal_value::LiteralValue,
-            stmt::Stmt, unary_op::UnaryOp, unary_op_side::UnaryOpSide,
+            assignment_op::AssignmentOp, binary_op::BinaryOp, else_branch::ElseBranch, expr::Expr,
+            literal_value::LiteralValue, stmt::Stmt, type_syntax::TypeSyntax, unary_op::UnaryOp,
+            unary_op_side::UnaryOpSide,
         },
         parser::JsavParser,
         precendence::Precedence,
     },
 };
 
-fn parse(input: &str) -> (Vec<Stmt>, Vec<CompileError>) {
+fn parse_unit(input: &str) -> (descar_core::syntax::ast::CompilationUnit, Vec<CompileError>) {
     let mut lexer = Lexer::new("parser_test", input);
     let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);
     assert!(lexer_errors.is_empty(), "unexpected lexer errors: {lexer_errors:#?}");
-
     JsavParser::new(&tokens).parse()
+}
+
+fn parse(input: &str) -> (descar_core::syntax::ast::CompilationUnit, Vec<CompileError>) {
+    let trimmed = input.trim_start();
+    if trimmed.is_empty()
+        || trimmed.starts_with("fun ")
+        || trimmed.starts_with("main ")
+        || trimmed.starts_with("var ")
+        || trimmed.starts_with("const ")
+    {
+        return parse_unit(input);
+    }
+
+    // Most tests in this module exercise statement parsing. Parse those
+    // statements in a main body so the compilation-unit grammar stays strict.
+    let wrapped = format!("main {{ {input} }}");
+    let (mut unit, errors) = parse_unit(&wrapped);
+    if let Some(Stmt::MainFunction { body, .. }) = unit.declarations.pop()
+        && let Stmt::Block { statements, .. } = *body
+    {
+        unit.declarations = statements;
+    }
+    (unit, errors)
 }
 
 fn assert_no_errors(errors: &[CompileError]) {
@@ -34,7 +59,7 @@ fn assert_has_error(errors: &[CompileError], expected: ErrorCode) {
 fn empty_input_produces_no_statements_or_errors() {
     let (statements, errors) = parse("");
 
-    assert_eq!(statements, [] as [Stmt; 0]);
+    assert!(statements.is_empty());
     assert_no_errors(&errors);
 }
 
@@ -73,7 +98,7 @@ fn parses_assignment_calls_and_array_access() {
     assert_eq!(statements.len(), 3);
 
     assert!(
-        matches!(&statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Assign { target, value, .. } if matches!(target.as_ref(), Expr::Variable { name, .. } if name == "items") && matches!(value.as_ref(), Expr::ArrayLiteral { elements, .. } if elements.len() == 3)))
+        matches!(&statements[0], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Assign { op: AssignmentOp::Assign, target, value, .. } if matches!(target.as_ref(), Expr::Variable { name, .. } if name == "items") && matches!(value.as_ref(), Expr::ArrayLiteral { elements, .. } if elements.len() == 3)))
     );
     assert!(
         matches!(&statements[1], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::ArrayAccess { array, index, .. } if matches!(array.as_ref(), Expr::Variable { name, .. } if name == "items") && matches!(index.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. })))
@@ -86,31 +111,30 @@ fn parses_assignment_calls_and_array_access() {
 #[test]
 fn parses_all_compound_assignment_operators() {
     let cases = [
-        ("x += 1", BinaryOp::AddEqual),
-        ("x -= 1", BinaryOp::SubtractEqual),
-        ("x *= 1", BinaryOp::MultiplyEqual),
-        ("x /= 1", BinaryOp::DivideEqual),
-        ("x %= 1", BinaryOp::ModuloEqual),
-        ("x &= 1", BinaryOp::BitwiseAndEqual),
-        ("x |= 1", BinaryOp::BitwiseOrEqual),
-        ("x ^= 1", BinaryOp::BitwiseXorEqual),
-        ("x <<= 1", BinaryOp::ShiftLeftEqual),
-        ("x >>= 1", BinaryOp::ShiftRightEqual),
+        ("x += 1", AssignmentOp::AddAssign),
+        ("x -= 1", AssignmentOp::SubtractAssign),
+        ("x *= 1", AssignmentOp::MultiplyAssign),
+        ("x /= 1", AssignmentOp::DivideAssign),
+        ("x %= 1", AssignmentOp::ModuloAssign),
+        ("x &= 1", AssignmentOp::BitwiseAndAssign),
+        ("x |= 1", AssignmentOp::BitwiseOrAssign),
+        ("x ^= 1", AssignmentOp::BitwiseXorAssign),
+        ("x <<= 1", AssignmentOp::ShiftLeftAssign),
+        ("x >>= 1", AssignmentOp::ShiftRightAssign),
     ];
-
     for (input, expected_op) in cases {
         let (statements, errors) = parse(input);
         assert_no_errors(&errors);
         assert!(
             matches!(
-                statements.as_slice(),
+                statements.declarations.as_slice(),
                 [Stmt::Expression { expr }]
                     if matches!(
                         expr.as_ref(),
-                        Expr::Binary { op, left, right, .. }
+                        Expr::Assign { op, target, value, .. }
                             if *op == expected_op
-                                && matches!(left.as_ref(), Expr::Variable { name, .. } if name == "x")
-                                && matches!(right.as_ref(), Expr::Literal { .. })
+                                && matches!(target.as_ref(), Expr::Variable { name, .. } if name == "x")
+                                && matches!(value.as_ref(), Expr::Literal { .. })
                     )
             ),
             "unexpected AST for {input:?}: {statements:#?}"
@@ -136,11 +160,11 @@ fn parses_compound_assignment_to_array_element() {
         [Stmt::Expression { expr }]
             if matches!(
                 expr.as_ref(),
-                Expr::Binary {
-                    op: BinaryOp::AddEqual,
-                    left,
+                Expr::Assign {
+                    op: AssignmentOp::AddAssign,
+                    target,
                     ..
-                } if matches!(left.as_ref(), Expr::ArrayAccess { .. })
+                } if matches!(target.as_ref(), Expr::ArrayAccess { .. })
             )
     ));
 }
@@ -193,7 +217,7 @@ fn parses_variable_and_const_declarations_with_multiple_bindings() {
     match &statements[0] {
         Stmt::VarDeclaration { bindings, type_annotation, is_mutable, .. } => {
             assert!(*is_mutable);
-            assert_eq!(*type_annotation, Type::I32);
+            assert_eq!(*type_annotation, TypeSyntax::I32);
             assert_eq!(bindings.len(), 2);
             assert_eq!(bindings[0].name, "first");
             assert_eq!(bindings[1].name, "second");
@@ -206,7 +230,7 @@ fn parses_variable_and_const_declarations_with_multiple_bindings() {
     match &statements[1] {
         Stmt::VarDeclaration { bindings, type_annotation, is_mutable, .. } => {
             assert!(!*is_mutable);
-            assert_eq!(*type_annotation, Type::I64);
+            assert_eq!(*type_annotation, TypeSyntax::I64);
             assert_eq!(bindings.len(), 1);
             assert_eq!(bindings[0].name, "answer");
             assert!(bindings[0].initializer.is_some());
@@ -227,10 +251,10 @@ fn parses_functions_and_main_with_parameters_and_return_type() {
             assert_eq!(name, "add");
             assert_eq!(parameters.len(), 2);
             assert_eq!(parameters[0].name, "a");
-            assert_eq!(parameters[0].type_annotation, Type::I32);
+            assert_eq!(parameters[0].type_annotation, TypeSyntax::I32);
             assert_eq!(parameters[1].name, "b");
-            assert_eq!(parameters[1].type_annotation, Type::I32);
-            assert_eq!(*return_type, Type::I32);
+            assert_eq!(parameters[1].type_annotation, TypeSyntax::I32);
+            assert_eq!(*return_type, TypeSyntax::I32);
             assert!(
                 matches!(body.as_ref(), Stmt::Block { statements, .. } if matches!(statements.as_slice(), [Stmt::Return { value: Some(_), .. }]))
             );
@@ -253,7 +277,7 @@ fn parses_array_vector_custom_and_unicode_types() {
     match &statements[0] {
         Stmt::VarDeclaration { type_annotation, bindings, .. } => {
             assert!(
-                matches!(type_annotation, Type::Array { element_type, size, .. } if matches!(element_type.as_ref(), Type::Array { element_type, .. } if matches!(element_type.as_ref(), Type::I32)) && matches!(size.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. }))
+                matches!(type_annotation, TypeSyntax::Array { element_type, size, .. } if matches!(element_type.as_ref(), TypeSyntax::Array { element_type, .. } if matches!(element_type.as_ref(), TypeSyntax::I32)) && matches!(size.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. }))
             );
             assert!(bindings[0].initializer.is_some());
         }
@@ -261,10 +285,10 @@ fn parses_array_vector_custom_and_unicode_types() {
     }
 
     assert!(
-        matches!(&statements[1], Stmt::VarDeclaration { type_annotation: Type::Vector { element_type }, .. } if matches!(element_type.as_ref(), Type::String))
+        matches!(&statements[1], Stmt::VarDeclaration { type_annotation: TypeSyntax::Vector { element_type }, .. } if matches!(element_type.as_ref(), TypeSyntax::String))
     );
     assert!(
-        matches!(&statements[2], Stmt::VarDeclaration { type_annotation: Type::Custom { name }, .. } if name.as_ref() == "Record")
+        matches!(&statements[2], Stmt::VarDeclaration { type_annotation: TypeSyntax::Custom { name }, .. } if name.as_ref() == "Record")
     );
     assert!(matches!(&statements[3], Stmt::VarDeclaration { bindings, .. } if bindings[0].name == "變數"));
 }
@@ -332,6 +356,63 @@ fn token_from(input: &str) -> descar_core::tokens::token::Token {
 }
 
 #[test]
+fn binary_operators_are_left_associative() {
+    let cases = [
+        ("a - b - c", BinaryOp::Subtract),
+        ("a / b / c", BinaryOp::Divide),
+        ("a % b % c", BinaryOp::Modulo),
+        ("a << b << c", BinaryOp::ShiftLeft),
+        ("a & b & c", BinaryOp::BitwiseAnd),
+        ("a ^ b ^ c", BinaryOp::BitwiseXor),
+        ("a | b | c", BinaryOp::BitwiseOr),
+        ("a == b == c", BinaryOp::Equal),
+        ("a && b && c", BinaryOp::And),
+        ("a || b || c", BinaryOp::Or),
+    ];
+
+    for (input, expected_op) in cases {
+        let (statements, errors) = parse(input);
+        assert_no_errors(&errors);
+        assert!(
+            matches!(
+                statements.declarations.as_slice(),
+                [Stmt::Expression { expr }]
+                    if matches!(
+                        expr.as_ref(),
+                        Expr::Binary { op, left, .. }
+                            if *op == expected_op
+                                && matches!(
+                                    left.as_ref(),
+                                    Expr::Binary { op: inner_op, .. } if *inner_op == expected_op
+                                )
+                    )
+            ),
+            "expected left-associated AST for {input:?}, got {statements:#?}"
+        );
+    }
+}
+
+#[test]
+fn assignment_operators_are_right_associative() {
+    for input in ["a = b = c", "a += b += c"] {
+        let (statements, errors) = parse(input);
+        assert_no_errors(&errors);
+        assert!(
+            matches!(
+                statements.declarations.as_slice(),
+                [Stmt::Expression { expr }]
+                    if matches!(
+                        expr.as_ref(),
+                        Expr::Assign { value, .. }
+                            if matches!(value.as_ref(), Expr::Assign { .. })
+                    )
+            ),
+            "expected right-associated AST for {input:?}, got {statements:#?}"
+        );
+    }
+}
+
+#[test]
 fn unary_binding_power_returns_zero_for_non_unary_operator() {
     let token = token_from("+");
 
@@ -360,20 +441,20 @@ fn parses_explicit_numeric_casts_and_preserves_precedence() {
     assert!(matches!(
         &statements[0],
         Stmt::Expression { expr }
-            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::I32, expr: inner, .. }
+            if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::I32, expr: inner, .. }
                 if matches!(inner.as_ref(), Expr::Variable { name, .. } if name == "value"))
     ));
     assert!(matches!(
         &statements[1],
         Stmt::Expression { expr }
             if matches!(expr.as_ref(), Expr::Binary { op: BinaryOp::Add, right, .. }
-                if matches!(right.as_ref(), Expr::Cast { target_type: Type::F64, .. }))
+                if matches!(right.as_ref(), Expr::Cast { target_type: TypeSyntax::F64, .. }))
     ));
     assert!(matches!(
         &statements[2],
         Stmt::Expression { expr }
-            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::F64, expr: inner, .. }
-                if matches!(inner.as_ref(), Expr::Cast { target_type: Type::I32, .. }))
+            if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::F64, expr: inner, .. }
+                if matches!(inner.as_ref(), Expr::Cast { target_type: TypeSyntax::I32, .. }))
     ));
 }
 
@@ -404,11 +485,11 @@ fn parses_char_and_bool_cast_targets() {
     assert_eq!(statements.len(), 2);
     assert!(matches!(
         &statements[0],
-        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Char, .. })
+        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::Char, .. })
     ));
     assert!(matches!(
         &statements[1],
-        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Bool, .. })
+        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::Bool, .. })
     ));
 }
 
@@ -419,21 +500,133 @@ fn parses_string_array_vector_and_custom_cast_targets() {
     assert_eq!(statements.len(), 4);
     assert!(matches!(
         &statements[0],
-        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: Type::String, .. })
+        Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::String, .. })
     ));
     assert!(matches!(
         &statements[1],
         Stmt::Expression { expr }
-            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Array { .. }, .. })
+            if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::Array { .. }, .. })
     ));
     assert!(matches!(
         &statements[2],
         Stmt::Expression { expr }
-            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Vector { .. }, .. })
+            if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::Vector { .. }, .. })
     ));
     assert!(matches!(
         &statements[3],
         Stmt::Expression { expr }
-            if matches!(expr.as_ref(), Expr::Cast { target_type: Type::Custom { name }, .. } if name.as_ref() == "Record")
+            if matches!(expr.as_ref(), Expr::Cast { target_type: TypeSyntax::Custom { name }, .. } if name.as_ref() == "Record")
     ));
+}
+
+#[test]
+fn expression_spans_cover_all_operands_and_operators() {
+    let (statements, errors) = parse("a + b * c");
+    assert_no_errors(&errors);
+    let Stmt::Expression { expr } = &statements[0] else { panic!("expected expression statement") };
+    let Expr::Binary { left, right, span, .. } = expr.as_ref() else { panic!("expected outer binary expression") };
+
+    // The test helper parses statement fragments inside "main { ... }".
+    assert_eq!(span.start().offset(), WRAPPER_PREFIX);
+    assert_eq!(span.end().offset(), WRAPPER_PREFIX + 9);
+    assert_eq!(left.span().start().offset(), WRAPPER_PREFIX);
+    assert_eq!(left.span().end().offset(), WRAPPER_PREFIX + 1);
+    assert_eq!(right.span().start().offset(), WRAPPER_PREFIX + 4);
+    assert_eq!(right.span().end().offset(), WRAPPER_PREFIX + 9);
+
+    let (statements, errors) = parse("!ready");
+    assert_no_errors(&errors);
+    let Stmt::Expression { expr } = &statements[0] else { panic!("expected unary expression statement") };
+    let Expr::Unary { expr: operand, span, .. } = expr.as_ref() else { panic!("expected prefix unary expression") };
+    assert_eq!(span.start().offset(), WRAPPER_PREFIX);
+    assert_eq!(span.end().offset(), WRAPPER_PREFIX + 6);
+    assert_eq!(operand.span().start().offset(), WRAPPER_PREFIX + 1);
+    assert_eq!(operand.span().end().offset(), WRAPPER_PREFIX + 6);
+}
+
+#[test]
+fn variable_binding_spans_cover_names_and_initializers() {
+    let input = "var first, second: i32 = 1, 2";
+    let (statements, errors) = parse(input);
+    assert_no_errors(&errors);
+    let Stmt::VarDeclaration { bindings, .. } = &statements[0] else { panic!("expected variable declaration") };
+
+    let first_start = input.find("first").unwrap();
+    let first_end = input.find('1').unwrap() + 1;
+    let second_start = input.find("second").unwrap();
+    let second_end = input.rfind('2').unwrap() + 1;
+
+    assert_eq!(bindings[0].span.start().offset(), first_start);
+    assert_eq!(bindings[0].span.end().offset(), first_end);
+    assert_eq!(bindings[1].span.start().offset(), second_start);
+    assert_eq!(bindings[1].span.end().offset(), second_end);
+}
+
+#[test]
+fn call_and_array_access_spans_include_their_base_expression() {
+    let (statements, errors) = parse("print(items[1])");
+    assert_no_errors(&errors);
+    let Stmt::Expression { expr } = &statements[0] else { panic!("expected call expression statement") };
+    let Expr::Call { callee, arguments, span } = expr.as_ref() else { panic!("expected call expression") };
+    assert_eq!(span.start().offset(), WRAPPER_PREFIX);
+    assert_eq!(span.end().offset(), WRAPPER_PREFIX + 15);
+    assert_eq!(callee.span().start().offset(), WRAPPER_PREFIX);
+    assert_eq!(callee.span().end().offset(), WRAPPER_PREFIX + 5);
+
+    let Expr::ArrayAccess { array, span: access_span, .. } = &arguments[0] else {
+        panic!("expected array access argument")
+    };
+    assert_eq!(access_span.start().offset(), WRAPPER_PREFIX + 6);
+    assert_eq!(access_span.end().offset(), WRAPPER_PREFIX + 14);
+    assert_eq!(array.span().start().offset(), WRAPPER_PREFIX + 6);
+    assert_eq!(array.span().end().offset(), WRAPPER_PREFIX + 11);
+}
+
+#[test]
+fn rejects_executable_statements_at_compilation_unit_level() {
+    let (_, errors) = parse_unit("print(1)");
+    assert_has_error(&errors, ErrorCode::E1004);
+}
+
+#[test]
+fn rejects_nested_function_and_main_declarations() {
+    for input in ["main { fun nested() {} }", "fun outer() { fun nested() {} }", "main { main {} }"] {
+        let (_, errors) = parse(input);
+        assert_has_error(&errors, ErrorCode::E1004);
+    }
+}
+
+#[test]
+fn keeps_if_and_following_statement_after_nested_function_in_else() {
+    let (statements, errors) = parse("if (true) {} else fun nested() {} 42");
+
+    assert_has_error(&errors, ErrorCode::E1004);
+    assert_eq!(statements.len(), 2);
+    assert!(matches!(&statements[0], Stmt::If { else_branch: ElseBranch::None, .. }));
+    assert!(
+        matches!(&statements[1], Stmt::Expression { expr } if matches!(expr.as_ref(), Expr::Literal { value: LiteralValue::Numeric(_), .. }))
+    );
+}
+
+#[test]
+fn rejects_duplicate_main_declarations() {
+    let (_, errors) = parse("main {} main {}");
+    assert_has_error(&errors, ErrorCode::E1004);
+}
+
+#[test]
+fn recovers_from_missing_main_body_brace_without_marking_main_declared() {
+    let (unit, errors) = parse_unit("main fun recovered() {} main {}");
+
+    assert_has_error(&errors, ErrorCode::E1004);
+    assert_eq!(unit.len(), 2);
+    assert!(matches!(&unit[0], Stmt::Function { name, .. } if name == "recovered"));
+    assert!(matches!(&unit[1], Stmt::MainFunction { .. }));
+}
+
+#[test]
+fn accepts_global_variables_and_local_variables() {
+    let (unit, errors) = parse("var global: i32 = 1\nmain { var local: i32 = 2 }");
+    assert_no_errors(&errors);
+    assert_eq!(unit.len(), 2);
 }

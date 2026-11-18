@@ -4,6 +4,7 @@ use descar_core::{
     error::{compile_error::CompileError, error_code::ErrorCode},
     location::{source_location::SourceLocation, source_span::SourceSpan},
     syntax::ast::{
+        assignment_op::AssignmentOp,
         ast_type::Type,
         binary_op::BinaryOp,
         else_branch::ElseBranch,
@@ -11,6 +12,7 @@ use descar_core::{
         literal_value::LiteralValue,
         parameter::Parameter,
         stmt::{Stmt, VarBinding},
+        type_syntax::TypeSyntax,
         unary_op::UnaryOp,
         unary_op_side::UnaryOpSide,
     },
@@ -27,15 +29,10 @@ fn span(start_offset: usize, end_offset: usize) -> SourceSpan {
 fn binary_op_get_op_maps_supported_tokens() {
     let cases = [
         (TokenKind::Plus, BinaryOp::Add),
-        (TokenKind::PlusEqual, BinaryOp::AddEqual),
         (TokenKind::Minus, BinaryOp::Subtract),
-        (TokenKind::MinusEqual, BinaryOp::SubtractEqual),
         (TokenKind::Star, BinaryOp::Multiply),
-        (TokenKind::StarEqual, BinaryOp::MultiplyEqual),
         (TokenKind::Slash, BinaryOp::Divide),
-        (TokenKind::SlashEqual, BinaryOp::DivideEqual),
         (TokenKind::Percent, BinaryOp::Modulo),
-        (TokenKind::PercentEqual, BinaryOp::ModuloEqual),
         (TokenKind::EqualEqual, BinaryOp::Equal),
         (TokenKind::NotEqual, BinaryOp::NotEqual),
         (TokenKind::Less, BinaryOp::Less),
@@ -45,21 +42,56 @@ fn binary_op_get_op_maps_supported_tokens() {
         (TokenKind::AndAnd, BinaryOp::And),
         (TokenKind::OrOr, BinaryOp::Or),
         (TokenKind::And, BinaryOp::BitwiseAnd),
-        (TokenKind::AndEqual, BinaryOp::BitwiseAndEqual),
         (TokenKind::Or, BinaryOp::BitwiseOr),
-        (TokenKind::OrEqual, BinaryOp::BitwiseOrEqual),
         (TokenKind::Xor, BinaryOp::BitwiseXor),
-        (TokenKind::XorEqual, BinaryOp::BitwiseXorEqual),
         (TokenKind::ShiftLeft, BinaryOp::ShiftLeft),
-        (TokenKind::ShiftLeftEqual, BinaryOp::ShiftLeftEqual),
         (TokenKind::ShiftRight, BinaryOp::ShiftRight),
-        (TokenKind::ShiftRightEqual, BinaryOp::ShiftRightEqual),
     ];
-
     for (kind, expected) in cases {
         let token = Token { kind, span: span(0, 1) };
 
         assert_eq!(BinaryOp::get_op(&token).unwrap(), expected);
+    }
+}
+
+#[test]
+fn assignment_op_get_op_maps_supported_tokens() {
+    let cases = [
+        (TokenKind::Equal, AssignmentOp::Assign),
+        (TokenKind::PlusEqual, AssignmentOp::AddAssign),
+        (TokenKind::MinusEqual, AssignmentOp::SubtractAssign),
+        (TokenKind::StarEqual, AssignmentOp::MultiplyAssign),
+        (TokenKind::SlashEqual, AssignmentOp::DivideAssign),
+        (TokenKind::PercentEqual, AssignmentOp::ModuloAssign),
+        (TokenKind::AndEqual, AssignmentOp::BitwiseAndAssign),
+        (TokenKind::OrEqual, AssignmentOp::BitwiseOrAssign),
+        (TokenKind::XorEqual, AssignmentOp::BitwiseXorAssign),
+        (TokenKind::ShiftLeftEqual, AssignmentOp::ShiftLeftAssign),
+        (TokenKind::ShiftRightEqual, AssignmentOp::ShiftRightAssign),
+    ];
+
+    for (kind, expected) in cases {
+        let token = Token { kind, span: span(0, 1) };
+        assert_eq!(AssignmentOp::get_op(&token).unwrap(), expected);
+    }
+}
+
+#[test]
+fn assignment_operators_are_not_binary_operators() {
+    for kind in [
+        TokenKind::PlusEqual,
+        TokenKind::MinusEqual,
+        TokenKind::StarEqual,
+        TokenKind::SlashEqual,
+        TokenKind::PercentEqual,
+        TokenKind::AndEqual,
+        TokenKind::OrEqual,
+        TokenKind::XorEqual,
+        TokenKind::ShiftLeftEqual,
+        TokenKind::ShiftRightEqual,
+    ] {
+        let token = Token { kind, span: span(0, 1) };
+        assert!(BinaryOp::get_op(&token).is_err());
     }
 }
 
@@ -111,7 +143,7 @@ fn expression_span_returns_node_span_for_every_variant() {
             right: Box::new(literal.clone()),
             span: node_span.clone(),
         },
-        Expr::Cast { expr: Box::new(literal.clone()), target_type: Type::I32, span: node_span.clone() },
+        Expr::Cast { expr: Box::new(literal.clone()), target_type: TypeSyntax::I32, span: node_span.clone() },
         Expr::Unary {
             op: UnaryOp::Negate,
             side: UnaryOpSide::Prefix,
@@ -123,6 +155,7 @@ fn expression_span_returns_node_span_for_every_variant() {
         Expr::ArrayLiteral { elements: Vec::new(), span: node_span.clone() },
         variable,
         Expr::Assign {
+            op: AssignmentOp::Assign,
             target: Box::new(Expr::Variable { name: "value".into(), span: node_span.clone() }),
             value: Box::new(literal.clone()),
             span: node_span.clone(),
@@ -170,19 +203,23 @@ fn expression_edge_cases_preserve_empty_collections_and_deep_nesting() {
 fn statement_span_returns_expected_span_for_every_variant() {
     let statement_span = span(4, 12);
     let expression = Expr::Literal { value: LiteralValue::Bool(false), span: statement_span.clone() };
-    let parameter = Parameter::new("value".into(), Type::I64, statement_span.clone());
+    let parameter = Parameter::new("value".into(), TypeSyntax::I64, statement_span.clone());
     let statements = [
         Stmt::Expression { expr: Box::new(expression.clone()) },
         Stmt::VarDeclaration {
-            bindings: vec![VarBinding { name: "value".into(), initializer: Some(expression.clone()) }],
-            type_annotation: Type::I64,
+            bindings: vec![VarBinding {
+                name: "value".into(),
+                initializer: Some(expression.clone()),
+                span: statement_span.clone(),
+            }],
+            type_annotation: TypeSyntax::I64,
             is_mutable: true,
             span: statement_span.clone(),
         },
         Stmt::Function {
             name: "f".into(),
             parameters: vec![parameter],
-            return_type: Type::Void,
+            return_type: TypeSyntax::Void,
             body: Box::new(Stmt::Block { statements: Vec::new(), span: statement_span.clone() }),
             span: statement_span.clone(),
         },
@@ -231,7 +268,7 @@ fn statement_edge_cases_support_empty_and_optional_components() {
     let node_span = span(0, 0);
     let empty_declaration = Stmt::VarDeclaration {
         bindings: Vec::new(),
-        type_annotation: Type::Void,
+        type_annotation: TypeSyntax::Void,
         is_mutable: false,
         span: node_span.clone(),
     };
@@ -257,10 +294,10 @@ fn statement_edge_cases_support_empty_and_optional_components() {
 #[test]
 fn parameter_new_preserves_name_type_and_span() {
     let expected_span = span(7, 11);
-    let parameter = Parameter::new("count".into(), Type::U32, expected_span.clone());
+    let parameter = Parameter::new("count".into(), TypeSyntax::U32, expected_span.clone());
 
     assert_eq!(parameter.name, "count");
-    assert_eq!(parameter.type_annotation, Type::U32);
+    assert_eq!(parameter.type_annotation, TypeSyntax::U32);
     assert_eq!(parameter.span, expected_span);
 }
 

@@ -12,11 +12,11 @@ expression: errors
             file_path: "test.vn",
             start: SourceLocation {
                 line: 1,
-                column: 4,
-                offset: 3,
-                index: 3,
-                utf8_offset: 3,
-                code_point_offset: 3,
+                column: 1,
+                offset: 0,
+                index: 0,
+                utf8_offset: 0,
+                code_point_offset: 0,
             },
             end: SourceLocation {
                 line: 1,

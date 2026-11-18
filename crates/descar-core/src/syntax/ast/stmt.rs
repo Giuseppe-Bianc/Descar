@@ -1,6 +1,6 @@
 use crate::{
     location::source_span::SourceSpan,
-    syntax::ast::{ast_type::Type, else_branch::ElseBranch, expr::Expr, parameter::Parameter},
+    syntax::ast::{else_branch::ElseBranch, expr::Expr, parameter::Parameter, type_syntax::TypeSyntax},
 };
 
 /// Abstract syntax tree node representing a statement.
@@ -18,7 +18,7 @@ pub enum Stmt {
         bindings: Vec<VarBinding>,
 
         /// Type annotation for declared variables.
-        type_annotation: Type,
+        type_annotation: TypeSyntax,
 
         /// Whether the variables are mutable.
         is_mutable: bool,
@@ -36,7 +36,7 @@ pub enum Stmt {
         parameters: Vec<Parameter>,
 
         /// Declared return type.
-        return_type: Type,
+        return_type: TypeSyntax,
 
         /// Function body.
         body: Box<Self>,
@@ -138,6 +138,9 @@ pub struct VarBinding {
 
     /// Optional initializer expression.
     pub initializer: Option<Expr>,
+
+    /// Source extent of this binding, including its initializer when present.
+    pub span: SourceSpan,
 }
 
 impl Stmt {

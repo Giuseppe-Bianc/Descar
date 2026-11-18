@@ -2,7 +2,7 @@
 source: crates/descar-core/tests/ast_printer_snapshot.rs
 expression: rendered_expr(&expression)
 ---
-└── Assignment
+└── Assignment =
     ├── Target:
     │   └── Array Access
     │       ├── Array:

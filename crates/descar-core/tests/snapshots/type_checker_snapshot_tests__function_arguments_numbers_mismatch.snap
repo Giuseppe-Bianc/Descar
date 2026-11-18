@@ -38,11 +38,11 @@ expression: errors
             file_path: "test.vn",
             start: SourceLocation {
                 line: 3,
-                column: 4,
-                offset: 36,
-                index: 36,
-                utf8_offset: 36,
-                code_point_offset: 36,
+                column: 1,
+                offset: 33,
+                index: 33,
+                utf8_offset: 33,
+                code_point_offset: 33,
             },
             end: SourceLocation {
                 line: 3,

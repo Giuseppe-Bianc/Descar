@@ -2,12 +2,14 @@
 use crate::error::compile_error::CompileError;
 use crate::error::error_code::ErrorCode;
 use crate::location::source_span::SourceSpan;
-use crate::syntax::ast::ast_type::Type;
+use crate::syntax::ast::assignment_op::AssignmentOp;
 use crate::syntax::ast::binary_op::BinaryOp;
+use crate::syntax::ast::compilation_unit::CompilationUnit;
 use crate::syntax::ast::else_branch::ElseBranch;
 use crate::syntax::ast::expr::Expr;
 use crate::syntax::ast::parameter::Parameter;
 use crate::syntax::ast::stmt::{Stmt, VarBinding};
+use crate::syntax::ast::type_syntax::TypeSyntax;
 use crate::syntax::ast::unary_op::UnaryOp;
 use crate::syntax::ast::unary_op_side::UnaryOpSide;
 use crate::syntax::precendence::Precedence;
@@ -21,6 +23,7 @@ pub struct JsavParser<'a> {
     current: usize,
     errors: Vec<CompileError>,
     recursion_depth: usize,
+    main_declared: bool,
 }
 
 impl<'a> JsavParser<'a> {
@@ -55,31 +58,80 @@ impl<'a> JsavParser<'a> {
 
     #[must_use]
     pub fn new(tokens: &'a [Token]) -> Self {
-        Self { tokens, current: 0, errors: Vec::with_capacity(8), recursion_depth: 0 }
+        Self { tokens, current: 0, errors: Vec::with_capacity(8), recursion_depth: 0, main_declared: false }
     }
 
     #[must_use]
-    pub fn parse(mut self) -> (Vec<Stmt>, Vec<CompileError>) {
-        let mut statements = Vec::with_capacity(self.tokens.len() / 4);
+    pub fn parse(mut self) -> (CompilationUnit, Vec<CompileError>) {
+        let mut declarations = Vec::with_capacity(self.tokens.len() / 4);
         while !self.is_at_end() {
-            if let Some(stmt) = self.parse_stmt() {
-                statements.push(stmt);
-            } else {
-                // Error recovery: skip the problematic token
+            let Some(token) = self.peek().cloned() else { break };
+            let before = self.current;
+            let declaration = match token.kind {
+                TokenKind::KeywordFun => self.parse_function(),
+                TokenKind::KeywordMain => {
+                    let parsed = self.parse_main_function();
+                    if self.main_declared {
+                        self.syntax_error(
+                            "A compilation unit can contain only one main declaration",
+                            &token,
+                            Some("Remove the duplicate main declaration"),
+                            Some(ErrorCode::E1004),
+                        );
+                        None
+                    } else {
+                        self.main_declared = parsed.is_some();
+                        parsed
+                    }
+                }
+                TokenKind::KeywordVar | TokenKind::KeywordConst => self.parse_var_declaration(),
+                _ => {
+                    self.syntax_error(
+                        "Expected a top-level declaration",
+                        &token,
+                        Some("Only global variables, functions, and main are allowed at compilation-unit level"),
+                        Some(ErrorCode::E1004),
+                    );
+                    // Keep the statement node for downstream semantic analysis.
+                    // The syntax error still makes the compilation unit invalid, but
+                    // retaining the node allows later diagnostics to be reported.
+                    self.parse_stmt()
+                }
+            };
+            if let Some(declaration) = declaration {
+                declarations.push(declaration);
+            } else if !self.is_at_end() && self.current == before {
                 self.advance();
             }
         }
-        statements.shrink_to_fit();
+        let unit_span = declarations
+            .first()
+            .zip(declarations.last())
+            .map_or_else(SourceSpan::default, |(first, last)| first.span().merge(last.span()));
+        declarations.shrink_to_fit();
         self.errors.shrink_to_fit();
-        (statements, self.errors)
+        (CompilationUnit::new(declarations, unit_span), self.errors)
     }
 
     #[inline]
     fn parse_stmt(&mut self) -> Option<Stmt> {
         let token = self.peek()?;
         match token.kind {
-            TokenKind::KeywordFun => self.parse_function(),
-            TokenKind::KeywordMain => self.parse_main_function(),
+            TokenKind::KeywordFun | TokenKind::KeywordMain => {
+                let token = self.peek()?.clone();
+                self.syntax_error(
+                    "Nested function and main declarations are not allowed",
+                    &token,
+                    Some("Move this declaration to compilation-unit level"),
+                    Some(ErrorCode::E1004),
+                );
+                if matches!(token.kind, TokenKind::KeywordFun) {
+                    let _ = self.parse_function();
+                } else {
+                    let _ = self.parse_main_function();
+                }
+                None
+            }
             TokenKind::KeywordIf => self.parse_if(),
             TokenKind::KeywordVar | TokenKind::KeywordConst => self.parse_var_declaration(),
             TokenKind::KeywordReturn => self.parse_return(),
@@ -93,12 +145,29 @@ impl<'a> JsavParser<'a> {
     }
     fn parse_main_function(&mut self) -> Option<Stmt> {
         let start_token = self.advance()?.clone(); // 'main'
+        if !self.check(&TokenKind::OpenBrace) {
+            self.expect(&TokenKind::OpenBrace, "after 'main'");
+            self.synchronize_to_top_level_declaration();
+            return None;
+        }
+
         let body = self.parse_block_stmt()?;
         let end_span = body.span();
 
         let function_span = start_token.span.merge(end_span);
 
         Some(Stmt::MainFunction { body: Box::new(body), span: function_span })
+    }
+
+    fn synchronize_to_top_level_declaration(&mut self) {
+        while !self.is_at_end()
+            && !matches!(
+                self.peek().map(|token| &token.kind),
+                Some(TokenKind::KeywordFun | TokenKind::KeywordMain | TokenKind::KeywordVar | TokenKind::KeywordConst)
+            )
+        {
+            self.advance();
+        }
     }
     /// Parses a break statement.
     #[inline]
@@ -124,9 +193,11 @@ impl<'a> JsavParser<'a> {
         let mut statements = Vec::new();
 
         while !self.check(&TokenKind::CloseBrace) && !self.is_at_end() {
+            let before = self.current;
             if let Some(stmt) = self.parse_stmt() {
                 statements.push(stmt);
-            } else {
+            }
+            if self.current == before {
                 self.advance();
             }
         }
@@ -194,7 +265,7 @@ impl<'a> JsavParser<'a> {
         Some(Stmt::Function {
             name: name.to_string(),
             parameters: params,
-            return_type: return_type.unwrap_or(Type::Void),
+            return_type: return_type.unwrap_or(TypeSyntax::Void),
             body: Box::new(body),
             span: function_span,
         })
@@ -214,11 +285,10 @@ impl<'a> JsavParser<'a> {
         let then_branch = self.parse_block_stmt()?;
 
         let else_branch = if self.match_token(&TokenKind::KeywordElse) {
-            let else_stmt = self.parse_stmt()?;
-            match else_stmt {
-                block @ Stmt::Block { .. } => ElseBranch::Block(Box::new(block)),
-                if_stmt @ Stmt::If { .. } => ElseBranch::ElseIf(Box::new(if_stmt)),
-                invalid_stmt => {
+            match self.parse_stmt() {
+                Some(block @ Stmt::Block { .. }) => ElseBranch::Block(Box::new(block)),
+                Some(if_stmt @ Stmt::If { .. }) => ElseBranch::ElseIf(Box::new(if_stmt)),
+                Some(invalid_stmt) => {
                     self.errors.push(CompileError::SyntaxError {
                         code: Some(ErrorCode::E1004),
                         message: "Invalid else branch".into(),
@@ -227,6 +297,7 @@ impl<'a> JsavParser<'a> {
                     });
                     ElseBranch::None
                 }
+                None => ElseBranch::None,
             }
         } else {
             ElseBranch::None
@@ -244,9 +315,8 @@ impl<'a> JsavParser<'a> {
         let start_token = self.advance()?.clone(); // 'while'
         let condition = self.parse_condition("while")?;
         let body = self.parse_block_stmt()?;
-        let end_span = body.span();
-        let function_span = start_token.span.merge(end_span);
-        Some(Stmt::While { condition: Box::new(condition), body: Box::new(body), span: function_span })
+        let span = start_token.span.merge(body.span());
+        Some(Stmt::While { condition: Box::new(condition), body: Box::new(body), span })
     }
 
     fn parse_for_initializer(&mut self) -> Option<Box<Stmt>> {
@@ -301,24 +371,24 @@ impl<'a> JsavParser<'a> {
         Some(Stmt::For { initializer, condition, increment, body: Box::new(body_stmt), span })
     }
 
-    fn parse_type(&mut self) -> Option<Type> {
+    fn parse_type(&mut self) -> Option<TypeSyntax> {
         let token = self.advance()?.clone();
         let mut base_type = match &token.kind {
-            TokenKind::TypeI8 => Type::I8,
-            TokenKind::TypeI16 => Type::I16,
-            TokenKind::TypeI32 => Type::I32,
-            TokenKind::TypeI64 => Type::I64,
-            TokenKind::TypeU8 => Type::U8,
-            TokenKind::TypeU16 => Type::U16,
-            TokenKind::TypeU32 => Type::U32,
-            TokenKind::TypeU64 => Type::U64,
-            TokenKind::TypeF32 => Type::F32,
-            TokenKind::TypeF64 => Type::F64,
-            TokenKind::TypeChar => Type::Char,
-            TokenKind::TypeString => Type::String,
-            TokenKind::TypeBool => Type::Bool,
+            TokenKind::TypeI8 => TypeSyntax::I8,
+            TokenKind::TypeI16 => TypeSyntax::I16,
+            TokenKind::TypeI32 => TypeSyntax::I32,
+            TokenKind::TypeI64 => TypeSyntax::I64,
+            TokenKind::TypeU8 => TypeSyntax::U8,
+            TokenKind::TypeU16 => TypeSyntax::U16,
+            TokenKind::TypeU32 => TypeSyntax::U32,
+            TokenKind::TypeU64 => TypeSyntax::U64,
+            TokenKind::TypeF32 => TypeSyntax::F32,
+            TokenKind::TypeF64 => TypeSyntax::F64,
+            TokenKind::TypeChar => TypeSyntax::Char,
+            TokenKind::TypeString => TypeSyntax::String,
+            TokenKind::TypeBool => TypeSyntax::Bool,
             TokenKind::IdentifierAscii(name) | TokenKind::IdentifierUnicode(name) => {
-                Type::Custom { name: name.clone() }
+                TypeSyntax::Custom { name: name.clone() }
             }
             _ => {
                 self.syntax_error(
@@ -342,15 +412,15 @@ impl<'a> JsavParser<'a> {
 
         // Apply dimensions in reverse order
         for size in dimensions.into_iter().rev() {
-            base_type = Type::Array { element_type: Box::new(base_type), size: Box::new(size) };
+            base_type = TypeSyntax::Array { element_type: Box::new(base_type), size: Box::new(size) };
         }
 
         #[allow(clippy::collapsible_if)]
-        if let Type::Custom { name } = &base_type {
+        if let TypeSyntax::Custom { name } = &base_type {
             if **name == *"vector" && self.match_token(&TokenKind::Less) {
                 let inner_type = self.parse_type()?;
                 self.expect(&TokenKind::Greater, "after vector inner type");
-                base_type = Type::Vector { element_type: Box::new(inner_type) };
+                base_type = TypeSyntax::Vector { element_type: Box::new(inner_type) };
             }
         }
 
@@ -369,7 +439,8 @@ impl<'a> JsavParser<'a> {
 
         let mut variables = Vec::new();
         while let Some(name) = self.consume_identifier() {
-            variables.push(name);
+            let name_span = self.previous().map_or_else(|| start_token.span.clone(), |token| token.span.clone());
+            variables.push((name, name_span));
             if !self.match_token(&TokenKind::Comma) {
                 break;
             }
@@ -391,7 +462,7 @@ impl<'a> JsavParser<'a> {
                 "Invalid type specification",
                 Some("Try using a primitive type or a custom type identifier"),
             );
-            Type::Void
+            TypeSyntax::Void
         });
 
         self.expect(&TokenKind::Equal, "after type annotation");
@@ -423,7 +494,10 @@ impl<'a> JsavParser<'a> {
         let bindings = variables
             .into_iter()
             .zip(initializers.into_iter().map(Some).chain(std::iter::repeat(None)))
-            .map(|(name, initializer)| VarBinding { name: name.to_string(), initializer })
+            .map(|((name, name_span), initializer)| {
+                let span = initializer.as_ref().map_or_else(|| name_span.clone(), |expr| name_span.merge(expr.span()));
+                VarBinding { name: name.to_string(), initializer, span }
+            })
             .collect();
 
         Some(Stmt::VarDeclaration {
@@ -504,11 +578,11 @@ impl<'a> JsavParser<'a> {
             TokenKind::StringLiteral(s) => Some(Expr::new_string_literal(s.to_string(), token.span)),
             TokenKind::CharLiteral(c) => Some(Expr::new_char_literal(c.to_string(), token.span)),
             // Unary operators
-            TokenKind::Minus => Some(self.parse_unary(UnaryOp::Negate, token)),
-            TokenKind::Not => Some(self.parse_unary(UnaryOp::Not, token)),
-            TokenKind::BitwiseNot => Some(self.parse_unary(UnaryOp::BitwiseNot, token)),
-            TokenKind::PlusPlus => Some(self.parse_unary(UnaryOp::Increment, token)),
-            TokenKind::MinusMinus => Some(self.parse_unary(UnaryOp::Decrement, token)),
+            TokenKind::Minus => Some(self.parse_unary(UnaryOp::Negate, &token)),
+            TokenKind::Not => Some(self.parse_unary(UnaryOp::Not, &token)),
+            TokenKind::BitwiseNot => Some(self.parse_unary(UnaryOp::BitwiseNot, &token)),
+            TokenKind::PlusPlus => Some(self.parse_unary(UnaryOp::Increment, &token)),
+            TokenKind::MinusMinus => Some(self.parse_unary(UnaryOp::Decrement, &token)),
             // Grouping
             TokenKind::OpenBrace => self.parse_array_literal(&token),
             TokenKind::OpenParen => self.parse_grouping(&token),
@@ -551,19 +625,7 @@ impl<'a> JsavParser<'a> {
             | TokenKind::Or
             | TokenKind::Xor
             | TokenKind::ShiftLeft
-            | TokenKind::ShiftRight => self.parse_binary(left, token),
-
-            // Compound assignment
-            TokenKind::PlusEqual
-            | TokenKind::MinusEqual
-            | TokenKind::StarEqual
-            | TokenKind::SlashEqual
-            | TokenKind::PercentEqual
-            | TokenKind::AndEqual
-            | TokenKind::OrEqual
-            | TokenKind::XorEqual
-            | TokenKind::ShiftLeftEqual
-            | TokenKind::ShiftRightEqual => self.parse_compound_assignment(left, token),
+            | TokenKind::ShiftRight => self.parse_binary(left, &token),
 
             TokenKind::PlusPlus => {
                 let span = left.span().merge(&token.span);
@@ -574,8 +636,18 @@ impl<'a> JsavParser<'a> {
                 Some(Expr::Unary { op: UnaryOp::Decrement, side: UnaryOpSide::Postfix, expr: Box::new(left), span })
             }
 
-            // Assignment
-            TokenKind::Equal => self.parse_assignment(left, &token),
+            // Simple and compound assignment
+            TokenKind::Equal
+            | TokenKind::PlusEqual
+            | TokenKind::MinusEqual
+            | TokenKind::StarEqual
+            | TokenKind::SlashEqual
+            | TokenKind::PercentEqual
+            | TokenKind::AndEqual
+            | TokenKind::OrEqual
+            | TokenKind::XorEqual
+            | TokenKind::ShiftLeftEqual
+            | TokenKind::ShiftRightEqual => self.parse_assignment(left, &token),
             // Explicit numeric cast
             TokenKind::KeywordAs => self.parse_cast(left),
             // Function call
@@ -621,16 +693,6 @@ impl<'a> JsavParser<'a> {
         Some(Expr::Cast { expr: Box::new(expr), target_type, span })
     }
 
-    /// Validates a compound-assignment target and preserves its `Expr::Binary` representation.
-    fn parse_compound_assignment(&mut self, left: Expr, token: Token) -> Option<Expr> {
-        if !Self::is_valid_assignment_target(&left) {
-            self.report_invalid_assignment_target(&left);
-            return None;
-        }
-
-        self.parse_binary(left, token)
-    }
-
     #[inline]
     /// Returns whether an expression can be used as an assignment target.
     const fn is_valid_assignment_target(expr: &Expr) -> bool {
@@ -650,10 +712,10 @@ impl<'a> JsavParser<'a> {
     }
 
     // Parsing operations
-    fn parse_unary(&mut self, op: UnaryOp, token: Token) -> Expr {
-        let rbp = Precedence::unary_binding_power(&token).right;
+    fn parse_unary(&mut self, op: UnaryOp, token: &Token) -> Expr {
+        let rbp = Precedence::unary_binding_power(token).right;
         let expr = self.parse_expr(rbp).unwrap_or_else(|| Expr::null_expr(token.span.clone()));
-        Expr::Unary { op, side: UnaryOpSide::Prefix, expr: Box::new(expr), span: token.span }
+        Expr::Unary { op, side: UnaryOpSide::Prefix, span: token.span.merge(expr.span()), expr: Box::new(expr) }
     }
 
     fn parse_array_literal(&mut self, start_token: &Token) -> Option<Expr> {
@@ -678,8 +740,8 @@ impl<'a> JsavParser<'a> {
         }
     }
 
-    fn parse_binary(&mut self, left: Expr, token: Token) -> Option<Expr> {
-        let op = match BinaryOp::get_op(&token) {
+    fn parse_binary(&mut self, left: Expr, token: &Token) -> Option<Expr> {
+        let op = match BinaryOp::get_op(token) {
             Ok(op) => op,
             Err(e) => {
                 self.errors.push(e);
@@ -688,9 +750,10 @@ impl<'a> JsavParser<'a> {
         };
 
         let right = self
-            .parse_expr(Precedence::binding_power(&token).right)
+            .parse_expr(Precedence::binding_power(token).right)
             .unwrap_or_else(|| Expr::null_expr(token.span.clone()));
-        Some(Expr::Binary { left: Box::new(left), op, right: Box::new(right), span: token.span })
+        let span = left.span().merge(right.span());
+        Some(Expr::Binary { left: Box::new(left), op, right: Box::new(right), span })
     }
 
     fn parse_grouping(&mut self, start_token: &Token) -> Option<Expr> {
@@ -701,9 +764,18 @@ impl<'a> JsavParser<'a> {
         Some(Expr::Grouping { expr: Box::new(expr?), span: self.merge_span(start_token) })
     }
 
-    /// Parses a simple `=` assignment after validating its left-hand side.
+    /// Parses simple or compound assignment after validating its left-hand side.
     fn parse_assignment(&mut self, left: Expr, token: &Token) -> Option<Expr> {
-        let value = self.parse_expr(1).unwrap_or_else(|| Expr::null_expr(token.span.clone()));
+        let op = match AssignmentOp::get_op(token) {
+            Ok(op) => op,
+            Err(error) => {
+                self.errors.push(error);
+                return None;
+            }
+        };
+        let value = self
+            .parse_expr(Precedence::binding_power(token).right)
+            .unwrap_or_else(|| Expr::null_expr(token.span.clone()));
 
         let span = left.span().merge(value.span());
 
@@ -712,7 +784,7 @@ impl<'a> JsavParser<'a> {
             return None;
         }
 
-        Some(Expr::Assign { target: Box::new(left), value: Box::new(value), span })
+        Some(Expr::Assign { op, target: Box::new(left), value: Box::new(value), span })
     }
 
     fn parse_call(&mut self, callee: Expr, start_token: &Token) -> Option<Expr> {
@@ -726,7 +798,8 @@ impl<'a> JsavParser<'a> {
         }
         arguments.shrink_to_fit();
 
-        Some(Expr::Call { callee: Box::new(callee), arguments, span: self.merge_span(start_token) })
+        let span = callee.span().merge(&self.merge_span(start_token));
+        Some(Expr::Call { callee: Box::new(callee), arguments, span })
     }
 
     fn parse_array_access(&mut self, array: Expr, start_token: &Token) -> Option<Expr> {
@@ -734,7 +807,8 @@ impl<'a> JsavParser<'a> {
         if !self.expect(&TokenKind::CloseBracket, "end of array access") {
             return None;
         }
-        Some(Expr::ArrayAccess { array: Box::new(array), index: Box::new(index), span: self.merge_span(start_token) })
+        let span = array.span().merge(&self.merge_span(start_token));
+        Some(Expr::ArrayAccess { array: Box::new(array), index: Box::new(index), span })
     }
 
     #[inline]

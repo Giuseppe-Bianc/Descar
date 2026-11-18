@@ -2,30 +2,53 @@ use descar_core::{
     error::compile_error::CompileError,
     lex::lexer::{Lexer, lexer_tokenize_with_errors},
     syntax::{
-        ast::{ast_type::Type, else_branch::ElseBranch, expr::Expr, stmt::Stmt},
+        ast::{else_branch::ElseBranch, expr::Expr, stmt::Stmt, type_syntax::TypeSyntax},
         parser::JsavParser,
     },
 };
 use insta::assert_snapshot;
 
-fn parse(input: &str) -> (Vec<Stmt>, Vec<CompileError>) {
+fn parse(input: &str) -> (descar_core::syntax::ast::CompilationUnit, Vec<CompileError>) {
     let mut lexer = Lexer::new("parser_snapshot", input);
     let (tokens, lexer_errors) = lexer_tokenize_with_errors(&mut lexer);
 
     if !lexer_errors.is_empty() {
-        return (Vec::new(), lexer_errors);
+        return (descar_core::syntax::ast::CompilationUnit::default(), lexer_errors);
     }
 
-    JsavParser::new(&tokens).parse()
+    let (unit, errors) = JsavParser::new(&tokens).parse();
+    if errors.is_empty()
+        || input.trim_start().starts_with("fun ")
+        || input.trim_start().starts_with("main ")
+        || input.trim_start().starts_with("var ")
+        || input.trim_start().starts_with("const ")
+    {
+        return (unit, errors);
+    }
+
+    let wrapped = format!("main {{ {input} }}");
+    let mut wrapped_lexer = Lexer::new("parser_snapshot", &wrapped);
+    let (wrapped_tokens, wrapped_lexer_errors) = lexer_tokenize_with_errors(&mut wrapped_lexer);
+    if !wrapped_lexer_errors.is_empty() {
+        return (unit, errors);
+    }
+    let (mut wrapped_unit, wrapped_errors) = JsavParser::new(&wrapped_tokens).parse();
+    if wrapped_errors.is_empty()
+        && let Some(Stmt::MainFunction { body, .. }) = wrapped_unit.declarations.pop()
+        && let Stmt::Block { statements, .. } = *body
+    {
+        wrapped_unit.declarations = statements;
+    }
+    (wrapped_unit, wrapped_errors)
 }
 
-fn summarize_type(type_: &Type) -> String {
+fn summarize_type(type_: &TypeSyntax) -> String {
     match type_ {
-        Type::Array { element_type, size } => {
+        TypeSyntax::Array { element_type, size } => {
             format!("Array(size={}, {})", summarize_expr(size), summarize_type(element_type))
         }
-        Type::Vector { element_type } => format!("Vector({})", summarize_type(element_type)),
-        Type::Custom { name } => format!("Custom({name})"),
+        TypeSyntax::Vector { element_type } => format!("Vector({})", summarize_type(element_type)),
+        TypeSyntax::Custom { name } => format!("Custom({name})"),
         other => format!("{other:?}"),
     }
 }

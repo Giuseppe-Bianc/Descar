@@ -91,10 +91,16 @@ impl SourceSpan {
         self.end.offset().saturating_sub(self.start.offset())
     }
 
+    /// Indicates whether the span has ordered, non-reversed byte offsets.
+    #[must_use]
+    pub const fn is_valid(&self) -> bool {
+        self.start.offset() <= self.end.offset()
+    }
+
     /// Indicates whether the span has zero length (i.e. `start == end`).
     #[must_use]
     pub const fn is_empty(&self) -> bool {
-        self.length() == 0
+        self.start.offset() == self.end.offset()
     }
 
     /// Indicates whether the span spans multiple lines, by comparing the
@@ -112,23 +118,36 @@ impl SourceSpan {
     }
 
     /// Indicates whether two spans share at least one character, i.e.
-    /// whether their `[start, end)` intervals intersect.
+    /// whether their `[start, end)` intervals intersect. Spans from different
+    /// source files never overlap.
     ///
     /// Two adjacent spans (e.g. `[0, 3)` and `[3, 5)`) are not considered
     /// overlapping.
     #[must_use]
-    pub const fn overlaps(&self, other: &Self) -> bool {
-        self.start.offset() < other.end.offset() && other.start.offset() < self.end.offset()
+    pub fn overlaps(&self, other: &Self) -> bool {
+        self.is_valid()
+            && other.is_valid()
+            && self.file_path == other.file_path
+            && self.start.offset().max(other.start.offset()) < self.end.offset().min(other.end.offset())
     }
 
     /// Returns the smallest span that contains both spans (`self` and
     /// `other`), by taking the minimum of the start positions and the
     /// maximum of the end positions.
     ///
-    /// The resulting `file_path` is that of `self`: it is assumed that both
-    /// spans belong to the same file.
+    /// If the spans belong to different files, returns self unchanged because
+    /// offsets from different source files cannot form a meaningful combined span.
+    ///
+    /// # Panics
+    ///
+    /// Panics if either span has a reversed start and end offset.
     #[must_use]
     pub fn merge(&self, other: &Self) -> Self {
+        assert!(self.is_valid() && other.is_valid(), "cannot merge invalid source spans");
+        if self.file_path != other.file_path {
+            return self.clone();
+        }
+
         let merged_start = if self.start.offset() <= other.start.offset() { self.start } else { other.start };
         let merged_end = if self.end.offset() >= other.end.offset() { self.end } else { other.end };
 
@@ -196,4 +215,66 @@ pub fn truncate_path(path: &Path, depth: usize) -> String {
     };
 
     truncated.display().to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SourceSpan;
+    use crate::location::source_location::SourceLocation;
+    use std::sync::Arc;
+
+    fn span(file: &str, start: usize, end: usize) -> SourceSpan {
+        SourceSpan::new(
+            Arc::from(file),
+            SourceLocation::new(1, start + 1, start, start, start, start),
+            SourceLocation::new(1, end + 1, end, end, end, end),
+        )
+    }
+
+    #[test]
+    fn merge_preserves_complete_bounds_and_file() {
+        let left = span("main.dr", 2, 5);
+        let right = span("main.dr", 8, 12);
+        let merged = left.merge(&right);
+
+        assert_eq!(merged.file_path(), "main.dr");
+        assert_eq!(merged.start().offset(), 2);
+        assert_eq!(merged.end().offset(), 12);
+        assert!(merged.is_valid());
+    }
+
+    #[test]
+    fn spans_from_different_files_do_not_overlap() {
+        let first = span("first.dr", 0, 4);
+        let second = span("second.dr", 1, 3);
+
+        assert!(!first.overlaps(&second));
+    }
+
+    #[test]
+    fn merging_spans_from_different_files_preserves_the_original_span() {
+        let original = span("first.dr", 0, 4);
+        let other = span("second.dr", 1, 8);
+        let merged = original.merge(&other);
+
+        assert_eq!(merged.file_path(), "first.dr");
+        assert_eq!(merged.start().offset(), 0);
+        assert_eq!(merged.end().offset(), 4);
+        assert_eq!(merged, original);
+    }
+
+    #[test]
+    fn invalid_spans_are_not_empty_or_overlapping() {
+        let reversed = span("main.dr", 8, 2);
+        let valid = span("main.dr", 1, 10);
+
+        assert!(!reversed.is_empty());
+        assert!(!reversed.overlaps(&valid));
+    }
+
+    #[test]
+    fn reversed_offsets_are_invalid() {
+        let reversed = span("main.dr", 8, 2);
+        assert!(!reversed.is_valid());
+    }
 }

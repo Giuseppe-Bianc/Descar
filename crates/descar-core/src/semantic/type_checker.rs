@@ -35,12 +35,15 @@
 use crate::error::compile_error::CompileError;
 use crate::error::error_code::ErrorCode;
 use crate::location::source_span::SourceSpan;
-use crate::semantic::symbol_table::{FunctionSymbol, ScopeKind, Symbol, SymbolTable, VariableSymbol};
+use crate::semantic::symbol_table::{
+    FunctionSymbol, ResolvedParameter, ScopeKind, Symbol, SymbolTable, VariableSymbol,
+};
+use crate::syntax::ast::assignment_op::AssignmentOp;
 use crate::syntax::ast::binary_op::BinaryOp;
 use crate::syntax::ast::else_branch::ElseBranch;
 use crate::syntax::ast::stmt::VarBinding;
 use crate::syntax::ast::unary_op::UnaryOp;
-use crate::syntax::ast::{Expr, LiteralValue, Parameter, Stmt, Type};
+use crate::syntax::ast::{Expr, LiteralValue, Parameter, Stmt, Type, TypeSyntax};
 use crate::tokens::number::Number;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
@@ -183,6 +186,36 @@ impl TypeChecker {
     ///
     /// The visitor handles expressions, declarations, functions, control-flow
     /// constructs, blocks, returns, and loop-control statements.
+    /// Lowers a source-level type annotation into the semantic type model.
+    ///
+    /// Array extent expressions remain attached to the semantic array type because
+    /// this language currently permits non-literal extent expressions.
+    fn resolve_type_syntax(type_syntax: &TypeSyntax) -> Type {
+        match type_syntax {
+            TypeSyntax::I8 => Type::I8,
+            TypeSyntax::I16 => Type::I16,
+            TypeSyntax::I32 => Type::I32,
+            TypeSyntax::I64 => Type::I64,
+            TypeSyntax::U8 => Type::U8,
+            TypeSyntax::U16 => Type::U16,
+            TypeSyntax::U32 => Type::U32,
+            TypeSyntax::U64 => Type::U64,
+            TypeSyntax::F32 => Type::F32,
+            TypeSyntax::F64 => Type::F64,
+            TypeSyntax::Char => Type::Char,
+            TypeSyntax::String => Type::String,
+            TypeSyntax::Bool => Type::Bool,
+            TypeSyntax::Custom { name } => Type::Custom { name: name.clone() },
+            TypeSyntax::Array { element_type, size } => {
+                Type::Array { element_type: Box::new(Self::resolve_type_syntax(element_type)), size: size.clone() }
+            }
+            TypeSyntax::Vector { element_type } => {
+                Type::Vector { element_type: Box::new(Self::resolve_type_syntax(element_type)) }
+            }
+            TypeSyntax::Void => Type::Void,
+        }
+    }
+
     fn visit_stmt(&mut self, stmt: &Stmt) {
         match stmt {
             Stmt::Expression { expr } => {
@@ -219,12 +252,13 @@ impl TypeChecker {
     /// then inserted into the current scope with its type, mutability, and source
     /// location.
     fn visit_var_declaration(
-        &mut self, bindings: &[VarBinding], type_annotation: &Type, is_mutable: bool, span: &SourceSpan,
+        &mut self, bindings: &[VarBinding], type_syntax: &TypeSyntax, is_mutable: bool, span: &SourceSpan,
     ) {
+        let type_annotation = Self::resolve_type_syntax(type_syntax);
         for binding in bindings {
             if let Some(init_expr) = binding.initializer.as_ref()
                 && let Some(init_type) = self.visit_expr(init_expr)
-                && !self.is_assignable(&init_type, type_annotation)
+                && !self.is_assignable(&init_type, &type_annotation)
             {
                 self.type_error_with_code(
                     Some(ErrorCode::E2002),
@@ -253,28 +287,37 @@ impl TypeChecker {
     /// parameters, checks the function body, and verifies that non-void functions
     /// contain a valid return path.
     fn visit_function(
-        &mut self, name: &str, parameters: &[Parameter], return_type: &Type, body: &Stmt, span: &SourceSpan,
+        &mut self, name: &str, parameters: &[Parameter], return_type: &TypeSyntax, body: &Stmt, span: &SourceSpan,
     ) {
+        let resolved_return_type = Self::resolve_type_syntax(return_type);
+        let resolved_parameters = parameters
+            .iter()
+            .map(|parameter| ResolvedParameter {
+                name: parameter.name.clone().into(),
+                ty: Self::resolve_type_syntax(&parameter.type_annotation),
+                defined_at: parameter.span.clone(),
+            })
+            .collect::<Vec<_>>();
         let func_symbol = FunctionSymbol {
             name: name.into(),
-            parameters: parameters.to_vec(),
-            return_type: return_type.clone(),
+            parameters: resolved_parameters.clone(),
+            return_type: resolved_return_type.clone(),
             defined_at: span.clone(),
         };
         self.declare_symbol(name, Symbol::Function(func_symbol), span);
         self.symbol_table.push_scope(ScopeKind::Function, Some(span.clone()));
-        self.return_type_stack.push(return_type.clone());
-        for param in parameters {
+        self.return_type_stack.push(resolved_return_type.clone());
+        for param in &resolved_parameters {
             self.declare_symbol(
                 &param.name,
                 Symbol::Variable(VariableSymbol {
-                    name: param.name.clone().into(),
-                    ty: param.type_annotation.clone(),
+                    name: param.name.clone(),
+                    ty: param.ty.clone(),
                     mutable: true,
-                    defined_at: param.span.clone(),
+                    defined_at: param.defined_at.clone(),
                     last_assignment: None,
                 }),
-                &param.span,
+                &param.defined_at,
             );
         }
         match body {
@@ -282,11 +325,11 @@ impl TypeChecker {
             _ => self.visit_stmt(body),
         }
 
-        if *return_type != Type::Void && !self.function_has_return(body) {
+        if resolved_return_type != Type::Void && !self.function_has_return(body) {
             self.type_error_with_code(
                 Some(ErrorCode::E2003),
                 format!(
-                    "Function '{name}' may not return value in all code paths (expected return type: {return_type})"
+                    "Function '{name}' may not return value in all code paths (expected return type: {resolved_return_type})"
                 ),
                 span,
             );
@@ -300,7 +343,7 @@ impl TypeChecker {
     /// The main function is analyzed using the regular function checking logic
     /// with no parameters and a Void return type.
     fn visit_main_function(&mut self, body: &Stmt, span: &SourceSpan) {
-        self.visit_function("main", &[], &Type::Void, body, span);
+        self.visit_function("main", &[], &TypeSyntax::Void, body, span);
     }
 
     /// Validates that a control-flow condition has boolean type.
@@ -453,13 +496,16 @@ impl TypeChecker {
     fn visit_expr(&mut self, expr: &Expr) -> Option<Type> {
         match expr {
             Expr::Binary { left, op, right, span } => self.visit_binary_expr(left, *op, right, span),
-            Expr::Cast { expr, target_type, span } => self.visit_cast_expr(expr, target_type, span),
+            Expr::Cast { expr, target_type, span } => {
+                let resolved_target = Self::resolve_type_syntax(target_type);
+                self.visit_cast_expr(expr, &resolved_target, span)
+            }
             Expr::Unary { op, expr, span, .. } => self.visit_unary_expr(*op, expr, span),
             Expr::Grouping { expr, span: _ } => self.visit_expr(expr),
             Expr::Literal { value, span } => self.visit_literal(value, span),
             Expr::ArrayLiteral { elements, span } => self.visit_array_literal(elements, span),
             Expr::Variable { name, span } => self.visit_variable(name, span),
-            Expr::Assign { target, value, span } => self.visit_assign(target, value, span),
+            Expr::Assign { target, op, value, span } => self.visit_assign(target, *op, value, span),
             Expr::Call { callee, arguments, span } => self.visit_call(callee, arguments, span),
             Expr::ArrayAccess { array, index, span } => self.visit_array_access(array, index, span),
         }
@@ -495,65 +541,37 @@ impl TypeChecker {
         }
     }
 
-    #[allow(clippy::too_many_lines)]
     /// Type-checks a binary expression and determines its resulting type.
     ///
-    /// Operand types are validated for the selected operator. Numeric and
-    /// bitwise operands are promoted when supported, compound assignments also
-    /// require a mutable target.
+    /// Assignment expressions use the same type rules through
+    /// `check_binary_operation`, without being represented as binary nodes.
     fn visit_binary_expr(&mut self, left: &Expr, op: BinaryOp, right: &Expr, span: &SourceSpan) -> Option<Type> {
         let left_type = self.visit_expr(left);
-
-        let is_compound = matches!(
-            op,
-            BinaryOp::AddEqual
-                | BinaryOp::SubtractEqual
-                | BinaryOp::MultiplyEqual
-                | BinaryOp::DivideEqual
-                | BinaryOp::ModuloEqual
-                | BinaryOp::BitwiseAndEqual
-                | BinaryOp::BitwiseOrEqual
-                | BinaryOp::BitwiseXorEqual
-                | BinaryOp::ShiftLeftEqual
-                | BinaryOp::ShiftRightEqual
-        );
-
-        if is_compound
-            && let Some(name) = Self::base_variable_name(left)
-            && let Some(var) = self.symbol_table.lookup_variable(name)
-            && !var.mutable
-        {
-            self.type_error_with_code(
-                Some(ErrorCode::E2024),
-                format!("Cannot assign to immutable variable '{name}'"),
-                left.span(),
-            );
-            return None;
-        }
-
         let right_type = self.visit_expr(right);
 
-        let (Some(mut left_type), Some(mut right_type)) = (left_type, right_type) else {
+        let (Some(left_type), Some(right_type)) = (left_type, right_type) else {
             return None;
         };
 
-        /*
-         * Bitwise and shift operators have their own compatibility rules.
-         * They require integer operands and therefore must be handled before
-         * the generic compatibility check below.
-         */
+        self.check_binary_operation(op, left_type, right_type, span, left.span())
+    }
+
+    #[allow(clippy::too_many_lines)]
+    /// Applies binary operator type rules to already-resolved operand types.
+    ///
+    /// This is shared by binary expressions and compound assignments. It does
+    /// not traverse expressions or perform assignment-target mutability checks.
+    fn check_binary_operation(
+        &mut self, op: BinaryOp, mut left_type: Type, mut right_type: Type, span: &SourceSpan, left_span: &SourceSpan,
+    ) -> Option<Type> {
+        // Bitwise and shift operators require integer operands.
         if matches!(
             op,
             BinaryOp::BitwiseAnd
-                | BinaryOp::BitwiseAndEqual
                 | BinaryOp::BitwiseOr
-                | BinaryOp::BitwiseOrEqual
                 | BinaryOp::BitwiseXor
-                | BinaryOp::BitwiseXorEqual
                 | BinaryOp::ShiftLeft
-                | BinaryOp::ShiftLeftEqual
                 | BinaryOp::ShiftRight
-                | BinaryOp::ShiftRightEqual
         ) {
             if Self::is_integer_type(&left_type) && Self::is_integer_type(&right_type) {
                 let common_type = self.promote_numeric_types(&left_type, &right_type);
@@ -571,22 +589,14 @@ impl TypeChecker {
             }
         }
 
-        /*
-         * Arithmetic and comparison operators use numeric promotion when both
-         * operands are numeric.
-         */
+        // Arithmetic and comparison operators promote compatible numeric operands.
         if matches!(
             op,
             BinaryOp::Add
-                | BinaryOp::AddEqual
                 | BinaryOp::Subtract
-                | BinaryOp::SubtractEqual
                 | BinaryOp::Multiply
-                | BinaryOp::MultiplyEqual
                 | BinaryOp::Divide
-                | BinaryOp::DivideEqual
                 | BinaryOp::Modulo
-                | BinaryOp::ModuloEqual
                 | BinaryOp::Equal
                 | BinaryOp::NotEqual
                 | BinaryOp::Less
@@ -601,14 +611,6 @@ impl TypeChecker {
             right_type = common_type;
         }
 
-        /*
-         * At this point bitwise operators have already been completely
-         * validated above. The compatibility check therefore only applies
-         * to logical, arithmetic, and comparison operators.
-         *
-         * There is intentionally no fallback `_ => E2015` here because all
-         * currently defined BinaryOp variants are explicitly classified.
-         */
         let compatibility_error = match op {
             BinaryOp::And | BinaryOp::Or => {
                 if self.are_compatible(&left_type, &right_type) {
@@ -622,17 +624,7 @@ impl TypeChecker {
                     ))
                 }
             }
-
-            BinaryOp::Add
-            | BinaryOp::AddEqual
-            | BinaryOp::Subtract
-            | BinaryOp::SubtractEqual
-            | BinaryOp::Multiply
-            | BinaryOp::MultiplyEqual
-            | BinaryOp::Divide
-            | BinaryOp::DivideEqual
-            | BinaryOp::Modulo
-            | BinaryOp::ModuloEqual => {
+            BinaryOp::Add | BinaryOp::Subtract | BinaryOp::Multiply | BinaryOp::Divide | BinaryOp::Modulo => {
                 if self.are_compatible(&left_type, &right_type) {
                     None
                 } else {
@@ -644,7 +636,6 @@ impl TypeChecker {
                     ))
                 }
             }
-
             BinaryOp::Equal
             | BinaryOp::NotEqual
             | BinaryOp::Less
@@ -662,17 +653,11 @@ impl TypeChecker {
                     ))
                 }
             }
-
             BinaryOp::BitwiseAnd
-            | BinaryOp::BitwiseAndEqual
             | BinaryOp::BitwiseOr
-            | BinaryOp::BitwiseOrEqual
             | BinaryOp::BitwiseXor
-            | BinaryOp::BitwiseXorEqual
             | BinaryOp::ShiftLeft
-            | BinaryOp::ShiftLeftEqual
-            | BinaryOp::ShiftRight
-            | BinaryOp::ShiftRightEqual => None,
+            | BinaryOp::ShiftRight => None,
         };
 
         if let Some((code, message)) = compatibility_error {
@@ -681,54 +666,37 @@ impl TypeChecker {
         }
 
         Some(match op {
-            BinaryOp::Add
-            | BinaryOp::AddEqual
-            | BinaryOp::Subtract
-            | BinaryOp::SubtractEqual
-            | BinaryOp::Multiply
-            | BinaryOp::MultiplyEqual
-            | BinaryOp::Divide
-            | BinaryOp::DivideEqual
-            | BinaryOp::Modulo
-            | BinaryOp::ModuloEqual => {
+            BinaryOp::Add | BinaryOp::Subtract | BinaryOp::Multiply | BinaryOp::Divide | BinaryOp::Modulo => {
                 if !Self::is_numeric(&left_type) {
                     self.type_error_with_code(
                         Some(ErrorCode::E2016),
                         format!("Arithmetic operation not supported for {left_type}"),
-                        left.span(),
+                        left_span,
                     );
                 }
                 left_type
             }
-
             BinaryOp::Equal
             | BinaryOp::NotEqual
             | BinaryOp::Less
             | BinaryOp::LessEqual
             | BinaryOp::Greater
             | BinaryOp::GreaterEqual => Type::Bool,
-
             BinaryOp::And | BinaryOp::Or => {
                 if left_type != Type::Bool {
                     self.type_error_with_code(
                         Some(ErrorCode::E2017),
                         format!("Logical operation requires bool, found {left_type}"),
-                        left.span(),
+                        left_span,
                     );
                 }
                 Type::Bool
             }
-
             BinaryOp::BitwiseAnd
-            | BinaryOp::BitwiseAndEqual
             | BinaryOp::BitwiseOr
-            | BinaryOp::BitwiseOrEqual
             | BinaryOp::BitwiseXor
-            | BinaryOp::BitwiseXorEqual
             | BinaryOp::ShiftLeft
-            | BinaryOp::ShiftLeftEqual
-            | BinaryOp::ShiftRight
-            | BinaryOp::ShiftRightEqual => left_type,
+            | BinaryOp::ShiftRight => left_type,
         })
     }
 
@@ -967,12 +935,11 @@ impl TypeChecker {
         }
     }
 
-    /// Type-checks an assignment target and its assigned value.
+    /// Resolves an assignment target and verifies that it can be mutated.
     ///
-    /// Verifies that the target exists, is mutable, and accepts the value type.
-    /// Array-element assignments are validated through array access checking.
-    fn visit_assign(&mut self, target: &Expr, value: &Expr, _span: &SourceSpan) -> Option<Type> {
-        let target_type = match target {
+    /// Array-element targets are checked through array-access type resolution.
+    fn visit_assignment_target(&mut self, target: &Expr) -> Option<Type> {
+        match target {
             Expr::Variable { name, span } => {
                 if let Some(var) = self.symbol_table.lookup_variable(name) {
                     if var.mutable {
@@ -986,7 +953,15 @@ impl TypeChecker {
                         None
                     }
                 } else {
-                    self.type_error_with_code(Some(ErrorCode::E2025), format!("Undefined variable '{name}'"), span);
+                    if matches!(self.symbol_table.lookup(name), Some(Symbol::Function(_))) {
+                        self.type_error_with_code(
+                            Some(ErrorCode::E2022),
+                            format!("'{name}' is a function and cannot be used as variable"),
+                            span,
+                        );
+                    } else {
+                        self.type_error_with_code(Some(ErrorCode::E2025), format!("Undefined variable '{name}'"), span);
+                    }
                     None
                 }
             }
@@ -1004,20 +979,43 @@ impl TypeChecker {
                 } else {
                     true
                 };
-                let array_access_type = self.visit_array_access(array, index, span);
-                if target_is_mutable { array_access_type } else { None }
+
+                let element_type = self.visit_array_access(array, index, span);
+                if target_is_mutable { element_type } else { None }
             }
             _ => {
                 self.type_error_with_code(Some(ErrorCode::E1003), "Invalid assignment target", target.span());
                 None
             }
-        };
+        }
+    }
+
+    /// Type-checks simple and compound assignment expressions.
+    ///
+    /// Target resolution and mutability validation are always assignment
+    /// responsibilities. Compound assignments then apply the corresponding
+    /// binary operation's type rules to the resolved target and value types.
+    fn visit_assign(&mut self, target: &Expr, op: AssignmentOp, value: &Expr, span: &SourceSpan) -> Option<Type> {
+        let target_type = self.visit_assignment_target(target);
         let value_type = self.visit_expr(value);
         let (Some(target_type), Some(value_type)) = (target_type, value_type) else {
             return None;
         };
+
+        if let Some(binary_op) = op.compound_binary_op() {
+            let result_type =
+                self.check_binary_operation(binary_op, target_type.clone(), value_type, span, target.span())?;
+            if !self.is_assignable(&result_type, &target_type) {
+                self.type_error_with_code(
+                    Some(ErrorCode::E2002),
+                    format!("Cannot assign {result_type} to {target_type}"),
+                    span,
+                );
+            }
+            return Some(target_type);
+        }
+
         if !self.is_assignable(&value_type, &target_type) {
-            // Create specific error message for array elements
             let message = match target {
                 Expr::ArrayAccess { .. } => {
                     format!("Cannot assign {value_type} to array element of type {target_type}")
@@ -1026,19 +1024,17 @@ impl TypeChecker {
             };
             self.type_error_with_code(Some(ErrorCode::E2002), message, value.span());
         }
+
         Some(target_type)
     }
 
-    #[allow(clippy::manual_let_else)]
     /// Type-checks a function call and validates its arguments.
     ///
     /// The callee must resolve to a function. The argument count and each
     /// argument's assignability to the corresponding parameter type are checked,
     /// and the function return type is returned on success.
     fn visit_call(&mut self, callee: &Expr, arguments: &[Expr], span: &SourceSpan) -> Option<Type> {
-        let callee_name = if let Expr::Variable { name, .. } = callee {
-            name
-        } else {
+        let Expr::Variable { name: callee_name, .. } = callee else {
             self.type_error_with_code(Some(ErrorCode::E2026), "Callee must be a function name", callee.span());
             for arg in arguments {
                 self.visit_expr(arg);
@@ -1070,11 +1066,11 @@ impl TypeChecker {
         }
         for (i, (arg, param)) in arguments.iter().zip(&func.parameters).enumerate() {
             if let Some(arg_type) = self.visit_expr(arg)
-                && !self.is_assignable(&arg_type, &param.type_annotation)
+                && !self.is_assignable(&arg_type, &param.ty)
             {
                 self.type_error_with_code(
                     Some(ErrorCode::E2029),
-                    format!("Argument {} type mismatch: expected {}, found {}", i + 1, param.type_annotation, arg_type),
+                    format!("Argument {} type mismatch: expected {}, found {}", i + 1, param.ty, arg_type),
                     arg.span(),
                 );
             }
@@ -1293,17 +1289,22 @@ mod tests {
     }
 
     fn immutable_declarations(span: &SourceSpan) -> Vec<Stmt> {
-        let array_type = Type::Array { element_type: Box::new(Type::I64), size: Box::new(number(span.clone())) };
+        let array_type =
+            TypeSyntax::Array { element_type: Box::new(TypeSyntax::I64), size: Box::new(number(span.clone())) };
 
         vec![
             Stmt::VarDeclaration {
-                bindings: vec![VarBinding { name: "value".into(), initializer: Some(number(span.clone())) }],
-                type_annotation: Type::I64,
+                bindings: vec![VarBinding {
+                    name: "value".into(),
+                    initializer: Some(number(span.clone())),
+                    span: span.clone(),
+                }],
+                type_annotation: TypeSyntax::I64,
                 is_mutable: false,
                 span: span.clone(),
             },
             Stmt::VarDeclaration {
-                bindings: vec![VarBinding { name: "items".into(), initializer: None }],
+                bindings: vec![VarBinding { name: "items".into(), initializer: None, span: span.clone() }],
                 type_annotation: array_type,
                 is_mutable: false,
                 span: span.clone(),
@@ -1316,12 +1317,36 @@ mod tests {
     }
 
     #[test]
+    fn resolves_nested_type_syntax_into_semantic_types() {
+        let span = SourceSpan::default();
+        let size = number(span);
+        let syntax = TypeSyntax::Array {
+            element_type: Box::new(TypeSyntax::Vector {
+                element_type: Box::new(TypeSyntax::Custom { name: Arc::from("Record") }),
+            }),
+            size: Box::new(size.clone()),
+        };
+
+        let resolved = TypeChecker::resolve_type_syntax(&syntax);
+
+        assert_eq!(
+            resolved,
+            Type::Array {
+                element_type: Box::new(Type::Vector {
+                    element_type: Box::new(Type::Custom { name: Arc::from("Record") }),
+                }),
+                size: Box::new(size),
+            }
+        );
+    }
+
+    #[test]
     fn function_return_inside_while_body_counts_as_return() {
         let span = SourceSpan::default();
         let statements = [Stmt::Function {
             name: "while_return".into(),
             parameters: vec![],
-            return_type: Type::I64,
+            return_type: TypeSyntax::I64,
             body: Box::new(Stmt::While {
                 condition: Box::new(Expr::new_bool_literal(true, span.clone())),
                 body: Box::new(Stmt::Return { value: Some(number(span.clone())), span: span.clone() }),
@@ -1343,7 +1368,7 @@ mod tests {
         let statements = [Stmt::Function {
             name: "for_return".into(),
             parameters: vec![],
-            return_type: Type::I64,
+            return_type: TypeSyntax::I64,
             body: Box::new(Stmt::For {
                 initializer: None,
                 condition: Some(Expr::new_bool_literal(true, span.clone())),
@@ -1411,31 +1436,35 @@ mod tests {
     fn compound_operators_accept_mutable_targets() {
         let span = SourceSpan::default();
         let operators = [
-            BinaryOp::AddEqual,
-            BinaryOp::SubtractEqual,
-            BinaryOp::MultiplyEqual,
-            BinaryOp::DivideEqual,
-            BinaryOp::ModuloEqual,
-            BinaryOp::BitwiseAndEqual,
-            BinaryOp::BitwiseOrEqual,
-            BinaryOp::BitwiseXorEqual,
-            BinaryOp::ShiftLeftEqual,
-            BinaryOp::ShiftRightEqual,
+            AssignmentOp::AddAssign,
+            AssignmentOp::SubtractAssign,
+            AssignmentOp::MultiplyAssign,
+            AssignmentOp::DivideAssign,
+            AssignmentOp::ModuloAssign,
+            AssignmentOp::BitwiseAndAssign,
+            AssignmentOp::BitwiseOrAssign,
+            AssignmentOp::BitwiseXorAssign,
+            AssignmentOp::ShiftLeftAssign,
+            AssignmentOp::ShiftRightAssign,
         ];
 
         for op in operators {
             let statements = [
                 Stmt::VarDeclaration {
-                    bindings: vec![VarBinding { name: "value".into(), initializer: Some(number(span.clone())) }],
-                    type_annotation: Type::I64,
+                    bindings: vec![VarBinding {
+                        name: "value".into(),
+                        initializer: Some(number(span.clone())),
+                        span: span.clone(),
+                    }],
+                    type_annotation: TypeSyntax::I64,
                     is_mutable: true,
                     span: span.clone(),
                 },
                 Stmt::Expression {
-                    expr: Box::new(Expr::Binary {
-                        left: Box::new(variable("value", span.clone())),
+                    expr: Box::new(Expr::Assign {
+                        target: Box::new(variable("value", span.clone())),
                         op,
-                        right: Box::new(number(span.clone())),
+                        value: Box::new(number(span.clone())),
                         span: span.clone(),
                     }),
                 },
@@ -1450,31 +1479,35 @@ mod tests {
     fn compound_operators_reject_immutable_targets_with_e2024() {
         let span = SourceSpan::default();
         let operators = [
-            BinaryOp::AddEqual,
-            BinaryOp::SubtractEqual,
-            BinaryOp::MultiplyEqual,
-            BinaryOp::DivideEqual,
-            BinaryOp::ModuloEqual,
-            BinaryOp::BitwiseAndEqual,
-            BinaryOp::BitwiseOrEqual,
-            BinaryOp::BitwiseXorEqual,
-            BinaryOp::ShiftLeftEqual,
-            BinaryOp::ShiftRightEqual,
+            AssignmentOp::AddAssign,
+            AssignmentOp::SubtractAssign,
+            AssignmentOp::MultiplyAssign,
+            AssignmentOp::DivideAssign,
+            AssignmentOp::ModuloAssign,
+            AssignmentOp::BitwiseAndAssign,
+            AssignmentOp::BitwiseOrAssign,
+            AssignmentOp::BitwiseXorAssign,
+            AssignmentOp::ShiftLeftAssign,
+            AssignmentOp::ShiftRightAssign,
         ];
 
         for op in operators {
             let statements = [
                 Stmt::VarDeclaration {
-                    bindings: vec![VarBinding { name: "value".into(), initializer: Some(number(span.clone())) }],
-                    type_annotation: Type::I64,
+                    bindings: vec![VarBinding {
+                        name: "value".into(),
+                        initializer: Some(number(span.clone())),
+                        span: span.clone(),
+                    }],
+                    type_annotation: TypeSyntax::I64,
                     is_mutable: false,
                     span: span.clone(),
                 },
                 Stmt::Expression {
-                    expr: Box::new(Expr::Binary {
-                        left: Box::new(variable("value", span.clone())),
+                    expr: Box::new(Expr::Assign {
+                        target: Box::new(variable("value", span.clone())),
                         op,
-                        right: Box::new(number(span.clone())),
+                        value: Box::new(number(span.clone())),
                         span: span.clone(),
                     }),
                 },
@@ -1495,9 +1528,10 @@ mod tests {
         let declarations = [Stmt::VarDeclaration {
             bindings: vec![VarBinding {
                 name: "value".into(),
-                initializer: Some(Expr::new_number_literal(Number::I8(1), span.clone())),
+                initializer: Some(Expr::new_number_literal(Number::I32(1), span.clone())),
+                span: span.clone(),
             }],
-            type_annotation: Type::I8,
+            type_annotation: TypeSyntax::I32,
             is_mutable: true,
             span: span.clone(),
         }];
@@ -1505,21 +1539,21 @@ mod tests {
         let mut checker = TypeChecker::new();
         checker.visit_statements(&declarations);
 
-        let arithmetic = checker.visit_binary_expr(
+        let arithmetic = checker.visit_assign(
             &variable("value", span.clone()),
-            BinaryOp::AddEqual,
-            &Expr::new_number_literal(Number::Integer(1), span.clone()),
+            AssignmentOp::AddAssign,
+            &Expr::new_number_literal(Number::I8(1), span.clone()),
             &span,
         );
-        assert_eq!(arithmetic, Some(Type::I64));
+        assert_eq!(arithmetic, Some(Type::I32));
 
-        let bitwise = checker.visit_binary_expr(
+        let bitwise = checker.visit_assign(
             &variable("value", span.clone()),
-            BinaryOp::BitwiseAndEqual,
-            &Expr::new_number_literal(Number::Integer(1), span.clone()),
+            AssignmentOp::BitwiseAndAssign,
+            &Expr::new_number_literal(Number::I8(1), span.clone()),
             &span,
         );
-        assert_eq!(bitwise, Some(Type::I64));
+        assert_eq!(bitwise, Some(Type::I32));
         assert!(checker.errors.is_empty(), "unexpected compound operation errors: {:#?}", checker.errors);
     }
 
@@ -1531,8 +1565,9 @@ mod tests {
                 bindings: vec![VarBinding {
                     name: "flag".into(),
                     initializer: Some(Expr::new_bool_literal(true, span.clone())),
+                    span: span.clone(),
                 }],
-                type_annotation: Type::Bool,
+                type_annotation: TypeSyntax::Bool,
                 is_mutable: true,
                 span: span.clone(),
             },
