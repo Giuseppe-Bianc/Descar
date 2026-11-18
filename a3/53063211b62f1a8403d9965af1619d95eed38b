@@ -1,0 +1,19 @@
+crates/descar-core/tests/parser_tests.rs
+  s_6ae50175a31a75::t_c016b71559d6b5 606-608
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "a353063211b62f1a8403d9965af1619d95eed38b",
+  "prompts": {},
+  "sessions": {
+    "s_6ae50175a31a75": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "70d3af98-5b5d-41ba-9ae6-e35dcf4ff3a3",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
