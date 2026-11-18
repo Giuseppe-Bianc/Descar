@@ -953,7 +953,15 @@ impl TypeChecker {
                         None
                     }
                 } else {
-                    self.type_error_with_code(Some(ErrorCode::E2025), format!("Undefined variable '{name}'"), span);
+                    if matches!(self.symbol_table.lookup(name), Some(Symbol::Function(_))) {
+                        self.type_error_with_code(
+                            Some(ErrorCode::E2022),
+                            format!("'{name}' is a function and cannot be used as variable"),
+                            span,
+                        );
+                    } else {
+                        self.type_error_with_code(Some(ErrorCode::E2025), format!("Undefined variable '{name}'"), span);
+                    }
                     None
                 }
             }
