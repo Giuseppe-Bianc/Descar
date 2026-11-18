@@ -603,6 +603,16 @@ fn rejects_duplicate_main_declarations() {
 }
 
 #[test]
+fn recovers_from_missing_main_body_brace_without_marking_main_declared() {
+    let (unit, errors) = parse_unit("main fun recovered() {} main {}");
+
+    assert_has_error(&errors, ErrorCode::E1004);
+    assert_eq!(unit.len(), 2);
+    assert!(matches!(&unit[0], Stmt::Function { name, .. } if name == "recovered"));
+    assert!(matches!(&unit[1], Stmt::MainFunction { .. }));
+}
+
+#[test]
 fn accepts_global_variables_and_local_variables() {
     let (unit, errors) = parse("var global: i32 = 1\nmain { var local: i32 = 2 }");
     assert_no_errors(&errors);
