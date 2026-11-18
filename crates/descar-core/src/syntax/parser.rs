@@ -285,11 +285,10 @@ impl<'a> JsavParser<'a> {
         let then_branch = self.parse_block_stmt()?;
 
         let else_branch = if self.match_token(&TokenKind::KeywordElse) {
-            let else_stmt = self.parse_stmt()?;
-            match else_stmt {
-                block @ Stmt::Block { .. } => ElseBranch::Block(Box::new(block)),
-                if_stmt @ Stmt::If { .. } => ElseBranch::ElseIf(Box::new(if_stmt)),
-                invalid_stmt => {
+            match self.parse_stmt() {
+                Some(block @ Stmt::Block { .. }) => ElseBranch::Block(Box::new(block)),
+                Some(if_stmt @ Stmt::If { .. }) => ElseBranch::ElseIf(Box::new(if_stmt)),
+                Some(invalid_stmt) => {
                     self.errors.push(CompileError::SyntaxError {
                         code: Some(ErrorCode::E1004),
                         message: "Invalid else branch".into(),
@@ -298,6 +297,7 @@ impl<'a> JsavParser<'a> {
                     });
                     ElseBranch::None
                 }
+                None => ElseBranch::None,
             }
         } else {
             ElseBranch::None
