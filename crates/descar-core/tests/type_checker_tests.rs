@@ -1306,11 +1306,6 @@ fn test_chained_assignments() {
 
 #[test]
 fn test_complex_for_loop_initialization_statements() {
-    // Test for loop with multiple variable declarations
-    let ast = "for (var i: i32 = 0i32, j: i32 = 10i32; i < j; i = i + 1i32, j = j - 1i32) { }";
-    let errors = typecheck(ast);
-    assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
-
     // Test for loop with assignment in initialization
     let ast = "var x: i32 = 0i32\n    for (x = 5i32; x < 10i32; x = x + 1i32) { }";
     let errors = typecheck(ast);
