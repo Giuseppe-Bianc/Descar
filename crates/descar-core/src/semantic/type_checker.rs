@@ -221,8 +221,8 @@ impl TypeChecker {
             Stmt::Expression { expr } => {
                 self.visit_expr(expr);
             }
-            Stmt::VarDeclaration { bindings, type_annotation, is_mutable, .. } => {
-                self.visit_var_declaration(bindings, type_annotation, *is_mutable);
+            Stmt::VarDeclaration { bindings, type_annotation, is_mutable, span } => {
+                self.visit_var_declaration(bindings, type_annotation, *is_mutable, span);
             }
             Stmt::Function { name, parameters, return_type, body, span } => {
                 self.visit_function(name, parameters, return_type, body, span);
@@ -251,7 +251,9 @@ impl TypeChecker {
     /// An initializer must be assignable to the declared type. Each binding is
     /// then inserted into the current scope with its type, mutability, and source
     /// location.
-    fn visit_var_declaration(&mut self, bindings: &[VarBinding], type_syntax: &TypeSyntax, is_mutable: bool) {
+    fn visit_var_declaration(
+        &mut self, bindings: &[VarBinding], type_syntax: &TypeSyntax, is_mutable: bool, span: &SourceSpan,
+    ) {
         let type_annotation = Self::resolve_type_syntax(type_syntax);
         for binding in bindings {
             if let Some(init_expr) = binding.initializer.as_ref()
@@ -271,10 +273,10 @@ impl TypeChecker {
                     name: binding.name.clone().into(),
                     ty: type_annotation.clone(),
                     mutable: is_mutable,
-                    defined_at: binding.span.clone(),
+                    defined_at: span.clone(),
                     last_assignment: None,
                 }),
-                &binding.span,
+                span,
             );
         }
     }
