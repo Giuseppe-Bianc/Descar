@@ -1455,6 +1455,23 @@ fn test_all_compound_assignments_typecheck_from_source() {
 }
 
 #[test]
+fn test_compound_assignment_checks_promoted_result_can_be_written_back() {
+    let valid = "var value: i32 = 1i32\nvalue += 2i32";
+    let errors = typecheck(valid);
+    assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
+
+    let promoted_binary_expression = "1i8 + 2i32";
+    let errors = typecheck(promoted_binary_expression);
+    assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
+
+    let invalid_write_back = "var value: i8 = 1i8\nvalue += 2i32";
+    let errors = typecheck(invalid_write_back);
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].error_code(), Some(&ErrorCode::E2002));
+    assert_eq!(errors[0].message(), Some("Cannot assign i32 to i8"));
+}
+
+#[test]
 fn test_compound_assignment_to_immutable_variable_is_rejected() {
     let ast = "const x: i32 = 1i32\nx += 2i32";
     let errors = typecheck(ast);
