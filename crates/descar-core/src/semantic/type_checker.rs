@@ -273,10 +273,10 @@ impl TypeChecker {
                     name: binding.name.clone().into(),
                     ty: type_annotation.clone(),
                     mutable: is_mutable,
-                    defined_at: span.clone(),
+                    defined_at: binding.span.clone(),
                     last_assignment: None,
                 }),
-                span,
+                &binding.span,
             );
         }
     }
