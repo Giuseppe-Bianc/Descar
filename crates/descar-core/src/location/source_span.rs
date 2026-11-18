@@ -254,9 +254,13 @@ mod tests {
     #[test]
     fn merging_spans_from_different_files_preserves_the_original_span() {
         let original = span("first.dr", 0, 4);
-        let other = span("second.dr", 1, 3);
+        let other = span("second.dr", 1, 8);
+        let merged = original.merge(&other);
 
-        assert_eq!(original.merge(&other), original);
+        assert_eq!(merged.file_path(), "first.dr");
+        assert_eq!(merged.start().offset(), 0);
+        assert_eq!(merged.end().offset(), 4);
+        assert_eq!(merged, original);
     }
 
     #[test]
