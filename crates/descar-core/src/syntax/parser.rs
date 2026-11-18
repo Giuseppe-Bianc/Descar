@@ -91,8 +91,10 @@ impl<'a> JsavParser<'a> {
                         Some("Only global variables, functions, and main are allowed at compilation-unit level"),
                         Some(ErrorCode::E1004),
                     );
-                    self.synchronize_top_level();
-                    None
+                    // Keep the statement node for downstream semantic analysis.
+                    // The syntax error still makes the compilation unit invalid, but
+                    // retaining the node allows later diagnostics to be reported.
+                    self.parse_stmt()
                 }
             };
             if let Some(declaration) = declaration {
@@ -108,22 +110,6 @@ impl<'a> JsavParser<'a> {
         declarations.shrink_to_fit();
         self.errors.shrink_to_fit();
         (CompilationUnit::new(declarations, unit_span), self.errors)
-    }
-
-    /// Skips invalid top-level input until the next declaration starter.
-    fn synchronize_top_level(&mut self) {
-        while !self.is_at_end() {
-            let Some(token) = self.peek() else {
-                break;
-            };
-            if matches!(
-                token.kind,
-                TokenKind::KeywordFun | TokenKind::KeywordMain | TokenKind::KeywordVar | TokenKind::KeywordConst
-            ) {
-                break;
-            }
-            self.advance();
-        }
     }
 
     #[inline]
