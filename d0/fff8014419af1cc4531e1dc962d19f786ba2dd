@@ -1,0 +1,31 @@
+crates/descar-core/src/tokens/parsers/base.rs
+  s_da8c20475322d3::t_c09eae558c2bb0 3,5-6
+  s_da8c20475322d3::t_d7607fb6657a21 10-11
+  s_da8c20475322d3::t_2e31d53e857c53 82,94,106
+crates/descar-core/src/tokens/parsers/suffix.rs
+  s_da8c20475322d3::t_e207d5af215c92 22-24
+  s_da8c20475322d3::t_45d888c3efa763 46,53-54,64,109-111
+crates/descar-core/src/tokens/parsers/value.rs
+  s_da8c20475322d3::t_45d888c3efa763 24,105-106
+crates/descar-core/src/tokens/parsers/mod.rs
+  s_da8c20475322d3::t_66d8808f3233c3 2,4-5,7-11
+  s_da8c20475322d3::t_ab42c9c382c9c3 17
+crates/descar-core/src/tokens/parsers/numeric.rs
+  s_da8c20475322d3::t_e207d5af215c92 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "d0fff8014419af1cc4531e1dc962d19f786ba2dd",
+  "prompts": {},
+  "sessions": {
+    "s_da8c20475322d3": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "d0f33977-cdc9-4ff5-846c-5eca3dd192b2",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
