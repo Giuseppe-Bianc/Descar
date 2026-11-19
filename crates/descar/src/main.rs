@@ -1,3 +1,8 @@
+//! Command-line entry point for the Descar compiler.
+//!
+//! This binary parses CLI arguments, invokes the core compiler, and reports
+//! diagnostics to the terminal.
+
 mod logging;
 
 use console::style;

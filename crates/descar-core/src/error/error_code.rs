@@ -125,7 +125,7 @@ pub enum ErrorCode {
     /// that doesn't match any valid token pattern.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x: i32 = @invalid
     /// ```
     ///
@@ -139,7 +139,7 @@ pub enum ErrorCode {
     /// Binary literals must have at least one binary digit (0 or 1) after `#b`.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x: i32 = #b   // Missing digits
     /// var y: i32 = #b2  // Invalid digit '2' in binary
     /// ```
@@ -153,7 +153,7 @@ pub enum ErrorCode {
     /// Octal literals must have at least one octal digit (0-7) after `#o`.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x: i32 = #o   // Missing digits
     /// var y: i32 = #o8  // Invalid digit '8' in octal
     /// ```
@@ -167,7 +167,7 @@ pub enum ErrorCode {
     /// Hexadecimal literals must have at least one hex digit (0-9, a-f, A-F) after `#x`.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x: i32 = #x     // Missing digits
     /// var y: i32 = #xGH   // Invalid hex digits
     /// ```
@@ -181,7 +181,7 @@ pub enum ErrorCode {
     /// String literals must be closed with a matching double quote.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var s: string = "hello world
     /// ```
     ///
@@ -194,7 +194,7 @@ pub enum ErrorCode {
     /// Character literals must be closed with a matching single quote.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var c: char = 'x
     /// ```
     ///
@@ -208,7 +208,7 @@ pub enum ErrorCode {
     /// `\n`, `\r`, `\t`, `\\`, `\'`, `\"`, `\0`, `\u{XXXX}`.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var s: string = "hello\q"  // \q is invalid
     /// ```
     ///
@@ -221,7 +221,7 @@ pub enum ErrorCode {
     /// Multi-line comments opened with `/*` must be closed with `*/`.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// /* This comment never ends
     /// var x: i32 = 1
     /// ```
@@ -236,7 +236,7 @@ pub enum ErrorCode {
     /// Valid suffixes: `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x = 42i128  // i128 not supported
     /// ```
     ///
@@ -249,7 +249,7 @@ pub enum ErrorCode {
     /// The numeric value exceeds the range of the target type.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x: i8 = 256i8  // i8 max is 127
     /// ```
     ///
@@ -266,7 +266,7 @@ pub enum ErrorCode {
     /// nested expressions or pathological input.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x = ((((((((((((((((((((... // too deep
     /// ```
     ///
@@ -281,7 +281,7 @@ pub enum ErrorCode {
     /// `f32`, `f64`, `char`, `string`, `bool`, or custom identifiers.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x: 123 = 0  // 123 is not a type
     /// ```
     ///
@@ -294,7 +294,7 @@ pub enum ErrorCode {
     /// Only variables and array elements can be assigned to.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// 5 = x       // Cannot assign to literal
     /// foo() = 1   // Cannot assign to function call
     /// ```
@@ -308,7 +308,7 @@ pub enum ErrorCode {
     /// The parser encountered a token it didn't expect in this context.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// fun foo( { }  // Expected ')' not '{'
     /// ```
     ///
@@ -329,7 +329,7 @@ pub enum ErrorCode {
     /// An expression was expected but not found.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x: i32 =   // Missing initializer expression
     /// ```
     ///
@@ -347,7 +347,7 @@ pub enum ErrorCode {
     /// An identifier (variable or function name) was expected.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var 123: i32 = 0  // 123 is not an identifier
     /// ```
     ///
@@ -360,7 +360,7 @@ pub enum ErrorCode {
     /// A type annotation was expected after `:`.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x: = 0  // Missing type after ':'
     /// ```
     ///
@@ -416,7 +416,7 @@ pub enum ErrorCode {
     /// The number of initializers doesn't match the number of variables.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var a, b: i32 = 1  // 2 vars but 1 initializer
     /// ```
     ///
@@ -429,7 +429,7 @@ pub enum ErrorCode {
     /// Cannot assign a value of one type to a variable of an incompatible type.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x: i32 = "hello"  // string not assignable to i32
     /// ```
     ///
@@ -443,7 +443,7 @@ pub enum ErrorCode {
     /// in all code paths.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// fun foo(): i32 {
     ///     if (true) { return 1 }
     ///     // Missing return in else path
@@ -459,7 +459,7 @@ pub enum ErrorCode {
     /// Conditions in `if`, `while`, and `for` must be boolean expressions.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// if (42) { }  // i64 is not bool
     /// ```
     ///
@@ -480,7 +480,7 @@ pub enum ErrorCode {
     /// A void function cannot return a value.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// fun foo() {  // implicit void
     ///     return 42  // Error: cannot return value
     /// }
@@ -495,7 +495,7 @@ pub enum ErrorCode {
     /// The returned value's type doesn't match the function's declared return type.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// fun foo(): i32 {
     ///     return "hello"  // string != i32
     /// }
@@ -510,7 +510,7 @@ pub enum ErrorCode {
     /// A non-void function returned without a value.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// fun foo(): i32 {
     ///     return  // Missing value
     /// }
@@ -541,7 +541,7 @@ pub enum ErrorCode {
     /// Bitwise operators (`&`, `|`, `^`, `<<`, `>>`) require integer operands.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x = 1.5 & 2.5  // f64 not allowed
     /// ```
     ///
@@ -554,7 +554,7 @@ pub enum ErrorCode {
     /// Logical operators (`&&`, `||`) require boolean operands.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x = 1 && 2  // i64 not allowed
     /// ```
     ///
@@ -567,7 +567,7 @@ pub enum ErrorCode {
     /// Arithmetic operators (`+`, `-`, `*`, `/`, `%`) require numeric operands.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x = "a" + "b"  // string + not supported
     /// ```
     ///
@@ -580,7 +580,7 @@ pub enum ErrorCode {
     /// Comparison operators require compatible types.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x = 1 < "hello"  // i64 vs string
     /// ```
     ///
@@ -611,7 +611,7 @@ pub enum ErrorCode {
     /// Unary negation (`-`) requires a numeric operand.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x = -true  // bool cannot be negated
     /// ```
     ///
@@ -624,7 +624,7 @@ pub enum ErrorCode {
     /// Logical NOT (`!`) requires a boolean operand.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x = !42  // i64 cannot be NOTted
     /// ```
     ///
@@ -637,7 +637,7 @@ pub enum ErrorCode {
     /// Array literals must have at least one element for type inference.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var arr: i32[] = {}  // Empty not allowed
     /// ```
     ///
@@ -650,7 +650,7 @@ pub enum ErrorCode {
     /// All elements in an array literal must have the same type.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var arr = {1, "hello", 3}  // mixed i64 and string
     /// ```
     ///
@@ -663,7 +663,7 @@ pub enum ErrorCode {
     /// A function name cannot be used where a variable is expected.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// fun foo() { }
     /// var x = foo  // foo is a function, not a value
     /// ```
@@ -677,7 +677,7 @@ pub enum ErrorCode {
     /// The variable has not been declared in the current scope or any outer scope.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x = y  // y is not defined
     /// ```
     ///
@@ -690,7 +690,7 @@ pub enum ErrorCode {
     /// Cannot assign to a variable declared with `const`.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// const x: i32 = 1
     /// x = 2  // Error: x is immutable
     /// ```
@@ -709,7 +709,7 @@ pub enum ErrorCode {
     /// The expression being called is not a function.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x = 42
     /// x()  // x is not callable
     /// ```
@@ -723,7 +723,7 @@ pub enum ErrorCode {
     /// The function has not been declared.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// foo()  // foo is not defined
     /// ```
     ///
@@ -736,7 +736,7 @@ pub enum ErrorCode {
     /// The number of arguments doesn't match the function's parameter count.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// fun add(a: i32, b: i32): i32 { return a + b }
     /// add(1)  // Expected 2 args, got 1
     /// ```
@@ -750,7 +750,7 @@ pub enum ErrorCode {
     /// An argument's type doesn't match the expected parameter type.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// fun foo(x: i32) { }
     /// foo("hello")  // string != i32
     /// ```
@@ -764,7 +764,7 @@ pub enum ErrorCode {
     /// Array indices must be integer types.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var arr: i32[5] = {1,2,3,4,5}
     /// var x = arr[1.5]  // f64 index not allowed
     /// ```
@@ -778,7 +778,7 @@ pub enum ErrorCode {
     /// Cannot use array indexing on a non-array type.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x: i32 = 42
     /// var y = x[0]  // i32 is not indexable
     /// ```
@@ -792,7 +792,7 @@ pub enum ErrorCode {
     /// An identifier with this name already exists in the current scope.
     ///
     /// # Example
-    /// ```compile_fail
+    /// ```text
     /// var x: i32 = 1
     /// var x: i32 = 2  // x already declared
     /// ```

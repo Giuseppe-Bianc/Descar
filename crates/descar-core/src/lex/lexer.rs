@@ -10,6 +10,7 @@ use std::sync::Arc;
 /// Maximum number of tokens to allocate to prevent excessive memory usage.
 const MAX_TOKENS_CAPACITY: usize = 10_000_000;
 
+/// Lexes Descar source text while preserving source locations.`r`
 pub struct Lexer<'a> {
     inner: logos::Lexer<'a, TokenKind>,
     line_tracker: LineTracker,
@@ -19,6 +20,7 @@ pub struct Lexer<'a> {
 
 impl<'a> Lexer<'a> {
     #[must_use]
+    /// Creates a lexer for source text from the given file path.
     pub fn new(file_path: &str, source: &'a str) -> Self {
         let line_tracker = LineTracker::new(file_path, source.to_owned());
         let source_len = source.len();
@@ -27,11 +29,13 @@ impl<'a> Lexer<'a> {
     }
 
     #[must_use]
+    /// Returns the line and source-location tracker.
     pub const fn get_line_tracker(&self) -> &LineTracker {
         &self.line_tracker
     }
 
     #[inline]
+    /// Returns the next token or lexer error.
     pub fn next_token(&mut self) -> Option<Result<Token, CompileError>> {
         if self.eof_emitted {
             return None;

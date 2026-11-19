@@ -81,7 +81,7 @@ impl SourceSpan {
 
     /// Length of the span in UTF-8 bytes, consistent with [`SourceLocation::offset`]
     /// (which is a 0-based byte offset) and with the byte ranges used by
-    /// [`SourceSpan::extract_from`].
+    /// source byte ranges.
     ///
     /// Note: this follows Rust's `str::len()` semantics — a multi-byte
     /// character such as `'€'` (U+20AC) contributes **3** to the length,

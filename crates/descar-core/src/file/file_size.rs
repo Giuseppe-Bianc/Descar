@@ -7,11 +7,14 @@ use super::size_system::SizeSystem;
 /// Represents a size value together with the unit suffix selected by a [`SizeSystem`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FormattedSize {
+    /// Numeric value in the selected unit.
     pub value: f64,
+    /// Unit suffix appended to the value.
     pub suffix: &'static str,
 }
 
 impl FormattedSize {
+    /// Creates a formatted size.
     #[must_use]
     pub const fn new(value: f64, suffix: &'static str) -> Self {
         Self { value, suffix }
@@ -27,11 +30,14 @@ impl fmt::Display for FormattedSize {
 /// Pairs the SI and IEC [`FormattedSize`]s of the same byte count.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct FormattedSizePair {
+    /// Size formatted using SI decimal prefixes.
     pub si_size: FormattedSize,
+    /// Size formatted using IEC binary prefixes.
     pub iec_size: FormattedSize,
 }
 
 impl FormattedSizePair {
+    /// Creates a pair of formatted sizes.
     #[must_use]
     pub const fn new(si_size: FormattedSize, iec_size: FormattedSize) -> Self {
         Self { si_size, iec_size }
@@ -49,6 +55,7 @@ impl fmt::Display for FormattedSizePair {
 /// Carries a raw byte count and provides formatting against a [`SizeSystem`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct FileSizeInfo {
+    /// Raw byte count.
     pub bytes: u64,
 }
 
@@ -84,12 +91,16 @@ impl FileSizeInfo {
 /// Combines a byte-count snapshot with the SI and IEC size systems used to format it.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FileSizeReport<'a> {
+    /// Raw byte-count information.
     pub info: FileSizeInfo,
+    /// SI decimal size system.
     pub si_sys: &'a SizeSystem,
+    /// IEC binary size system.
     pub iec_sys: &'a SizeSystem,
 }
 
 impl<'a> FileSizeReport<'a> {
+    /// Creates a report from byte count and size systems.
     #[must_use]
     pub const fn new(info: FileSizeInfo, si_sys: &'a SizeSystem, iec_sys: &'a SizeSystem) -> Self {
         Self { info, si_sys, iec_sys }

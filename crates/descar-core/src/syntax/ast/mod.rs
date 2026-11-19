@@ -1,14 +1,27 @@
+//! Data types that represent the Descar abstract syntax tree.
+
+/// Assignment operators.
 pub mod assignment_op;
+/// Semantic types used in the AST.
 pub mod ast_type;
 pub mod binary_op;
+/// Compilation units.
 pub mod compilation_unit;
+/// Else branches.
 pub mod else_branch;
+/// Expressions.
 pub mod expr;
+/// Literal values.
 pub mod literal_value;
+/// Function parameters.
 pub mod parameter;
+/// Statements.
 pub mod stmt;
+/// Type syntax nodes.
 pub mod type_syntax;
+/// Unary operators.
 pub mod unary_op;
+/// Operand side metadata for unary operators.
 pub mod unary_op_side;
 
 pub use assignment_op::AssignmentOp;

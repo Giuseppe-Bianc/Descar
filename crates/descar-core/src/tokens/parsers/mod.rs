@@ -12,11 +12,17 @@
 //!
 //! # Submodules
 //!
-//! - [`numeric`]: Logos-facing numeric literal entry point
-//! - [`suffix`]: Numeric suffix parsing and dispatch
-//! - [`value`]: Numeric value construction
-//! - [`base`]: Numeric base detection (binary, octal, decimal, hexadecimal)
+//! - `numeric`: Logos-facing numeric literal entry point
+//! - `suffix`: Numeric suffix parsing and dispatch
+//! - `value`: Numeric value construction
+//! - `base`: Numeric base detection (binary, octal, decimal, hexadecimal)
+//! Helpers for parsing numeric literals.
+
+/// Parsing arbitrary integer bases.
 pub mod base;
+/// Numeric token dispatch.
 pub mod numeric;
+/// Numeric suffix recognition.
 pub mod suffix;
+/// Integer and floating-point literal values.
 pub mod value;

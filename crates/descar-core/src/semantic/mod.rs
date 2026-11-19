@@ -8,5 +8,8 @@
 //! * Initialization: Sets up symbol tables and type checking context
 //! * Runtime: Processes AST nodes to verify types and relationships
 //! * Termination: Finalizes symbol table and reports semantic errors
+//!   Semantic analysis, symbols, scopes, and type checking.
+
+/// Symbol and scope management.
 pub mod symbol_table;
 pub mod type_checker;
