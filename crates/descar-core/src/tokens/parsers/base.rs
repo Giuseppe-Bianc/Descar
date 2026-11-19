@@ -1,14 +1,14 @@
 use crate::{lex::error::LexError, tokens::number::Number, tokens::token_kind::TokenKind};
 
-/// Parses a base-specific numeric literal.
+/// Parses a binary, octal, or hexadecimal numeric literal.
 ///
-/// The lexer callback uses this function to validate binary, octal and
-/// hexadecimal literals after Logos has consumed the complete candidate.
+/// This function validates a base-specific candidate after the Logos lexer
+/// consumes it. It then converts the candidate to the matching integer type.
 ///
 /// # Arguments
 ///
-/// * `radix` - Numeric base. Supported values are `2`, `8` and `16`.
-/// * `lex` - Mutable Logos lexer containing the current token slice.
+/// * `radix` selects base `2`, `8`, or `16`.
+/// * `lex` contains the mutable Logos lexer and the current token slice.
 ///
 /// # Errors
 ///
@@ -79,7 +79,7 @@ const fn error_for_radix(radix: u32) -> LexError {
     }
 }
 
-/// Parses a binary numeric literal.
+/// Parses a binary numeric literal with this radix-specific parser.
 ///
 /// # Errors
 ///
@@ -91,7 +91,7 @@ pub fn parse_binary(lex: &mut logos::Lexer<TokenKind>) -> Result<Number, LexErro
     parse_base_number(2, lex)
 }
 
-/// Parses an octal numeric literal.
+/// Parses an octal numeric literal with this radix-specific parser.
 ///
 /// # Errors
 ///
@@ -103,7 +103,7 @@ pub fn parse_octal(lex: &mut logos::Lexer<TokenKind>) -> Result<Number, LexError
     parse_base_number(8, lex)
 }
 
-/// Parses a hexadecimal numeric literal.
+/// Parses a hexadecimal numeric literal with this radix-specific parser.
 ///
 /// # Errors
 ///

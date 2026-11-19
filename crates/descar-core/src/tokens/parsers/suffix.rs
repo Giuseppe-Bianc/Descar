@@ -19,8 +19,9 @@ pub enum NumericSuffix {
 }
 
 impl NumericSuffix {
-    /// Supported spellings, kept in one place as the suffix source of truth.
-    /// Longest spellings are listed first for deterministic matching.
+    /// Contains the supported suffix spellings and their numeric types.
+    ///
+    /// The list does not include `i64` or `u64` suffixes.
     const SPELLINGS: &[(&str, Self)] = &[
         ("i16", Self::I16),
         ("I16", Self::I16),
@@ -42,13 +43,15 @@ impl NumericSuffix {
         ("D", Self::F64),
     ];
 
-    /// Parses a suffix case-insensitively according to the language rules.
+    /// Finds the suffix that matches the supplied spelling.
     #[must_use]
     pub fn parse(value: &str) -> Option<Self> {
         Self::SPELLINGS.iter().find_map(|(spelling, suffix)| (*spelling == value).then_some(*suffix))
     }
 
     /// Finds the longest supported suffix at the end of a numeric candidate.
+    ///
+    /// This method searches only the suffix list.
     #[must_use]
     fn split_supported(slice: &str) -> Option<(&str, &str)> {
         Self::SPELLINGS
@@ -58,7 +61,7 @@ impl NumericSuffix {
     }
 }
 
-/// Finds the end of the decimal numeric core, before an optional suffix.
+/// Finds the end of the decimal numeric core before an optional suffix.
 ///
 /// This deliberately recognizes only the numeric grammar. Any remaining
 /// characters are treated as suffix text and validated separately. This is
@@ -103,9 +106,9 @@ pub(crate) const fn numeric_core_end(slice: &str) -> usize {
 
 /// Splits a numeric literal into its numeric part and optional suffix.
 ///
-/// Supported suffixes are matched case-insensitively. Unknown trailing text is
-/// retained as a suffix so the caller can report `InvalidNumberSuffix` for the
-/// complete malformed numeric candidate.
+/// Supported suffixes are matched by their exact lower-case or upper-case
+/// spelling. Unknown trailing text remains in the suffix so the caller can
+/// report `InvalidNumberSuffix` for the complete malformed numeric candidate.
 #[must_use]
 pub fn split_numeric_and_suffix(slice: &str) -> (&str, Option<&str>) {
     if let Some((numeric_part, suffix)) = NumericSuffix::split_supported(slice) {

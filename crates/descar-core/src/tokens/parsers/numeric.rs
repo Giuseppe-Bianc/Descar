@@ -12,9 +12,8 @@ use crate::{
 
 /// Parses a decimal numeric literal.
 ///
-/// The callback receives the complete numeric candidate from Logos,
-/// separates the optional type suffix and converts the value into the
-/// corresponding [`Number`] variant.
+/// This function receives the complete candidate from Logos. It separates the
+/// optional suffix and converts the numeric value to the matching [`Number`] variant.
 ///
 /// # Errors
 ///

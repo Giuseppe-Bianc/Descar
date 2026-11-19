@@ -21,8 +21,7 @@ where
 
 /// Checks whether a string contains only decimal digits.
 ///
-/// This function does not classify parsing errors because it does not return a
-/// `Result`.
+/// This function checks the spelling. It does not classify conversion errors.
 #[must_use]
 pub fn is_valid_integer_literal(numeric_part: &str) -> bool {
     !numeric_part.is_empty() && numeric_part.bytes().all(|byte| byte.is_ascii_digit())
@@ -103,8 +102,8 @@ pub fn handle_non_scientific(numeric_part: &str) -> Result<Number, LexError> {
 /// # Errors
 ///
 /// This function returns `Option` rather than `Result`. `None` indicates that
-/// the input is not valid scientific notation or that its exponent or
-/// mantissa cannot be parsed.
+/// the input is not valid scientific notation. `None` also indicates that the
+/// function cannot parse the exponent or mantissa.
 #[must_use]
 pub fn parse_scientific(source: &str, is_f32: bool) -> Option<Number> {
     let exponent_position = source.find(['e', 'E'])?;

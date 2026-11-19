@@ -1,28 +1,20 @@
 // src/tokens/parsers/mod.rs
-//! Numeric literal parsing modules.
+//! Parsing of numeric literals.
 //!
-//! This module contains all parsing logic for converting string representations
-//! of numeric literals into structured `Number` types during lexical analysis.
+//! This module converts numeric text into [`Number`](crate::tokens::number::Number)
+//! values during lexical analysis.
 //!
-//! # Overview
-//!
-//! The parsers module provides four complementary submodules for parsing numeric
-//! literals: base detection, numeric entry-point parsing, suffix parsing, and
-//! numeric value construction.
-//!
-//! # Submodules
-//!
-//! - `numeric`: Logos-facing numeric literal entry point
-//! - `suffix`: Numeric suffix parsing and dispatch
-//! - `value`: Numeric value construction
-//! - `base`: Numeric base detection (binary, octal, decimal, hexadecimal)
-//! Helpers for parsing numeric literals.
+//! The module provides these submodules:
+//! - [`base`] detects and parses binary, octal, and hexadecimal literals.
+//! - [`numeric`] provides the decimal literal entry point.
+//! - [`suffix`] identifies numeric suffixes and routes literals to value parsers.
+//! - [`value`] constructs numeric values.
 
 /// Parsing arbitrary integer bases.
 pub mod base;
 /// Numeric token dispatch.
 pub mod numeric;
-/// Numeric suffix recognition.
+/// Recognition and dispatch of numeric suffixes.
 pub mod suffix;
 /// Integer and floating-point literal values.
 pub mod value;
