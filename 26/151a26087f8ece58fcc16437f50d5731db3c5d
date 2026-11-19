@@ -1,0 +1,57 @@
+crates/descar-core/src/syntax/ast/mod.rs
+  s_82d225ad6eef08::t_87c670540bacda 1-3,5,8,10,12,14,16,18,20,22,24
+crates/descar-core/src/lex/lexer.rs
+  s_82d225ad6eef08::t_eff890760537f7 13,23,32,38
+crates/descar-core/src/lex/mod.rs
+  s_82d225ad6eef08::t_87c670540bacda 1-3,5
+crates/descar-core/src/tokens/parsers/mod.rs
+  s_82d225ad6eef08::t_87c670540bacda 19,21,23,25,27
+  h_361662506da91f 20
+  s_82d225ad6eef08::t_929bcbae977672 15-18
+crates/descar-core/src/error/mod.rs
+  s_82d225ad6eef08::t_8a9893688980f6 1-3
+  s_82d225ad6eef08::t_87c670540bacda 5,7,9
+crates/descar-core/src/printers/mod.rs
+  h_361662506da91f 12
+  s_82d225ad6eef08::t_87c670540bacda 11,13
+crates/descar-core/src/semantic/mod.rs
+  h_361662506da91f 12
+  s_82d225ad6eef08::t_87c670540bacda 11,13
+crates/descar/src/main.rs
+  s_82d225ad6eef08::t_8a9893688980f6 1-5
+crates/descar-core/src/tokens/mod.rs
+  s_82d225ad6eef08::t_87c670540bacda 1-3,5,7,9,11
+crates/descar-core/src/error/error_code.rs
+  s_82d225ad6eef08::t_2f5cf608f60a4f 128,142,156,170,184,197,211,224,239,252,269,284,297,311,332,350,363,419,432,446,462,483,498,513,544,557,570,583,614,627,640,653,666,680,693,712,726,739,753,767,781,795
+crates/descar-core/src/location/mod.rs
+  s_82d225ad6eef08::t_87c670540bacda 1-3,5
+crates/descar-core/src/syntax/mod.rs
+  s_82d225ad6eef08::t_87c670540bacda 1-3,5
+crates/descar-core/src/file/file_size.rs
+  s_82d225ad6eef08::t_c681a9876142e9 94
+  s_82d225ad6eef08::t_ae47967bd079e4 10,12,33,35,40,58,96,98
+  s_82d225ad6eef08::t_8d6535de2798c1 17,103
+crates/descar-core/src/location/source_span.rs
+  s_82d225ad6eef08::t_2f5cf608f60a4f 84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "26151a26087f8ece58fcc16437f50d5731db3c5d",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_82d225ad6eef08": {
+      "agent_id": {
+        "tool": "github-copilot-cli",
+        "id": "a7b52b29-9d3e-4548-b9dc-8c1cf805b5ac",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
