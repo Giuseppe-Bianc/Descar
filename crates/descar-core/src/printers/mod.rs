@@ -1,15 +1,14 @@
 //! # Printers Module
 //!
-//! The printers module handles the generation of target code from the intermediate
-//! representation. This is the final phase of the compilation process, responsible
-//! for producing the output in various formats (e.g., assembly code, bytecode).
+//! The printers module renders syntax trees as text in a tree form. Each node of the
+//! tree has one line. Branch symbols and indentation show the relation between a node
+//! and its children. The output can contain ANSI style sequences for the terminal.
 //!
-//! ## Phase-specific responsibilities:
-//! * Initialization: Sets up code generation context and target format specifications
-//! * Runtime: Processes IR nodes to generate target code with proper formatting
-//! * Termination: Finalizes output with complete program representation
-//!   Syntax-tree and terminal output utilities.
+//! * [`ast_printer`]: Renders expressions and statements.
+//! * [`branch_type`]: Branch symbols, indentation, and styles for the tree output.
 
 /// Human-readable AST rendering.
+///
+/// The module renders an expression or a statement as a tree of text lines.
 pub mod ast_printer;
 pub mod branch_type;

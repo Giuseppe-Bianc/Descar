@@ -3,9 +3,22 @@ use crate::syntax::ast::assignment_op::AssignmentOp;
 use crate::syntax::ast::unary_op_side::UnaryOpSide;
 use crate::syntax::ast::{ElseBranch, Expr, LiteralValue, Stmt, TypeSyntax};
 
+/// Estimated number of output bytes for each expression node.
+///
+/// [`pretty_print`] uses this value to reserve the initial capacity of the output string.
 const EXPR_CAPACITY_PER_NODE: usize = 45;
+/// Estimated number of output bytes for each statement node.
+///
+/// [`pretty_print_stmt`] uses this value to reserve the initial capacity of the output string.
 const STMT_CAPACITY_PER_NODE: usize = 50;
 
+/// Formats a literal value as text.
+///
+/// * A numeric literal uses the `Display` text of the number.
+/// * A string literal is in double quotes. The function does not escape the content.
+/// * A character literal is in single quotes. The function does not escape the content.
+/// * A boolean literal is `true` or `false`.
+/// * The null pointer literal is `nullptr`.
 fn format_literal(value: &LiteralValue) -> String {
     match value {
         LiteralValue::Numeric(number) => number.to_string(),
@@ -16,6 +29,11 @@ fn format_literal(value: &LiteralValue) -> String {
     }
 }
 
+/// Formats a type annotation as text.
+///
+/// A built-in type uses its source name, for example `i32`, `string`, or `void`.
+/// A custom type uses its name. An array type has the form `[<element>; <size>]`.
+/// A vector type has the form `vector<<element>>`.
 fn format_type(type_annotation: &TypeSyntax) -> String {
     match type_annotation {
         TypeSyntax::I8 => "i8".to_string(),
@@ -40,6 +58,21 @@ fn format_type(type_annotation: &TypeSyntax) -> String {
     }
 }
 
+/// Formats the size expression of an array type as one line of text.
+///
+/// The function formats each kind of expression in a form that is similar to source code:
+///
+/// * A literal uses the text from [`format_literal`]. A variable uses its name.
+/// * A grouping has parentheses around the inner expression.
+/// * A binary expression has the form `<left> <OPERATOR> <right>`. The operator is in
+///   uppercase (see [`format_binary_op`]).
+/// * A cast has the form `(<expr> as <type>)`.
+/// * A prefix unary expression has the form `<OPERATOR><expr>`. A postfix unary expression
+///   has the form `<expr><OPERATOR>`.
+/// * An assignment has the form `<target> <symbol> <value>`.
+/// * A call has the form `<callee>(<arguments>)`. The arguments are separated by `, `.
+/// * An array access has the form `<array>[<index>]`.
+/// * An array literal has the form `{<elements>}`. The elements are separated by `, `.
 fn format_type_size(expr: &Expr) -> String {
     match expr {
         Expr::Literal { value, .. } => format_literal(value),
@@ -70,10 +103,12 @@ fn format_type_size(expr: &Expr) -> String {
     }
 }
 
+/// Formats a binary operator as the uppercase form of its `Debug` text.
 fn format_binary_op(op: &impl std::fmt::Debug) -> String {
     format!("{op:?}").to_uppercase()
 }
 
+/// Returns the source symbol of an assignment operator, for example `+=` for `AddAssign`.
 const fn format_assignment_op(op: AssignmentOp) -> &'static str {
     match op {
         AssignmentOp::Assign => "=",
@@ -90,14 +125,44 @@ const fn format_assignment_op(op: AssignmentOp) -> &'static str {
     }
 }
 
+/// Formats a unary operator as the uppercase form of its `Debug` text.
 fn format_unary_op(op: &impl std::fmt::Debug) -> String {
     format!("{op:?}").to_uppercase()
 }
 
+/// Formats the side of a unary operator as `PREFIX` or `POSTFIX`.
 fn format_unary_side(side: UnaryOpSide) -> String {
     format!("{side:?}").to_uppercase()
 }
 
+/// Renders an expression as a tree of text lines.
+///
+/// Each node of the expression has one line. A line has the form
+/// `<indent><branch symbol><text>` and ends with a line break. The root node uses the
+/// symbol `└── `. A node that has children shows a label line for each child, for example
+/// `Left:` and `Right:` for a binary expression.
+///
+/// The output can contain ANSI style sequences. Use
+/// [`strip_ansi_codes`](crate::utils::strip_ansi_codes) to remove them.
+///
+/// # Arguments
+///
+/// * `expr` - The expression to render.
+///
+/// # Returns
+///
+/// The text of the tree.
+///
+/// # Examples
+///
+/// ```
+/// use descar_core::printers::ast_printer::pretty_print;
+/// use descar_core::syntax::ast::Expr;
+/// use descar_core::utils::{dummy_span, strip_ansi_codes};
+///
+/// let expr = Expr::new_bool_literal(true, dummy_span());
+/// assert_eq!(strip_ansi_codes(&pretty_print(&expr)), "└── Literal true\n");
+/// ```
 #[must_use]
 pub fn pretty_print(expr: &Expr) -> String {
     let node_count = count_expr_nodes(expr);
@@ -107,6 +172,9 @@ pub fn pretty_print(expr: &Expr) -> String {
     output
 }
 
+/// Counts the nodes of an expression tree, including the root node.
+///
+/// The function uses an explicit stack. It does not call itself.
 fn count_expr_nodes(expr: &Expr) -> usize {
     let mut count = 0;
     let mut stack = vec![expr];
@@ -147,6 +215,18 @@ fn count_expr_nodes(expr: &Expr) -> usize {
     count
 }
 
+/// Prints a label line and then the expression below the label.
+///
+/// The label line uses the `structure` style. The expression is the last child of the label.
+///
+/// # Arguments
+///
+/// * `label` - The text of the label line, for example `Left:`.
+/// * `expr` - The expression to print below the label.
+/// * `parent_indent` - The indentation text of the label line.
+/// * `current_branch` - The branch type of the label line.
+/// * `output` - The string that receives the lines.
+/// * `styles` - The styles for the text.
 fn print_labeled_expr(
     label: &str, expr: &Expr, parent_indent: &str, current_branch: BranchType, output: &mut String,
     styles: &StyleManager,
@@ -155,6 +235,28 @@ fn print_labeled_expr(
     print_expr(expr, &get_indent(parent_indent, &current_branch), BranchType::Last, output, styles);
 }
 
+/// Prints an expression node and its children as a tree.
+///
+/// The title line of a node depends on the kind of the expression:
+///
+/// * `BinaryOp <OPERATOR>`, with the children `Left:` and `Right:`.
+/// * `Cast to <type>`, with the child `Expr:`.
+/// * `UnaryOp <OPERATOR> (<SIDE>)`, with the child `Expr:`.
+/// * `Grouping`, with the child `Expr:`.
+/// * `Literal <value>`, with no children.
+/// * `Variable '<name>'`, with no children.
+/// * `Assignment <symbol>`, with the children `Target:` and `Value:`.
+/// * `Function Call`, with the child `Callee:` and the list `Arguments:`.
+/// * `Array Access`, with the children `Array:` and `Index:`.
+/// * `Array Literal`, with the list `Elements:`.
+///
+/// # Arguments
+///
+/// * `expr` - The expression to print.
+/// * `indent` - The indentation text of the title line.
+/// * `branch_type` - The branch type of the node.
+/// * `output` - The string that receives the lines.
+/// * `styles` - The styles for the text.
 #[allow(clippy::too_many_lines)]
 fn print_expr(expr: &Expr, indent: &str, branch_type: BranchType, output: &mut String, styles: &StyleManager) {
     match expr {
@@ -234,6 +336,23 @@ fn print_expr(expr: &Expr, indent: &str, branch_type: BranchType, output: &mut S
     }
 }
 
+/// Renders a statement as a tree of text lines.
+///
+/// Each node of the statement has one line. A line has the form
+/// `<indent><branch symbol><text>` and ends with a line break. The root node uses the
+/// symbol `└── `. The tree includes the expressions in the statement. The format of the
+/// expression nodes is the same as the format of [`pretty_print`].
+///
+/// The output can contain ANSI style sequences. Use
+/// [`strip_ansi_codes`](crate::utils::strip_ansi_codes) to remove them.
+///
+/// # Arguments
+///
+/// * `stmt` - The statement to render.
+///
+/// # Returns
+///
+/// The text of the tree.
 #[must_use]
 pub fn pretty_print_stmt(stmt: &Stmt) -> String {
     let node_count = count_stmt_nodes(stmt);
@@ -243,6 +362,14 @@ pub fn pretty_print_stmt(stmt: &Stmt) -> String {
     output
 }
 
+/// Counts the nodes of a statement tree, including the root node.
+///
+/// The function counts the statement itself and the nodes of its child statements and
+/// expressions. A variable binding and a function parameter count as one node each.
+/// A `break` statement and a `continue` statement have no child nodes.
+///
+/// The function calls itself for the child statements. [`pretty_print_stmt`] uses the
+/// result to estimate the capacity of the output string.
 fn count_stmt_nodes(stmt: &Stmt) -> usize {
     1 + match stmt {
         Stmt::Expression { expr } => count_expr_nodes(expr),
@@ -277,6 +404,20 @@ fn count_stmt_nodes(stmt: &Stmt) -> usize {
     }
 }
 
+/// Prints the content of a statement body.
+///
+/// For a block, the function prints each statement of the block as a child with the given
+/// indentation. The function does not print a line for the block itself. If the block has
+/// no statements, the function prints the line `(empty)`.
+///
+/// For any other statement, the function prints the statement as the last child.
+///
+/// # Arguments
+///
+/// * `stmt` - The body statement.
+/// * `indent` - The indentation text of the printed lines.
+/// * `output` - The string that receives the lines.
+/// * `styles` - The styles for the text.
 fn print_stmt_body(stmt: &Stmt, indent: &str, output: &mut String, styles: &StyleManager) {
     match stmt {
         Stmt::Block { statements, .. } => {
@@ -290,6 +431,20 @@ fn print_stmt_body(stmt: &Stmt, indent: &str, output: &mut String, styles: &Styl
     }
 }
 
+/// Prints a label line and then the body below the label.
+///
+/// If the body is a block without statements, the function prints only one line with the
+/// text `<label> (empty)`. Otherwise, the function prints the label line and then the
+/// content of the body (see [`print_stmt_body`]).
+///
+/// # Arguments
+///
+/// * `label` - The text of the label line, for example `Body:`.
+/// * `body` - The body statement.
+/// * `parent_indent` - The indentation text of the label line.
+/// * `branch_type` - The branch type of the label line.
+/// * `output` - The string that receives the lines.
+/// * `styles` - The styles for the text.
 fn append_body_label(
     label: &str, body: &Stmt, parent_indent: &str, branch_type: BranchType, output: &mut String, styles: &StyleManager,
 ) {
@@ -304,6 +459,35 @@ fn append_body_label(
     }
 }
 
+/// Prints a statement node and its children as a tree.
+///
+/// The title line of a node depends on the kind of the statement:
+///
+/// * `Expression`, with the child `Expr:`.
+/// * `VarDeclaration` for a mutable declaration, or `ConstDeclaration` for a declaration
+///   that is not mutable. The children are the list `Variables:` (or `(none)` if the
+///   declaration has no bindings) and the child `Type:`. If at least one binding has an
+///   initializer, the node also has the list `Initializers:`.
+/// * `Function`, with the children `Name:`, `Parameters:` (or `Parameters: (none)`),
+///   `Return Type:`, and `Body:`.
+/// * `If`, with the children `Condition:` and `Then:`. If the statement has an `else`
+///   branch, the node also has the child `Else:`.
+/// * `MainFunction`, with the content of the body.
+/// * `Block`, with one child for each statement, or `Block: (empty)` if the block has no
+///   statements.
+/// * `Return`, with the child `Value:` if the statement has a value.
+/// * `While`, with the children `Condition:` and `Body:`.
+/// * `For`, with the children `Initializer:`, `Condition:`, and `Increment:` when they
+///   exist, and the child `Body:`.
+/// * `Break` and `Continue`, with no children.
+///
+/// # Arguments
+///
+/// * `stmt` - The statement to print.
+/// * `indent` - The indentation text of the title line.
+/// * `branch_type` - The branch type of the node.
+/// * `output` - The string that receives the lines.
+/// * `styles` - The styles for the text.
 #[allow(clippy::too_many_lines)]
 fn print_stmt(stmt: &Stmt, indent: &str, branch_type: BranchType, output: &mut String, styles: &StyleManager) {
     match stmt {
