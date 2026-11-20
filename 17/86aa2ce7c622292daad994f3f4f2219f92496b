@@ -1,0 +1,16 @@
+crates/descar-core/src/lib.rs
+  h_361662506da91f 3,5-16
+crates/descar-core/src/utils/mod.rs
+  h_361662506da91f 3-5,16-26,30,39,43,51,53,57,63,65-67,71,75,90-106,116-127,133-152,191-206,260-261,268-272,278-286,291,296-305,310,316-327,335
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1786aa2ce7c622292daad994f3f4f2219f92496b",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
