@@ -50,6 +50,11 @@ impl LineTracker {
     /// - Unicode NEXT LINE (`U+0085`)
     /// - Unicode LINE SEPARATOR (`U+2028`)
     /// - Unicode PARAGRAPH SEPARATOR (`U+2029`)
+    ///
+    /// # Arguments
+    ///
+    /// * `file_path` - The path of the source file. The tracker stores the path and uses it for spans.
+    /// * `source` - The source text. The tracker takes ownership of the text.
     #[must_use]
     pub fn new(file_path: &str, source: String) -> Self {
         let char_count = source.chars().count();
@@ -103,6 +108,7 @@ impl LineTracker {
         }
     }
 
+    /// Returns the complete source text of the tracker.
     #[must_use]
     pub fn source(&self) -> &str {
         &self.source
@@ -118,10 +124,32 @@ impl LineTracker {
     /// - `utf8_offset`: UTF-8 byte offset;
     /// - `code_point_offset`: absolute Unicode code-point offset.
     ///
+    /// The offset can be equal to the length of the source text. This offset is the
+    /// end-of-file position.
+    ///
+    /// # Arguments
+    ///
+    /// * `offset` - The UTF-8 byte offset in the source text.
+    ///
+    /// # Returns
+    ///
+    /// The [`SourceLocation`] of the offset.
+    ///
     /// # Panics
     ///
     /// Panics if `offset` is outside the source or is not a UTF-8
     /// character boundary.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use descar_core::location::line_tracker::LineTracker;
+    /// let tracker = LineTracker::new("main.dr", String::from("ab\ncd"));
+    /// let location = tracker.location_for(4);
+    /// assert_eq!(location.line(), 2);
+    /// assert_eq!(location.column(), 2);
+    /// assert_eq!(location.offset(), 4);
+    /// ```
     #[must_use]
     pub fn location_for(&self, offset: usize) -> SourceLocation {
         assert!(
@@ -156,6 +184,20 @@ impl LineTracker {
     /// Creates a source span from a byte offset range.
     ///
     /// The range follows the half-open `[start, end)` convention.
+    ///
+    /// # Arguments
+    ///
+    /// * `range` - The range of UTF-8 byte offsets in the source text.
+    ///
+    /// # Returns
+    ///
+    /// A [`SourceSpan`] with the file path of the tracker. The span starts at the location of
+    /// `range.start` and ends at the location of `range.end`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `range.start` or `range.end` is not a valid offset. See
+    /// [`LineTracker::location_for`].
     #[inline]
     #[must_use]
     pub fn span_for(&self, range: std::ops::Range<usize>) -> SourceSpan {
@@ -163,6 +205,30 @@ impl LineTracker {
     }
 
     /// Gets a specific logical line from the source, 1-based.
+    ///
+    /// The returned text does not include the line terminator. A source text that ends
+    /// with a line terminator has an empty last line.
+    ///
+    /// # Arguments
+    ///
+    /// * `line_number` - The line number, starting at 1.
+    ///
+    /// # Returns
+    ///
+    /// * `Some` with the text of the line.
+    /// * `None` if `line_number` is 0 or is larger than the number of lines.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use descar_core::location::line_tracker::LineTracker;
+    /// let tracker = LineTracker::new("main.dr", String::from("first\r\nsecond\n"));
+    /// assert_eq!(tracker.get_line(1), Some("first"));
+    /// assert_eq!(tracker.get_line(2), Some("second"));
+    /// assert_eq!(tracker.get_line(3), Some(""));
+    /// assert_eq!(tracker.get_line(4), None);
+    /// assert_eq!(tracker.get_line(0), None);
+    /// ```
     #[must_use]
     pub fn get_line(&self, line_number: usize) -> Option<&str> {
         let line_index = line_number.checked_sub(1)?;

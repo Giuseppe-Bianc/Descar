@@ -1,8 +1,8 @@
 //! Representation of a span (extent) within a source file.
 //!
-//! A [`SourceSpan`] identifies a portion of source text via an inclusive
-//! start position and an exclusive end position, together with the path of
-//! the file it refers to. It is used to associate tokens, AST nodes, and
+//! A [`SourceSpan`] identifies a portion of source text. A span has an inclusive
+//! start position, an exclusive end position, and the path of the file that it
+//! refers to. The compiler uses spans to associate tokens, AST nodes, and
 //! diagnostics with a precise location in the source code.
 
 use std::{
@@ -18,13 +18,13 @@ use crate::location::source_location::SourceLocation;
 /// - `start` is the **inclusive** start position;
 /// - `end` is the **exclusive** end position.
 ///
-/// This convention allows representing empty spans (`start == end`, see
-/// [`SourceSpan::point`]) and simplifies computing length and merging spans
-/// (see [`SourceSpan::length`] and [`SourceSpan::merge`]).
+/// This convention allows empty spans (`start == end`, see
+/// [`SourceSpan::point`]). It also simplifies the computation of the length and the
+/// merge of spans (see [`SourceSpan::length`] and [`SourceSpan::merge`]).
 ///
-/// Each span also holds the path of the source file (`file_path`), shared
-/// via [`Arc<str>`] to avoid string duplication when many spans reference
-/// the same file.
+/// Each span holds the path of the source file (`file_path`). The path is shared
+/// through [`Arc<str>`], so many spans that refer to the same file do not duplicate
+/// the string.
 #[derive(Debug, Clone, PartialEq, Eq, Ord, PartialOrd, Default, Hash)]
 pub struct SourceSpan {
     /// Path of the source file this span refers to.
@@ -38,13 +38,14 @@ pub struct SourceSpan {
 impl SourceSpan {
     /// Creates a new span given the file path and the start and end positions.
     ///
-    /// No validation is performed: it is the caller's responsibility to
-    /// ensure that `start` precedes (or coincides with) `end`.
+    /// The method does not validate the positions. The caller must make sure that
+    /// `start` precedes `end` or has the same offset as `end`.
     ///
-    /// # Parameters
-    /// * `file_path` - path of the source file.
-    /// * `start` - start position (inclusive).
-    /// * `end` - end position (exclusive).
+    /// # Arguments
+    ///
+    /// * `file_path` - The path of the source file.
+    /// * `start` - The start position (inclusive).
+    /// * `end` - The end position (exclusive).
     #[must_use]
     pub const fn new(file_path: Arc<str>, start: SourceLocation, end: SourceLocation) -> Self {
         Self { file_path, start, end }
@@ -52,9 +53,14 @@ impl SourceSpan {
 
     /// Creates a zero-length span at the given position.
     ///
-    /// A "point" span is always valid, since `start` and `end` coincide.
-    /// Useful for representing positions (e.g. an error location) without
-    /// covering any text.
+    /// A "point" span is always valid, because `start` and `end` have the same value.
+    /// Use a point span to represent a position, for example an error location,
+    /// without covering any text.
+    ///
+    /// # Arguments
+    ///
+    /// * `file_path` - The path of the source file.
+    /// * `location` - The position that is both the start and the end of the span.
     #[must_use]
     pub const fn point(file_path: Arc<str>, location: SourceLocation) -> Self {
         // A point span is always valid: start == end.
@@ -79,50 +85,58 @@ impl SourceSpan {
         &self.file_path
     }
 
-    /// Length of the span in UTF-8 bytes, consistent with [`SourceLocation::offset`]
-    /// (which is a 0-based byte offset) and with the byte ranges used by
-    /// source byte ranges.
+    /// Returns the length of the span in UTF-8 bytes.
     ///
-    /// Note: this follows Rust's `str::len()` semantics — a multi-byte
-    /// character such as `'€'` (U+20AC) contributes **3** to the length,
-    /// not 1.
+    /// The length is the end offset minus the start offset. The offsets are the
+    /// 0-based byte offsets that [`SourceLocation::offset`] returns. If the span is
+    /// reversed, the length is 0.
+    ///
+    /// Note: the length follows the semantics of the Rust method `str::len()`. A
+    /// multi-byte character such as `'€'` (U+20AC) adds **3** to the length, not 1.
     #[must_use]
     pub const fn length(&self) -> usize {
         self.end.offset().saturating_sub(self.start.offset())
     }
 
-    /// Indicates whether the span has ordered, non-reversed byte offsets.
+    /// Returns `true` if the start offset is less than or equal to the end offset.
+    ///
+    /// A span that returns `false` is reversed.
     #[must_use]
     pub const fn is_valid(&self) -> bool {
         self.start.offset() <= self.end.offset()
     }
 
-    /// Indicates whether the span has zero length (i.e. `start == end`).
+    /// Returns `true` if the span has zero length, that is, if the start offset is
+    /// equal to the end offset.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.start.offset() == self.end.offset()
     }
 
-    /// Indicates whether the span spans multiple lines, by comparing the
-    /// line of `start` with the line of `end`.
+    /// Returns `true` if the span covers more than one line.
+    ///
+    /// The method compares the line of `start` with the line of `end`.
     #[must_use]
     pub const fn is_multiline(&self) -> bool {
         self.start.line() != self.end.line()
     }
 
-    /// Indicates whether the given location falls within the half-open
-    /// interval `[start, end)` of this span.
+    /// Returns `true` if the given location is in the half-open interval
+    /// `[start, end)` of this span.
+    ///
+    /// The method compares only the byte offsets. It does not compare file paths.
     #[must_use]
     pub const fn contains(&self, location: SourceLocation) -> bool {
         location.offset() >= self.start.offset() && location.offset() < self.end.offset()
     }
 
-    /// Indicates whether two spans share at least one character, i.e.
-    /// whether their `[start, end)` intervals intersect. Spans from different
-    /// source files never overlap.
+    /// Returns `true` if two spans share at least one character, that is, if their
+    /// `[start, end)` intervals intersect.
     ///
-    /// Two adjacent spans (e.g. `[0, 3)` and `[3, 5)`) are not considered
-    /// overlapping.
+    /// Spans from different source files never overlap. A reversed span and an empty
+    /// span never overlap another span.
+    ///
+    /// Two adjacent spans (for example `[0, 3)` and `[3, 5)`) do not overlap.
     #[must_use]
     pub fn overlaps(&self, other: &Self) -> bool {
         self.is_valid()
@@ -131,16 +145,22 @@ impl SourceSpan {
             && self.start.offset().max(other.start.offset()) < self.end.offset().min(other.end.offset())
     }
 
-    /// Returns the smallest span that contains both spans (`self` and
-    /// `other`), by taking the minimum of the start positions and the
-    /// maximum of the end positions.
+    /// Returns the smallest span that contains both spans (`self` and `other`).
     ///
-    /// If the spans belong to different files, returns self unchanged because
-    /// offsets from different source files cannot form a meaningful combined span.
+    /// The new span starts at the smaller of the two start positions and ends at the
+    /// larger of the two end positions.
+    ///
+    /// If the spans belong to different files, the method returns a clone of `self`.
+    /// Offsets from different source files cannot form a meaningful combined span.
+    ///
+    /// # Arguments
+    ///
+    /// * `other` - The span to merge with `self`.
     ///
     /// # Panics
     ///
-    /// Panics if either span has a reversed start and end offset.
+    /// Panics if either span has a reversed start and end offset. The method checks
+    /// this before it compares the file paths.
     #[must_use]
     pub fn merge(&self, other: &Self) -> Self {
         assert!(self.is_valid() && other.is_valid(), "cannot merge invalid source spans");
@@ -158,12 +178,12 @@ impl SourceSpan {
 impl std::fmt::Display for SourceSpan {
     /// Formats the span for human-readable output.
     ///
-    /// Format: `[truncated_path]:line [start_line]:column [start_col] - line [end_line]:column [end_col]`
+    /// Format: `<path>:line <start_line>:column <start_column>-line <end_line>:column <end_column>`
     ///
-    /// If the span is empty (`is_empty()`), only the `start` position is
-    /// shown, omitting the `end` part.
+    /// If the span is empty (see [`SourceSpan::is_empty`]), the output has only the
+    /// start position. The output has no end part.
     ///
-    /// Paths are truncated to show only the last 2 components, for brevity
+    /// The path shows only the last 2 components, to keep the output short
     /// (see [`truncate_path`]).
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let truncated_path = truncate_path(Path::new(&*self.file_path), 2);
@@ -177,16 +197,16 @@ impl std::fmt::Display for SourceSpan {
 
 /// Truncates a path to show only the last `depth` components.
 ///
-/// Useful for displaying long paths in error messages in a compact and
-/// readable way.
+/// Use this function to show long paths in error messages in a short and
+/// readable form.
 ///
 /// # Arguments
-/// * `path` - original file path.
-/// * `depth` - number of trailing components to preserve.
+/// * `path` - The original file path.
+/// * `depth` - The number of trailing components to keep.
 ///
 /// # Returns
-/// String representation of the truncated path:
-/// - the full path, if the component count is <= `depth`;
+/// The text of the truncated path:
+/// - the full path, if the number of components is less than or equal to `depth`;
 /// - otherwise `..` followed by the last `depth` components.
 ///
 /// # Examples
@@ -196,11 +216,10 @@ impl std::fmt::Display for SourceSpan {
 /// let path = if cfg!(unix) {
 ///         "/project/src/module/file.lang"
 ///     } else {
-///         "C:\\project\\src.\\module\\file.lang"
+///         "C:\\project\\src\\module\\file.lang"
 ///     };
-/// let path = Path::new("/project/src/module/file.lang");
 /// let expected = if cfg!(unix) { "../module/file.lang" } else { "..\\module\\file.lang" };
-/// assert_eq!(truncate_path(path, 2), expected);
+/// assert_eq!(truncate_path(Path::new(path), 2), expected);
 /// ```
 #[must_use]
 pub fn truncate_path(path: &Path, depth: usize) -> String {
@@ -223,6 +242,7 @@ mod tests {
     use crate::location::source_location::SourceLocation;
     use std::sync::Arc;
 
+    /// Creates a span in the file `file` with the given start and end byte offsets.
     fn span(file: &str, start: usize, end: usize) -> SourceSpan {
         SourceSpan::new(
             Arc::from(file),
