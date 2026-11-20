@@ -1,0 +1,14 @@
+crates/descar-core/src/file/file_size.rs
+  h_361662506da91f 18-22,30-38,55-59,67-70,86,89-93,101-123,152-157,164-169,177-185
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "5c1a8e097edae3b25ca3bec7c5bab77d11ea6fbc",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
