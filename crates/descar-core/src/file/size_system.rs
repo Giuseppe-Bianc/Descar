@@ -12,7 +12,7 @@ pub struct SizeSystem {
 }
 
 impl SizeSystem {
-    /// Expected number of prefixes (indices 0..5).
+    /// Number of unit prefixes in a size system. The prefix indices are 0 to 5.
     pub const PREFIX_COUNT: usize = 6;
 
     /// Minimum accepted value for `base`.
@@ -20,8 +20,19 @@ impl SizeSystem {
 
     /// Creates a new `SizeSystem` with base validation.
     ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the size system.
+    /// * `base` - The number by which each unit is larger than the previous unit.
+    /// * `prefixes` - The unit prefixes, from the smallest unit to the largest unit.
+    ///
+    /// # Returns
+    ///
+    /// A `SizeSystem` with the given name, base, and prefixes.
+    ///
     /// # Errors
-    /// Returns `Err` if `base` is less than `1.0`.
+    ///
+    /// Returns `Err` with the message `base must be >= 1.0` if `base` is less than `1.0`.
     pub const fn new(name: &'static str, base: f64, prefixes: [&'static str; 6]) -> Result<Self, &'static str> {
         if base < Self::EXPECTED_BASE {
             return Err("base must be >= 1.0");
@@ -29,18 +40,21 @@ impl SizeSystem {
         Ok(Self { name, base, prefixes })
     }
 
+    /// Returns the name of the size system.
     #[inline]
     #[must_use]
     pub const fn name(&self) -> &'static str {
         self.name
     }
 
+    /// Returns the base of the size system.
     #[inline]
     #[must_use]
     pub const fn base(&self) -> f64 {
         self.base
     }
 
+    /// Returns the unit prefixes of the size system, from the smallest unit to the largest unit.
     #[inline]
     #[must_use]
     pub const fn prefixes(&self) -> &[&'static str; 6] {
@@ -53,10 +67,14 @@ pub struct SizeSystems;
 
 impl SizeSystems {
     /// Decimal system (SI), base 1000.
+    ///
+    /// The prefixes are `B`, `KB`, `MB`, `GB`, `TB`, and `PB`.
     pub const SI_SYSTEM: SizeSystem =
         SizeSystem { name: "SI", base: 1000.0, prefixes: ["B", "KB", "MB", "GB", "TB", "PB"] };
 
     /// Binary system (IEC), base 1024.
+    ///
+    /// The prefixes are `B`, `KiB`, `MiB`, `GiB`, `TiB`, and `PiB`.
     pub const IEC: SizeSystem =
         SizeSystem { name: "IEC", base: 1024.0, prefixes: ["B", "KiB", "MiB", "GiB", "TiB", "PiB"] };
 }
