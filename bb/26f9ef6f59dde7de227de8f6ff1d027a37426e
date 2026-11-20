@@ -1,0 +1,18 @@
+crates/descar-core/src/printers/mod.rs
+  h_361662506da91f 3-5,7-8,11-12
+crates/descar-core/src/printers/ast_printer.rs
+  h_361662506da91f 6-8,10-12,15-21,32-36,61-75,106,111,128,133,138-165,175-177,218-229,238-259,339-355,365-372,407-420,434-447,462-490
+crates/descar-core/src/printers/branch_type.rs
+  h_361662506da91f 3-4,7-9,12-13,18-20,24,26,31-35,44-50,60,62,64,66,71-77,84-87,90,92,94,96,98,100,102,104,109-120,142,144,146-151,164-176,186-197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "bb26f9ef6f59dde7de227de8f6ff1d027a37426e",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
