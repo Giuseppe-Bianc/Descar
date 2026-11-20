@@ -1,0 +1,29 @@
+crates/descar-core/src/lex/error.rs
+  h_361662506da91f 5-7,48,51,54,60,65
+crates/descar-core/src/lex/lexer.rs
+  h_361662506da91f 10-12,16-19,21,23,25,27,33-40,49-53,59-71,102-125,173,181-182,184-185,187-196,220-239,270-285
+  s_b15a083d3cd34a::t_ae9268ef4de9c4 15,183
+crates/descar-core/src/lex/mod.rs
+  h_361662506da91f 2-4,6,8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "1edc52c0b42dfefa0f6f1ba58e28179a4f28e83f",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_b15a083d3cd34a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "agent-ada6ce1b85d5137d0",
+        "model": "unknown"
+      },
+      "human_author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
