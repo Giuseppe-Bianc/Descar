@@ -2,8 +2,9 @@ use std::fmt;
 
 /// Errors produced directly by the lexical analyzer.
 ///
-/// `LexError` describes the lexical problem itself. Conversion to the
-/// compiler-facing `CompileError` is performed by the lexer wrapper.
+/// `LexError` describes the lexical problem itself. The
+/// [`Lexer`](crate::lex::lexer::Lexer) converts each `LexError` to the
+/// compiler-facing [`CompileError`](crate::error::compile_error::CompileError).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum LexError {
     /// The input does not start with any valid token.
@@ -44,23 +45,24 @@ pub enum LexError {
     /// - `3.14f32`
     InvalidNumberSuffix,
 
-    /// A numeric literal could not be represented by its requested type.
+    /// A numeric literal cannot be represented by its requested type.
     NumberOverflow,
 
-    /// A string literal was not terminated.
+    /// A string literal has no closing double quote.
     UnterminatedString,
 
-    /// A character literal was not terminated.
+    /// A character literal has no closing single quote.
     UnterminatedChar,
 
     /// A string or character literal contains an unsupported escape sequence.
     InvalidEscapeSequence,
 
-    /// A multi-line comment was not terminated.
+    /// A multi-line comment has no closing `*/`.
     UnterminatedComment,
 }
 
 impl fmt::Display for LexError {
+    /// Writes a short description of the error in lowercase text.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidToken => f.write_str("invalid token"),
