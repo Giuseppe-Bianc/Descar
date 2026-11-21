@@ -1,3 +1,10 @@
+// crates/descar-core/src/error/compile_error.rs
+
+//! Compile errors with an optional code, a message, a source span, and optional help text.
+//!
+//! [`CompileError`] is the error type that the lexer, the parser, and the type checker
+//! report.
+
 use std::sync::Arc;
 
 // src/error/compile_error.rs
@@ -5,58 +12,80 @@ use crate::error::error_code::ErrorCode;
 use crate::location::source_span::SourceSpan as Span;
 use thiserror::Error;
 
-/// Represents compilation errors that occur during different phases of compilation.
+/// An error that the compiler reports while it processes Descar source code.
 ///
-/// This enum categorizes errors into:
-/// - Lexical analysis errors
-/// - Syntax parsing errors
-/// - Type checking errors
-/// - Intermediate representation generation errors
-/// - Assembly generation errors
-/// - General I/O errors
+/// The variants are:
 ///
-/// Each variant carries context-specific information about the error's nature and location.
-/// Optionally, variants can include an [`ErrorCode`] for standardized error identification.
+/// * [`CompileError::LexerError`]: An error of the lexical analysis.
+/// * [`CompileError::SyntaxError`]: An error of the syntax analysis.
+/// * [`CompileError::TypeError`]: An error of the type checker. The symbol table also uses this
+///   variant.
+/// * [`CompileError::IoError`]: An I/O error.
+///
+/// The first three variants have the same fields: an optional [`ErrorCode`], a message, a
+/// source span, and optional help text. The `Display` text of these variants contains the
+/// code in square brackets if a code is present, the message, the span, and the help text
+/// on a separate line if help text is present.
+///
+/// The `Display` text of `LexerError` has no prefix before the message. The `Display` text of
+/// `SyntaxError` has the prefix `Syntax error: ` and the `Display` text of `TypeError` has the
+/// prefix `Type error: `.
 #[derive(Debug, Error)]
 pub enum CompileError {
-    /// Lexical analysis error indicating invalid token sequences.
+    /// An error of the lexical analysis.
     ///
-    /// Contains:
-    /// - `code`: Optional standardized error code (E0xxx range)
-    /// - `message`: Human-readable error description
-    /// - `span`: Source location where the error occurred
-    /// - `help`: Optional guidance for fixing the error
+    /// The lexer reports errors with codes in the `E0xxx` range.
     #[error("{}{message} at {span}{}",
         .code.map_or(String::new(), |c| format!("[{}] ", c.code())),
         .help.as_ref().map_or(String::new(), |h| format!("\nhelp: {h}"))
     )]
-    LexerError { code: Option<ErrorCode>, message: Arc<str>, span: Span, help: Option<String> },
+    LexerError {
+        /// The error code, if the error has one.
+        code: Option<ErrorCode>,
+        /// The description of the error.
+        message: Arc<str>,
+        /// The source span of the error.
+        span: Span,
+        /// Text that explains how to fix the error, if available.
+        help: Option<String>,
+    },
 
-    /// Syntax error indicating invalid program structure.
+    /// An error of the syntax analysis.
     ///
-    /// Contains:
-    /// - `code`: Optional standardized error code (E1xxx range)
-    /// - `message`: Description of the syntax violation
-    /// - `span`: Location of the problematic syntax
-    /// - `help`: Optional guidance for fixing the error
+    /// The parser reports errors with codes in the `E1xxx` range. The parser also reports
+    /// `E2001`.
     #[error("{}Syntax error: {message} at {span}{}",
         .code.map_or(String::new(), |c| format!("[{}] ", c.code())),
         .help.as_ref().map_or(String::new(), |h| format!("\nhelp: {h}"))
     )]
-    SyntaxError { code: Option<ErrorCode>, message: Arc<str>, span: Span, help: Option<String> },
+    SyntaxError {
+        /// The error code, if the error has one.
+        code: Option<ErrorCode>,
+        /// The description of the syntax violation.
+        message: Arc<str>,
+        /// The source span of the error.
+        span: Span,
+        /// Text that explains how to fix the error, if available.
+        help: Option<String>,
+    },
 
-    /// Type checking error indicating type mismatches or unsupported operations.
+    /// An error of the type checker or of the symbol table.
     ///
-    /// Contains:
-    /// - `code`: Optional standardized error code (E2xxx range)
-    /// - `message`: Description of the type error
-    /// - `span`: Location where the type error occurred
-    /// - `help`: Optional guidance for fixing the error
+    /// These errors have codes in the `E2xxx` range. The type checker also reports `E1003`.
     #[error("{}Type error: {message} at {span}{}",
         .code.map_or(String::new(), |c| format!("[{}] ", c.code())),
         .help.as_ref().map_or(String::new(), |h| format!("\nhelp: {h}"))
     )]
-    TypeError { code: Option<ErrorCode>, message: Arc<str>, span: Span, help: Option<String> },
+    TypeError {
+        /// The error code, if the error has one.
+        code: Option<ErrorCode>,
+        /// The description of the error.
+        message: Arc<str>,
+        /// The source span of the error.
+        span: Span,
+        /// Text that explains how to fix the error, if available.
+        help: Option<String>,
+    },
     /*/// Error during intermediate representation (IR) generation.
     ///
     /// Contains:
@@ -79,21 +108,24 @@ pub enum CompileError {
         .code.map_or(String::new(), |c| format!("[{}] ", c.code()))
     )]
     AsmGeneratorError { code: Option<ErrorCode>, message: Arc<str> },*/
-    /// I/O operation failure during compilation (e.g., file access issues).
+    /// An I/O operation failed.
     ///
-    /// Wraps the standard [`std::io::Error`] for seamless error propagation.
+    /// The variant wraps a [`std::io::Error`]. The `From` implementation converts a
+    /// [`std::io::Error`] into this variant.
     #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),
 }
 
 impl CompileError {
-    /// Returns the error code if one is associated with this error.
+    /// Returns the error code of the error.
     ///
     /// # Returns
-    /// - `Some(&ErrorCode)` for errors with associated codes
-    /// - `None` for errors without codes or I/O errors
+    ///
+    /// `Some` with a reference to the code if the error has a code. `None` if the error has no
+    /// code, or if the error is a [`CompileError::IoError`].
     ///
     /// # Examples
+    ///
     /// ```
     /// use descar_core::error::compile_error::CompileError;
     /// use descar_core::error::error_code::ErrorCode;
@@ -117,13 +149,15 @@ impl CompileError {
         }
     }
 
-    /// Returns the error message for variants that carry messages.
+    /// Returns the message of the error.
     ///
-    /// Returns:
-    /// - `Some(&str)` for error variants with messages
-    /// - `None` for `IoError` variant
+    /// # Returns
+    ///
+    /// `Some` with the message for [`CompileError::LexerError`], [`CompileError::SyntaxError`],
+    /// and [`CompileError::TypeError`]. `None` for [`CompileError::IoError`].
     ///
     /// # Examples
+    ///
     /// ```
     /// use descar_core::error::compile_error::CompileError;
     /// use descar_core::location::source_span::SourceSpan;
@@ -146,13 +180,16 @@ impl CompileError {
         }
     }
 
-    /// Returns the source location span for relevant error variants.
+    /// Returns the source span of the error.
     ///
-    /// Returns:
-    /// - `Some(&Span)` for variants with associated locations
-    /// - `None` for variants without location information
+    /// # Returns
+    ///
+    /// `Some` with a reference to the span for [`CompileError::LexerError`],
+    /// [`CompileError::SyntaxError`], and [`CompileError::TypeError`]. `None` for
+    /// [`CompileError::IoError`].
     ///
     /// # Examples
+    ///
     /// ```
     /// use std::sync::Arc;
     /// use descar_core::error::compile_error::CompileError;
@@ -175,13 +212,15 @@ impl CompileError {
         }
     }
 
-    /// Returns optional help guidance for fixing the error.
+    /// Returns the help text of the error.
     ///
-    /// Returns:
-    /// - `Some(&str)` if help guidance exists
-    /// - `None` if no help is available
+    /// # Returns
+    ///
+    /// `Some` with the help text if the error has help text. `None` if the error has no help
+    /// text, or if the error is a [`CompileError::IoError`].
     ///
     /// # Examples
+    ///
     /// ```
     /// use descar_core::error::compile_error::CompileError;
     /// use descar_core::location::source_span::SourceSpan;
@@ -204,14 +243,16 @@ impl CompileError {
         }
     }
 
-    /// Updates the error message for variants that carry messages.
+    /// Replaces the message of the error.
     ///
-    /// No effect on variants without message fields.
+    /// The function does nothing for [`CompileError::IoError`].
     ///
     /// # Arguments
-    /// * `new_message` - Replacement error message
+    ///
+    /// * `new_message` - The new message.
     ///
     /// # Examples
+    ///
     /// ```
     /// use descar_core::error::compile_error::CompileError;
     /// use descar_core::location::source_span::SourceSpan;
@@ -234,14 +275,16 @@ impl CompileError {
         }
     }
 
-    /// Updates the source span for variants that carry location information.
+    /// Replaces the source span of the error.
     ///
-    /// No effect on variants without span fields.
+    /// The function does nothing for [`CompileError::IoError`].
     ///
     /// # Arguments
-    /// * `new_span` - Replacement source location
+    ///
+    /// * `new_span` - The new source span.
     ///
     /// # Examples
+    ///
     /// ```
     /// use std::sync::Arc;
     /// use descar_core::error::compile_error::CompileError;
@@ -266,14 +309,16 @@ impl CompileError {
         }
     }
 
-    /// Updates the help guidance for relevant error variants.
+    /// Replaces the help text of the error.
     ///
-    /// No effect on variants without help fields.
+    /// The function does nothing for [`CompileError::IoError`].
     ///
     /// # Arguments
-    /// * `new_help` - New help message (or `None` to remove existing help)
+    ///
+    /// * `new_help` - The new help text. `None` removes the existing help text.
     ///
     /// # Examples
+    ///
     /// ```
     /// use descar_core::error::compile_error::CompileError;
     /// use descar_core::location::source_span::SourceSpan;

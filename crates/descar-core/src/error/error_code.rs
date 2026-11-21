@@ -1,10 +1,16 @@
-//! # Error Code System for Descar Compiler
+// crates/descar-core/src/error/error_code.rs
+
+//! Error codes, severity levels, and compiler phases of the Descar compiler.
 //!
-//! This module provides a comprehensive, standardized error code management system
-//! for the Descar compiler. Each error has a unique identifier (e.g., E0001) that
-//! enables quick reference, documentation lookup, and IDE integration.
+//! [`ErrorCode`] gives each diagnostic a unique code, for example `E0001`. A code has a
+//! text form ([`ErrorCode::code`]), a numeric form ([`ErrorCode::numeric_code`]), a severity
+//! ([`ErrorCode::severity`]), a compiler phase ([`ErrorCode::phase`]), a short message
+//! ([`ErrorCode::message`]), an explanation ([`ErrorCode::explanation`]), and a list of
+//! suggestions ([`ErrorCode::suggestions`]).
 //!
-//! ## Error Code Ranges
+//! # Error Code Ranges
+//!
+//! The first digit of the numeric code selects the compiler phase.
 //!
 //! | Range | Phase | Description |
 //! |-------|-------|-------------|
@@ -15,7 +21,7 @@
 //! | E4001-E4999 | Code Generation | Assembly, ABI, registers |
 //! | E5001-E5999 | I/O & System | File operations, CLI |
 //!
-//! ## Usage Example
+//! # Usage Example
 //!
 //! ```rust
 //! use descar_core::error::error_code::{ErrorCode, Severity, CompilerPhase};
@@ -28,20 +34,20 @@
 
 use std::fmt;
 
-/// Represents the severity level of a compiler error.
+/// The severity level of a diagnostic.
 ///
-/// Severity levels help distinguish between fatal errors that prevent compilation,
-/// errors that may allow partial recovery, and informational warnings.
+/// The variants are in order from the lowest level, [`Severity::Note`], to the highest level,
+/// [`Severity::Fatal`]. The `Display` implementation writes the name of the level in lowercase.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum Severity {
-    /// Informational note, does not affect compilation
+    /// An informational note.
     Note = 0,
-    /// Warning that might indicate a problem
+    /// A warning about a possible problem.
     Warning = 1,
-    /// Error that prevents successful compilation
+    /// An error.
     Error = 2,
-    /// Fatal error that stops compilation immediately
+    /// A fatal error.
     Fatal = 3,
 }
 
@@ -56,24 +62,24 @@ impl fmt::Display for Severity {
     }
 }
 
-/// Represents the compiler phase where an error occurred.
+/// The compiler phase that an error code belongs to.
 ///
-/// This helps categorize errors and provides context about which part
-/// of the compilation pipeline detected the issue.
+/// [`ErrorCode::phase`] returns this value. The `Display` implementation writes `lexer`,
+/// `parser`, `semantic`, `ir-gen`, `codegen`, or `system`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum CompilerPhase {
-    /// Lexical analysis phase (tokenization)
+    /// Lexical analysis (tokenization).
     Lexer = 0,
-    /// Parsing phase (AST construction)
+    /// Parsing (construction of the syntax tree).
     Parser = 1,
-    /// Semantic analysis phase (type checking, scoping)
+    /// Semantic analysis (type checking and scopes).
     Semantic = 2,
-    /// Intermediate representation generation
+    /// Generation of the intermediate representation.
     IrGeneration = 3,
-    /// Assembly code generation
+    /// Generation of assembly code.
     CodeGeneration = 4,
-    /// I/O and system operations
+    /// I/O and system operations.
     System = 5,
 }
 
@@ -90,18 +96,22 @@ impl fmt::Display for CompilerPhase {
     }
 }
 
-/// Unified error code system for the Descar compiler.
+/// The unique code of a compiler diagnostic.
 ///
-/// Each error code follows the pattern `E{NNNN}_{Name}` where:
-/// - `NNNN` is a 4-digit numeric code
-/// - `Name` is a descriptive `PascalCase` identifier
+/// Each variant is named `E` followed by a four-digit number, for example `E0001`. The first
+/// digit of the number selects the compiler phase. See the module documentation for the
+/// ranges. The enum is `#[non_exhaustive]`, so new codes can be added later.
 ///
-/// Error codes are organized by compiler phase with reserved numeric ranges.
-/// This design ensures:
-/// - Unique identification for each error type
-/// - Easy documentation lookup via error code
-/// - Stable references for tooling and IDE integration
-/// - Room for future expansion within each category
+/// # Notes
+///
+/// The compiler does not report all codes. The lexer reports `E0001` to `E0010`. The parser
+/// reports `E1001`, `E1002`, `E1003`, `E1004`, `E1005`, `E1008`, and `E2001`. The type checker
+/// and the symbol table report `E1003`, `E2002` to `E2014`, `E2016` to `E2031`, and `E2032`.
+/// No other code appears in a diagnostic. The documentation of such a code describes the
+/// reserved meaning of the code. For example, the parser reports a missing closing `)`, `}`,
+/// or `]` as `E1004`, not as `E1010`, `E1011`, or `E1012`.
+///
+/// In the examples of the variants, a statement is in the body of `main`.
 ///
 /// # Examples
 ///
@@ -121,8 +131,7 @@ pub enum ErrorCode {
     // =========================================================================
     /// Error E0001: Invalid or unrecognized token
     ///
-    /// This error occurs when the lexer encounters a character sequence
-    /// that doesn't match any valid token pattern.
+    /// The lexer found a character sequence that matches no token pattern.
     ///
     /// # Example
     /// ```text
@@ -130,13 +139,14 @@ pub enum ErrorCode {
     /// ```
     ///
     /// # Solution
-    /// Check for typos or unsupported characters. Valid tokens include
-    /// identifiers, keywords, operators, and literals.
+    /// Remove or replace the characters that the lexer does not recognize.
     E0001,
 
     /// Error E0002: Malformed binary number literal
     ///
-    /// Binary literals must have at least one binary digit (0 or 1) after `#b`.
+    /// A binary literal has the form `#b` followed by at least one binary digit (0 or 1).
+    ///
+    /// The lexer reports this error if no digit follows `#b` and if a digit other than 0 or 1 follows `#b`.
     ///
     /// # Example
     /// ```text
@@ -145,12 +155,14 @@ pub enum ErrorCode {
     /// ```
     ///
     /// # Solution
-    /// Provide valid binary digits: `#b1010` for decimal 10.
+    /// Use binary digits: `#b1010` is the decimal value 10.
     E0002,
 
     /// Error E0003: Malformed octal number literal
     ///
-    /// Octal literals must have at least one octal digit (0-7) after `#o`.
+    /// An octal literal has the form `#o` followed by at least one octal digit (0-7).
+    ///
+    /// The lexer reports this error if no digit follows `#o` and if a digit other than 0-7 follows `#o`.
     ///
     /// # Example
     /// ```text
@@ -159,30 +171,38 @@ pub enum ErrorCode {
     /// ```
     ///
     /// # Solution
-    /// Provide valid octal digits: `#o755` for decimal 493.
+    /// Use octal digits: `#o755` is the decimal value 493.
     E0003,
 
     /// Error E0004: Malformed hexadecimal number literal
     ///
-    /// Hexadecimal literals must have at least one hex digit (0-9, a-f, A-F) after `#x`.
+    /// A hexadecimal literal has the form `#x` followed by at least one hexadecimal digit (0-9, a-f, A-F).
+    ///
+    /// The lexer reports this error if no digit follows `#x` and if a character that is not a hexadecimal
+    /// digit follows `#x`.
     ///
     /// # Example
     /// ```text
     /// var x: i32 = #x     // Missing digits
-    /// var y: i32 = #xGH   // Invalid hex digits
+    /// var y: i32 = #xGH   // Invalid hexadecimal digits
     /// ```
     ///
     /// # Solution
-    /// Provide valid hexadecimal digits: `#xDEAD` for decimal 57005.
+    /// Use hexadecimal digits: `#xDEAD` is the decimal value 57005.
     E0004,
 
     /// Error E0005: Unterminated string literal
     ///
-    /// String literals must be closed with a matching double quote.
+    /// A string literal must end with a double quote.
+    ///
+    /// The lexer reports this error only if the literal reaches the end of the file. If more text follows
+    /// the literal, the lexer reports E0001.
     ///
     /// # Example
     /// ```text
-    /// var s: string = "hello world
+    /// main {
+    ///     var s: string = "hello world
+    /// // End of file
     /// ```
     ///
     /// # Solution
@@ -191,11 +211,16 @@ pub enum ErrorCode {
 
     /// Error E0006: Unterminated character literal
     ///
-    /// Character literals must be closed with a matching single quote.
+    /// A character literal must end with a single quote.
+    ///
+    /// The lexer reports this error only if the literal reaches the end of the file. If more text follows
+    /// the literal, the lexer reports E0001.
     ///
     /// # Example
     /// ```text
-    /// var c: char = 'x
+    /// main {
+    ///     var c: char = 'x
+    /// // End of file
     /// ```
     ///
     /// # Solution
@@ -204,26 +229,26 @@ pub enum ErrorCode {
 
     /// Error E0007: Invalid escape sequence
     ///
-    /// The escape sequence is not recognized. Valid escapes include:
-    /// `\n`, `\r`, `\t`, `\\`, `\'`, `\"`, `\0`, `\u{XXXX}`.
+    /// The escape sequence is not valid. The valid escape sequences are `\n`, `\r`, `\t`, `\\`, `\'`, `\"`,
+    /// `\0`, and `\u{XXXX}`.
     ///
     /// # Example
     /// ```text
-    /// var s: string = "hello\q"  // \q is invalid
+    /// var s: string = "hello\q"  // \q is not valid
     /// ```
     ///
     /// # Solution
-    /// Use a valid escape sequence or escape the backslash: `"hello\\q"`.
+    /// Use a valid escape sequence, or write the backslash as `\\`: `"hello\\q"`.
     E0007,
 
     /// Error E0008: Unterminated multi-line comment
     ///
-    /// Multi-line comments opened with `/*` must be closed with `*/`.
+    /// A multi-line comment that starts with `/*` must end with `*/`.
     ///
     /// # Example
     /// ```text
     /// /* This comment never ends
-    /// var x: i32 = 1
+    /// main { var x: i32 = 1 }
     /// ```
     ///
     /// # Solution
@@ -232,29 +257,32 @@ pub enum ErrorCode {
 
     /// Error E0009: Invalid number suffix
     ///
-    /// The suffix on the numeric literal is not recognized.
-    /// Valid suffixes: `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`.
+    /// The suffix of the numeric literal is not valid.
+    ///
+    /// The valid suffixes are `i8`, `i16`, `i32`, `u8`, `u16`, and `u32`. The compiler also accepts `u`
+    /// (u64), `f` (f32), and `d` (f64). The suffixes are not case-sensitive. The compiler does not support
+    /// the suffixes `i64`, `u64`, `f32`, and `f64`.
     ///
     /// # Example
     /// ```text
-    /// var x = 42i128  // i128 not supported
+    /// var x: i32 = 42i128  // i128 is not a supported suffix
     /// ```
     ///
     /// # Solution
-    /// Use a supported type suffix.
+    /// Use a supported suffix, or remove the suffix.
     E0009,
 
     /// Error E0010: Number literal overflow
     ///
-    /// The numeric value exceeds the range of the target type.
+    /// The value of the numeric literal is outside the range of its type.
     ///
     /// # Example
     /// ```text
-    /// var x: i8 = 256i8  // i8 max is 127
+    /// var x: i8 = 256i8  // The maximum value of i8 is 127
     /// ```
     ///
     /// # Solution
-    /// Use a larger type or reduce the value.
+    /// Use a smaller value, or use a type with a larger range.
     E0010,
 
     // =========================================================================
@@ -262,23 +290,25 @@ pub enum ErrorCode {
     // =========================================================================
     /// Error E1001: Maximum recursion depth exceeded
     ///
-    /// The parser has exceeded its recursion limit, usually due to deeply
-    /// nested expressions or pathological input.
+    /// The nesting of the parser calls is deeper than the limit of 1000. Deeply nested expressions cause
+    /// this error.
     ///
     /// # Example
     /// ```text
-    /// var x = ((((((((((((((((((((... // too deep
+    /// var x: i32 = ((((((((((((( ... 1 ... ))))))))))))  // More than 1000 nested parentheses
     /// ```
     ///
     /// # Solution
-    /// Simplify the expression or break it into smaller parts.
+    /// Reduce the nesting, or split the expression into smaller parts.
     E1001,
 
     /// Error E1002: Invalid type specification
     ///
-    /// Expected a valid type but found something else.
-    /// Valid types: `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`,
-    /// `f32`, `f64`, `char`, `string`, `bool`, or custom identifiers.
+    /// The parser expected a type and found another token.
+    ///
+    /// A type is one of `i8`, `i16`, `i32`, `i64`, `u8`, `u16`, `u32`, `u64`, `f32`, `f64`, `char`,
+    /// `string`, `bool`, or a custom identifier. An array type adds a size in square brackets after the
+    /// type name. The type `vector<T>` is also accepted.
     ///
     /// # Example
     /// ```text
@@ -291,47 +321,48 @@ pub enum ErrorCode {
 
     /// Error E1003: Invalid assignment target
     ///
-    /// Only variables and array elements can be assigned to.
+    /// Only a variable or an array element can be the target of an assignment.
+    ///
+    /// The parser and the type checker report this error.
     ///
     /// # Example
     /// ```text
-    /// 5 = x       // Cannot assign to literal
-    /// foo() = 1   // Cannot assign to function call
+    /// var x: i32 = 1i32
+    /// 5 = x       // A literal is not a valid target
+    /// foo() = 1   // A function call is not a valid target
     /// ```
     ///
     /// # Solution
-    /// Assign to a variable or array element: `x = 5` or `arr[0] = 1`.
+    /// Assign to a variable or to an array element: `x = 5` or `arr[0] = 1`.
     E1003,
 
     /// Error E1004: Unexpected token
     ///
-    /// The parser encountered a token it didn't expect in this context.
+    /// The parser found a token that is not valid at this position. The parser reports this error also for
+    /// a missing closing `)`, `}`, or `]`, and for a `;`.
     ///
     /// # Example
     /// ```text
-    /// fun foo( { }  // Expected ')' not '{'
+    /// var x: i32 = (1 + 2  // The closing ')' is missing
     /// ```
     ///
     /// # Solution
-    /// Check syntax and add missing tokens.
+    /// Correct the syntax, and add the missing tokens.
     E1004,
 
     /// Error E1005: Invalid binary operator
     ///
-    /// The token cannot be used as a binary operator.
+    /// The token is not a binary operator. The parser reports this error also for a token that is not an
+    /// assignment operator.
     ///
     /// # Solution
-    /// Use a valid binary operator: `+`, `-`, `*`, `/`, `%`, `==`, `!=`, etc.
+    /// Use a binary operator: `+`, `-`, `*`, `/`, `%`, `==`, `!=`, `<`, `<=`, `>`, `>=`, `&&`, `||`, `&`,
+    /// `|`, `^`, `<<`, or `>>`.
     E1005,
 
     /// Error E1006: Expected expression
     ///
-    /// An expression was expected but not found.
-    ///
-    /// # Example
-    /// ```text
-    /// var x: i32 =   // Missing initializer expression
-    /// ```
+    /// The parser expected an expression and found no expression.
     ///
     /// # Solution
     /// Provide an expression.
@@ -339,12 +370,12 @@ pub enum ErrorCode {
 
     /// Error E1007: Expected statement
     ///
-    /// A statement was expected but not found.
+    /// The parser expected a statement and found no statement.
     E1007,
 
     /// Error E1008: Expected identifier
     ///
-    /// An identifier (variable or function name) was expected.
+    /// The parser expected an identifier, for example a variable name or a function name.
     ///
     /// # Example
     /// ```text
@@ -352,17 +383,12 @@ pub enum ErrorCode {
     /// ```
     ///
     /// # Solution
-    /// Use a valid identifier starting with a letter or underscore.
+    /// Use a valid identifier.
     E1008,
 
     /// Error E1009: Expected type annotation
     ///
-    /// A type annotation was expected after `:`.
-    ///
-    /// # Example
-    /// ```text
-    /// var x: = 0  // Missing type after ':'
-    /// ```
+    /// The parser expected a type after `:`.
     ///
     /// # Solution
     /// Provide a type: `var x: i32 = 0`.
@@ -370,42 +396,41 @@ pub enum ErrorCode {
 
     /// Error E1010: Unmatched parenthesis
     ///
-    /// Opening `(` without matching `)` or vice versa.
+    /// An opening `(` has no closing `)`, or a closing `)` has no opening `(`.
     ///
     /// # Solution
-    /// Balance parentheses.
+    /// Balance the parentheses.
     E1010,
 
     /// Error E1011: Unmatched brace
     ///
-    /// Opening `{` without matching `}` or vice versa.
+    /// An opening `{` has no closing `}`, or a closing `}` has no opening `{`.
     ///
     /// # Solution
-    /// Balance braces.
+    /// Balance the braces.
     E1011,
 
     /// Error E1012: Unmatched bracket
     ///
-    /// Opening `[` without matching `]` or vice versa.
+    /// An opening `[` has no closing `]`, or a closing `]` has no opening `[`.
     ///
     /// # Solution
-    /// Balance brackets.
+    /// Balance the brackets.
     E1012,
 
     /// Error E1013: Missing semicolon (informational)
     ///
-    /// A semicolon may be missing. This is currently a warning
-    /// as semicolons are optional in many contexts.
+    /// A semicolon is missing. The severity of this code is [`Severity::Warning`].
     E1013,
 
     /// Error E1014: Invalid function signature
     ///
-    /// The function declaration has an invalid structure.
+    /// The structure of the function declaration is not valid.
     E1014,
 
     /// Error E1015: Invalid parameter list
     ///
-    /// The function parameter list is malformed.
+    /// The parameter list of the function is not valid.
     E1015,
 
     // =========================================================================
@@ -413,54 +438,53 @@ pub enum ErrorCode {
     // =========================================================================
     /// Error E2001: Initializer count mismatch
     ///
-    /// The number of initializers doesn't match the number of variables.
+    /// The number of initializers is not equal to the number of variables. The parser reports this error.
     ///
     /// # Example
     /// ```text
-    /// var a, b: i32 = 1  // 2 vars but 1 initializer
+    /// var a, b: i32 = 1i32  // Two variables and one initializer
     /// ```
     ///
     /// # Solution
-    /// Provide one initializer per variable: `var a, b: i32 = 1, 2`.
+    /// Provide one initializer for each variable: `var a, b: i32 = 1i32, 2i32`.
     E2001,
 
     /// Error E2002: Type mismatch in assignment
     ///
-    /// Cannot assign a value of one type to a variable of an incompatible type.
+    /// The type of the value is not compatible with the type of the variable.
     ///
     /// # Example
     /// ```text
-    /// var x: i32 = "hello"  // string not assignable to i32
+    /// var x: i32 = "hello"  // A string is not assignable to i32
     /// ```
     ///
     /// # Solution
-    /// Use compatible types or explicit conversion.
+    /// Use a value of a compatible type.
     E2002,
 
     /// Error E2003: Missing return path
     ///
-    /// A function with a non-void return type may not return a value
-    /// in all code paths.
+    /// A function with a return type has a code path that does not return a value.
     ///
     /// # Example
     /// ```text
     /// fun foo(): i32 {
-    ///     if (true) { return 1 }
-    ///     // Missing return in else path
+    ///     if (true) { return 1i32 }
+    ///     // The code path of a false condition has no return
     /// }
     /// ```
     ///
     /// # Solution
-    /// Ensure all code paths return a value.
+    /// Make all code paths return a value.
     E2003,
 
     /// Error E2004: Non-boolean condition
     ///
-    /// Conditions in `if`, `while`, and `for` must be boolean expressions.
+    /// The condition of a statement must have the type `bool`.
     ///
     /// # Example
     /// ```text
-    /// if (42) { }  // i64 is not bool
+    /// if (42) { }  // 42 has the type i64
     /// ```
     ///
     /// # Solution
@@ -469,80 +493,80 @@ pub enum ErrorCode {
 
     /// Error E2005: Return outside function
     ///
-    /// A `return` statement was found outside of a function body.
+    /// A `return` statement is outside of a function body.
     ///
     /// # Solution
-    /// Move the return statement inside a function.
+    /// Move the `return` statement into a function.
     E2005,
 
     /// Error E2006: Return value in void function
     ///
-    /// A void function cannot return a value.
+    /// A function without a return type cannot return a value.
     ///
     /// # Example
     /// ```text
-    /// fun foo() {  // implicit void
-    ///     return 42  // Error: cannot return value
+    /// fun foo() {
+    ///     return 42  // The function has no return type
     /// }
     /// ```
     ///
     /// # Solution
-    /// Remove the return value or change the function's return type.
+    /// Remove the return value, or add a return type to the function.
     E2006,
 
     /// Error E2007: Return type mismatch
     ///
-    /// The returned value's type doesn't match the function's declared return type.
+    /// The type of the returned value is not the declared return type of the function.
     ///
     /// # Example
     /// ```text
     /// fun foo(): i32 {
-    ///     return "hello"  // string != i32
+    ///     return "hello"  // string is not i32
     /// }
     /// ```
     ///
     /// # Solution
-    /// Return a value of the correct type.
+    /// Return a value of the declared type.
     E2007,
 
     /// Error E2008: Missing return value
     ///
-    /// A non-void function returned without a value.
+    /// A function with a return type uses `return` without a value.
     ///
     /// # Example
     /// ```text
     /// fun foo(): i32 {
-    ///     return  // Missing value
+    ///     return  // No value
     /// }
     /// ```
     ///
     /// # Solution
-    /// Provide a return value: `return 0`.
+    /// Return a value: `return 0i32`.
     E2008,
 
     /// Error E2009: Break outside loop
     ///
-    /// A `break` statement was found outside of a loop.
+    /// A `break` statement is outside of a loop.
     ///
     /// # Solution
-    /// Use `break` only inside `while` or `for` loops.
+    /// Use `break` only in a `while` loop or in a `for` loop.
     E2009,
 
     /// Error E2010: Continue outside loop
     ///
-    /// A `continue` statement was found outside of a loop.
+    /// A `continue` statement is outside of a loop.
     ///
     /// # Solution
-    /// Use `continue` only inside `while` or `for` loops.
+    /// Use `continue` only in a `while` loop or in a `for` loop.
     E2010,
 
     /// Error E2011: Bitwise operator on non-integer
     ///
-    /// Bitwise operators (`&`, `|`, `^`, `<<`, `>>`) require integer operands.
+    /// The bitwise operators (`&`, `|`, `^`, `<<`, `>>`) need integer operands.
     ///
     /// # Example
     /// ```text
-    /// var x = 1.5 & 2.5  // f64 not allowed
+    /// var x: f64 = 1.5 & 2.5  // f64 is not an integer type
     /// ```
     ///
     /// # Solution
@@ -551,11 +575,11 @@ pub enum ErrorCode {
 
     /// Error E2012: Logical operator on non-boolean
     ///
-    /// Logical operators (`&&`, `||`) require boolean operands.
+    /// The logical operators (`&&`, `||`) need operands of the type `bool`.
     ///
     /// # Example
     /// ```text
-    /// var x = 1 && 2  // i64 not allowed
+    /// var x: bool = true && 1  // 1 is not a bool
     /// ```
     ///
     /// # Solution
@@ -564,11 +588,11 @@ pub enum ErrorCode {
 
     /// Error E2013: Arithmetic operator on non-numeric
     ///
-    /// Arithmetic operators (`+`, `-`, `*`, `/`, `%`) require numeric operands.
+    /// The arithmetic operators (`+`, `-`, `*`, `/`, `%`) need numeric operands.
     ///
     /// # Example
     /// ```text
-    /// var x = "a" + "b"  // string + not supported
+    /// var x: i32 = 1i32 + "a"  // A string is not a number
     /// ```
     ///
     /// # Solution
@@ -577,11 +601,11 @@ pub enum ErrorCode {
 
     /// Error E2014: Incompatible comparison types
     ///
-    /// Comparison operators require compatible types.
+    /// The operands of a comparison operator have types that are not compatible.
     ///
     /// # Example
     /// ```text
-    /// var x = 1 < "hello"  // i64 vs string
+    /// var x: bool = 1 < "hello"  // i64 and string
     /// ```
     ///
     /// # Solution
@@ -590,29 +614,45 @@ pub enum ErrorCode {
 
     /// Error E2015: Binary operation type mismatch
     ///
-    /// The types in a binary expression are incompatible.
+    /// The operand types of a binary expression are not compatible.
     ///
     /// # Solution
-    /// Ensure both operands have compatible types.
+    /// Use operands with compatible types.
     E2015,
 
     /// Error E2016: Unsupported arithmetic operation
     ///
-    /// The arithmetic operation is not supported for this type.
+    /// The type of the operands does not support the arithmetic operation.
+    ///
+    /// # Example
+    /// ```text
+    /// var x: string = "a" + "b"  // The type string does not support +
+    /// ```
+    ///
+    /// # Solution
+    /// Use operands of a numeric type.
     E2016,
 
     /// Error E2017: Logical operation requires bool
     ///
-    /// Logical operations require boolean operands.
+    /// A logical operation needs operands of the type `bool`.
+    ///
+    /// # Example
+    /// ```text
+    /// var x: bool = 1 && 2  // 1 and 2 are not bool values
+    /// ```
+    ///
+    /// # Solution
+    /// Use boolean operands.
     E2017,
 
     /// Error E2018: Negation on non-numeric type
     ///
-    /// Unary negation (`-`) requires a numeric operand.
+    /// The unary operator `-` needs a numeric operand.
     ///
     /// # Example
     /// ```text
-    /// var x = -true  // bool cannot be negated
+    /// var x: bool = -true  // A bool cannot be negated
     /// ```
     ///
     /// # Solution
@@ -621,11 +661,11 @@ pub enum ErrorCode {
 
     /// Error E2019: Logical NOT on non-boolean
     ///
-    /// Logical NOT (`!`) requires a boolean operand.
+    /// The unary operator `!` needs an operand of the type `bool`.
     ///
     /// # Example
     /// ```text
-    /// var x = !42  // i64 cannot be NOTted
+    /// var x: bool = !42  // 42 is not a bool
     /// ```
     ///
     /// # Solution
@@ -634,24 +674,25 @@ pub enum ErrorCode {
 
     /// Error E2020: Empty array literal
     ///
-    /// Array literals must have at least one element for type inference.
+    /// An array literal needs at least one element. The type checker uses the elements to find the type of
+    /// the array.
     ///
     /// # Example
     /// ```text
-    /// var arr: i32[] = {}  // Empty not allowed
+    /// var arr: i32[1] = {}  // No elements
     /// ```
     ///
     /// # Solution
-    /// Provide at least one element: `{0}`.
+    /// Provide at least one element: `{0i32}`.
     E2020,
 
     /// Error E2021: Mixed array element types
     ///
-    /// All elements in an array literal must have the same type.
+    /// All elements of an array literal must have the same type.
     ///
     /// # Example
     /// ```text
-    /// var arr = {1, "hello", 3}  // mixed i64 and string
+    /// var arr: i32[3] = {1i32, "hello", 3i32}  // i32 and string
     /// ```
     ///
     /// # Solution
@@ -660,85 +701,94 @@ pub enum ErrorCode {
 
     /// Error E2022: Function used as variable
     ///
-    /// A function name cannot be used where a variable is expected.
+    /// A function name is in a place where the program needs a variable.
     ///
     /// # Example
     /// ```text
     /// fun foo() { }
-    /// var x = foo  // foo is a function, not a value
+    /// var x: i32 = foo  // foo is a function
     /// ```
     ///
     /// # Solution
-    /// Call the function: `var x = foo()`.
+    /// Call the function: `foo()`.
     E2022,
 
     /// Error E2023: Undefined variable
     ///
-    /// The variable has not been declared in the current scope or any outer scope.
+    /// The variable is not declared in the current scope or in an enclosing scope.
     ///
     /// # Example
     /// ```text
-    /// var x = y  // y is not defined
+    /// var x: i32 = y  // y is not declared
     /// ```
     ///
     /// # Solution
-    /// Declare the variable before use.
+    /// Declare the variable before its use.
     E2023,
 
     /// Error E2024: Assignment to immutable variable
     ///
-    /// Cannot assign to a variable declared with `const`.
+    /// A variable that `const` declares cannot receive a new value.
     ///
     /// # Example
     /// ```text
-    /// const x: i32 = 1
-    /// x = 2  // Error: x is immutable
+    /// const x: i32 = 1i32
+    /// x = 2i32  // x is a constant
     /// ```
     ///
     /// # Solution
-    /// Use `var` for mutable variables or don't reassign.
+    /// Declare the variable with `var`, or remove the assignment.
     E2024,
 
     /// Error E2025: Undefined variable in assignment
     ///
-    /// Attempting to assign to an undefined variable.
+    /// The target of an assignment is not a declared variable.
+    ///
+    /// # Example
+    /// ```text
+    /// y = 5i32  // y is not declared
+    /// ```
+    ///
+    /// # Solution
+    /// Declare the variable before the assignment.
     E2025,
 
     /// Error E2026: Invalid callee
     ///
-    /// The expression being called is not a function.
+    /// The expression of a call is not a function name.
     ///
     /// # Example
     /// ```text
-    /// var x = 42
-    /// x()  // x is not callable
+    /// var arr: i32[1] = {1i32}
+    /// arr[0]()  // The callee is not a name
     /// ```
     ///
     /// # Solution
-    /// Call a function name.
+    /// Call a function by its name.
     E2026,
 
     /// Error E2027: Undefined function
     ///
-    /// The function has not been declared.
+    /// The program calls a name that is not a declared function. A call of a variable also causes this
+    /// error.
     ///
     /// # Example
     /// ```text
-    /// foo()  // foo is not defined
+    /// foo()  // foo is not declared
     /// ```
     ///
     /// # Solution
-    /// Define the function before calling it.
+    /// Declare the function before the call.
     E2027,
 
     /// Error E2028: Argument count mismatch
     ///
-    /// The number of arguments doesn't match the function's parameter count.
+    /// The number of arguments is not equal to the number of parameters of the function.
     ///
     /// # Example
     /// ```text
     /// fun add(a: i32, b: i32): i32 { return a + b }
-    /// add(1)  // Expected 2 args, got 1
+    /// var x: i32 = add(1i32)  // The function needs 2 arguments
     /// ```
     ///
     /// # Solution
@@ -747,12 +797,12 @@ pub enum ErrorCode {
 
     /// Error E2029: Argument type mismatch
     ///
-    /// An argument's type doesn't match the expected parameter type.
+    /// The type of an argument is not the type of the parameter.
     ///
     /// # Example
     /// ```text
     /// fun foo(x: i32) { }
-    /// foo("hello")  // string != i32
+    /// foo("hello")  // string is not i32
     /// ```
     ///
     /// # Solution
@@ -761,12 +811,12 @@ pub enum ErrorCode {
 
     /// Error E2030: Non-integer array index
     ///
-    /// Array indices must be integer types.
+    /// The index of an array element must have an integer type.
     ///
     /// # Example
     /// ```text
-    /// var arr: i32[5] = {1,2,3,4,5}
-    /// var x = arr[1.5]  // f64 index not allowed
+    /// var arr: i32[5] = {1i32, 2i32, 3i32, 4i32, 5i32}
+    /// var x: i32 = arr[1.5]  // f64 is not an integer type
     /// ```
     ///
     /// # Solution
@@ -775,30 +825,30 @@ pub enum ErrorCode {
 
     /// Error E2031: Indexing non-array type
     ///
-    /// Cannot use array indexing on a non-array type.
+    /// Only an array can have an index.
     ///
     /// # Example
     /// ```text
-    /// var x: i32 = 42
-    /// var y = x[0]  // i32 is not indexable
+    /// var x: i32 = 42i32
+    /// var y: i32 = x[0]  // i32 is not an array
     /// ```
     ///
     /// # Solution
-    /// Only index into array types.
+    /// Use an index only on an array.
     E2031,
 
     /// Error E2032: Duplicate declaration
     ///
-    /// An identifier with this name already exists in the current scope.
+    /// The current scope already has an identifier with this name.
     ///
     /// # Example
     /// ```text
-    /// var x: i32 = 1
-    /// var x: i32 = 2  // x already declared
+    /// var x: i32 = 1i32
+    /// var x: i32 = 2i32  // x is already declared
     /// ```
     ///
     /// # Solution
-    /// Use a different name or remove the duplicate.
+    /// Use a different name, or remove the duplicate declaration.
     E2032,
 
     // =========================================================================
@@ -806,42 +856,42 @@ pub enum ErrorCode {
     // =========================================================================
     /// Error E3001: Break outside loop in IR generation
     ///
-    /// Internal error: break control flow encountered outside loop context.
+    /// A `break` is outside of a loop during IR generation. This is an internal error.
     E3001,
 
     /// Error E3002: Continue outside loop in IR generation
     ///
-    /// Internal error: continue control flow encountered outside loop context.
+    /// A `continue` is outside of a loop during IR generation. This is an internal error.
     E3002,
 
     /// Error E3003: Invalid IR instruction
     ///
-    /// The IR generator attempted to create an invalid instruction.
+    /// The IR generator created an invalid instruction.
     E3003,
 
     /// Error E3004: Undefined IR variable
     ///
-    /// Reference to an undefined variable during IR generation.
+    /// A variable is not defined during IR generation.
     E3004,
 
     /// Error E3005: Invalid basic block
     ///
-    /// Malformed basic block in the control flow graph.
+    /// A basic block in the control flow graph is not valid.
     E3005,
 
     /// Error E3006: Invalid terminator
     ///
-    /// Basic block has an invalid or missing terminator.
+    /// A basic block has an invalid terminator or no terminator.
     E3006,
 
     /// Error E3007: SSA transformation error
     ///
-    /// Error during Static Single Assignment transformation.
+    /// An error occurred in the transformation to Static Single Assignment form.
     E3007,
 
     /// Error E3008: CFG construction error
     ///
-    /// Error during Control Flow Graph construction.
+    /// An error occurred in the construction of the control flow graph.
     E3008,
 
     // =========================================================================
@@ -849,27 +899,27 @@ pub enum ErrorCode {
     // =========================================================================
     /// Error E4001: Invalid assembly instruction
     ///
-    /// Cannot generate valid assembly for this operation.
+    /// The code generator cannot create valid assembly for the operation.
     E4001,
 
     /// Error E4002: Register allocation failed
     ///
-    /// Unable to allocate registers for the operation.
+    /// The code generator cannot allocate registers for the operation.
     E4002,
 
     /// Error E4003: Stack overflow
     ///
-    /// Stack frame exceeds maximum size.
+    /// The stack frame is larger than the maximum size.
     E4003,
 
     /// Error E4004: Unsupported platform
     ///
-    /// Target platform is not supported.
+    /// The target platform is not supported.
     E4004,
 
     /// Error E4005: ABI violation
     ///
-    /// Generated code violates the target ABI.
+    /// The generated code does not follow the ABI of the target.
     E4005,
 
     // =========================================================================
@@ -877,32 +927,32 @@ pub enum ErrorCode {
     // =========================================================================
     /// Error E5001: File not found
     ///
-    /// The specified source file could not be found.
+    /// The compiler cannot find the specified source file.
     E5001,
 
     /// Error E5002: Permission denied
     ///
-    /// Insufficient permissions to access the file.
+    /// The permissions are not sufficient to access the file.
     E5002,
 
     /// Error E5003: Invalid file extension
     ///
-    /// Source files must have the `.vn` extension.
+    /// The extension of a source file must be `.dr`.
     E5003,
 
     /// Error E5004: Write error
     ///
-    /// Error writing output file.
+    /// The compiler cannot write an output file.
     E5004,
 
     /// Error E5005: Read error
     ///
-    /// Error reading input file.
+    /// The compiler cannot read an input file.
     E5005,
 }
 
 impl ErrorCode {
-    /// Returns the error code as a string (e.g., "E0001").
+    /// Returns the code as text, for example `"E0001"`.
     ///
     /// # Examples
     ///
@@ -1004,7 +1054,9 @@ impl ErrorCode {
         }
     }
 
-    /// Returns the numeric portion of the error code.
+    /// Returns the number of the code, without the letter `E`.
+    ///
+    /// For example, the result for `E0001` is 1 and the result for `E2023` is 2023.
     ///
     /// # Examples
     ///
@@ -1106,7 +1158,10 @@ impl ErrorCode {
         }
     }
 
-    /// Returns the severity level of this error.
+    /// Returns the severity of the code.
+    ///
+    /// The result is [`Severity::Warning`] for `E1013`. The result for all other codes is
+    /// [`Severity::Error`].
     ///
     /// # Examples
     ///
@@ -1127,7 +1182,10 @@ impl ErrorCode {
         }
     }
 
-    /// Returns the compiler phase where this error occurs.
+    /// Returns the compiler phase of the code.
+    ///
+    /// The phase comes from the range of the number of the code. See the module documentation
+    /// for the ranges.
     ///
     /// # Examples
     ///
@@ -1151,9 +1209,10 @@ impl ErrorCode {
         }
     }
 
-    /// Returns a brief message describing this error.
+    /// Returns a short message for the code.
     ///
-    /// For detailed explanations, use [`explanation()`](Self::explanation).
+    /// The message starts with a lowercase letter. For a longer text, use
+    /// [`explanation()`](Self::explanation).
     ///
     /// # Examples
     ///
@@ -1257,7 +1316,18 @@ impl ErrorCode {
         }
     }
 
-    /// Returns a detailed explanation of this error with examples and solutions.
+    /// Returns an explanation of the code.
+    ///
+    /// The text can have more than one line. Only some codes have a specific text. For all
+    /// other codes, the result is `"See the error message for details."`.
+    ///
+    /// # Notes
+    ///
+    /// The text for `E0009` lists the suffixes `i64`, `u64`, `f32`, and `f64`. The lexer does
+    /// not accept these suffixes. See the documentation of [`ErrorCode::E0009`] for the
+    /// supported suffixes. The text for `E0005` says that the closing quote must be before the
+    /// end of the line. The lexer reports `E0005` only if the literal reaches the end of the
+    /// file.
     ///
     /// # Examples
     ///
@@ -1346,9 +1416,19 @@ impl ErrorCode {
         }
     }
 
-    /// Returns suggested fixes for this error, if available.
+    /// Returns suggestions for the correction of the error.
     ///
-    /// Returns an empty slice if no specific suggestions are available.
+    /// Only `E0002`, `E0003`, `E0004`, `E0005`, `E2009`, `E2010`, `E2023`, and `E2024` have
+    /// suggestions. For all other codes, the result is an empty slice.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use descar_core::error::error_code::ErrorCode;
+    ///
+    /// assert!(!ErrorCode::E2023.suggestions().is_empty());
+    /// assert!(ErrorCode::E0001.suggestions().is_empty());
+    /// ```
     #[must_use]
     pub const fn suggestions(&self) -> &'static [&'static str] {
         match self {
