@@ -1,3 +1,5 @@
+// crates/descar-core/src/syntax/ast/stmt.rs
+
 use crate::{
     location::source_span::SourceSpan,
     syntax::ast::{else_branch::ElseBranch, expr::Expr, parameter::Parameter, type_syntax::TypeSyntax},
@@ -20,7 +22,7 @@ pub enum Stmt {
         /// Type annotation for declared variables.
         type_annotation: TypeSyntax,
 
-        /// Whether the variables are mutable.
+        /// Whether the variables are mutable. The value is `true` for `var` and `false` for `const`.
         is_mutable: bool,
 
         /// Source extent.
@@ -35,10 +37,10 @@ pub enum Stmt {
         /// Function parameter list.
         parameters: Vec<Parameter>,
 
-        /// Declared return type.
+        /// Declared return type. The value is `TypeSyntax::Void` if the function has no return type.
         return_type: TypeSyntax,
 
-        /// Function body.
+        /// Function body, a block.
         body: Box<Self>,
 
         /// Source extent.
@@ -50,7 +52,7 @@ pub enum Stmt {
         /// Boolean condition expression.
         condition: Box<Expr>,
 
-        /// Statements executed if the condition is true.
+        /// Block that runs if the condition is true.
         then_branch: Box<Self>,
 
         /// Else branch.
@@ -74,7 +76,7 @@ pub enum Stmt {
 
     /// For loop statement.
     For {
-        /// Optional loop initialization statement.
+        /// Optional loop initialization statement: a variable declaration or an expression statement.
         initializer: Option<Box<Self>>,
 
         /// Optional loop condition.
@@ -83,7 +85,7 @@ pub enum Stmt {
         /// Optional loop increment expression.
         increment: Option<Expr>,
 
-        /// Loop body.
+        /// Loop body, one statement.
         body: Box<Self>,
 
         /// Source extent.
@@ -122,7 +124,7 @@ pub enum Stmt {
 
     /// Main function statement.
     MainFunction {
-        /// Main function body.
+        /// Main function body, a block.
         body: Box<Self>,
 
         /// Source extent.
@@ -144,7 +146,9 @@ pub struct VarBinding {
 }
 
 impl Stmt {
-    /// Returns the source span for this statement.
+    /// Returns the source span of this statement.
+    ///
+    /// For an expression statement, the span is the span of the expression.
     #[must_use]
     pub const fn span(&self) -> &SourceSpan {
         match self {

@@ -1,3 +1,5 @@
+// crates/descar-core/src/syntax/ast/compilation_unit.rs
+
 use super::stmt::Stmt;
 use crate::location::source_span::SourceSpan;
 
@@ -20,7 +22,7 @@ impl CompilationUnit {
         Self { declarations, span }
     }
 
-    /// Returns true when the unit contains no declarations.
+    /// Returns `true` if the unit contains no declarations.
     #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.declarations.is_empty()
@@ -33,6 +35,7 @@ impl CompilationUnit {
     }
 }
 
+/// Gives access to the declarations as a slice.
 impl std::ops::Deref for CompilationUnit {
     type Target = [Stmt];
 
@@ -41,6 +44,7 @@ impl std::ops::Deref for CompilationUnit {
     }
 }
 
+/// Iterates over the declarations in source order.
 impl<'a> IntoIterator for &'a CompilationUnit {
     type Item = &'a Stmt;
     type IntoIter = std::slice::Iter<'a, Stmt>;

@@ -1,7 +1,13 @@
+// crates/descar-core/src/syntax/ast/ast_type.rs
+
 use crate::syntax::ast::{expr::Expr, literal_value::LiteralValue};
 use std::{fmt, sync::Arc};
 
-/// Representation of primitive, user-defined, composite, and special types.
+/// A resolved type of the language.
+///
+/// The type checker uses this type. The variants include primitive types, custom types, array types,
+/// vector types, `void`, and the null pointer type. The type that the source code contains before this
+/// step is [`TypeSyntax`](crate::syntax::ast::type_syntax::TypeSyntax).
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 pub enum Type {
     /// Signed 8-bit integer type.
@@ -71,6 +77,10 @@ pub enum Type {
     NullPtr,
 }
 
+/// Writes the name of the type as it appears in source code.
+///
+/// An array type has the form `[element; length]`. The length is the text of a numeric literal. For any
+/// other size expression, the length is `?`. A vector type has the form `vector<element>`.
 impl fmt::Display for Type {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -98,7 +108,7 @@ impl fmt::Display for Type {
     }
 }
 
-/// Formats literal array lengths and uses `?` for unevaluated expressions.
+/// Returns the text of a numeric literal size, or `?` for any other size expression.
 fn format_array_size(expr: &Expr) -> String {
     match expr {
         Expr::Literal { value: LiteralValue::Numeric(number), .. } => number.to_string(),

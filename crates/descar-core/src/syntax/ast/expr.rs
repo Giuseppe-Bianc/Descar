@@ -1,3 +1,5 @@
+// crates/descar-core/src/syntax/ast/expr.rs
+
 use crate::location::source_span::SourceSpan;
 use crate::syntax::ast::assignment_op::AssignmentOp;
 use crate::syntax::ast::binary_op::BinaryOp;
@@ -70,7 +72,7 @@ pub enum Expr {
         span: SourceSpan,
     },
 
-    /// Array literal expression containing zero or more elements.
+    /// Array literal expression with zero or more elements. The source code writes it with braces.
     ArrayLiteral {
         /// Element expressions.
         elements: Vec<Self>,
@@ -102,7 +104,7 @@ pub enum Expr {
         span: SourceSpan,
     },
 
-    /// Function or method call expression.
+    /// Function call expression.
     Call {
         /// Expression producing the callable value.
         callee: Box<Self>,
@@ -128,7 +130,7 @@ pub enum Expr {
 }
 
 impl Expr {
-    /// Returns the source span for this expression.
+    /// Returns the source span of this expression.
     #[must_use]
     pub const fn span(&self) -> &SourceSpan {
         match self {
@@ -146,6 +148,8 @@ impl Expr {
     }
 
     /// Creates a null pointer literal expression.
+    ///
+    /// The parser also uses this expression as a placeholder for an operand that failed to parse.
     #[must_use]
     pub const fn null_expr(span: SourceSpan) -> Self {
         Self::Literal { value: LiteralValue::NullPtr, span }

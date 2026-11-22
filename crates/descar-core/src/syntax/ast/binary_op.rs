@@ -1,3 +1,5 @@
+// crates/descar-core/src/syntax/ast/binary_op.rs
+
 use std::sync::Arc;
 
 use crate::error::compile_error::CompileError;
@@ -49,10 +51,14 @@ pub enum BinaryOp {
 impl BinaryOp {
     /// Converts a token into its corresponding binary operator.
     ///
+    /// # Arguments
+    ///
+    /// * `token` - The token to convert.
+    ///
     /// # Errors
     ///
-    /// Returns a `CompileError::SyntaxError` if the token kind is not
-    /// a valid binary operator.
+    /// Returns a [`CompileError::SyntaxError`] with code `E1005` if the token is not a binary
+    /// operator.
     #[allow(clippy::result_large_err)]
     pub fn get_op(token: &Token) -> Result<Self, CompileError> {
         Ok(match token.kind {

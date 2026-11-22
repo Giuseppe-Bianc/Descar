@@ -1,3 +1,5 @@
+// crates/descar-core/src/syntax/ast/assignment_op.rs
+
 use std::sync::Arc;
 
 use crate::error::compile_error::CompileError;
@@ -36,9 +38,14 @@ pub enum AssignmentOp {
 impl AssignmentOp {
     /// Converts an assignment token into its corresponding assignment operator.
     ///
+    /// # Arguments
+    ///
+    /// * `token` - The token to convert.
+    ///
     /// # Errors
     ///
-    /// Returns a syntax error when the token is not an assignment operator.
+    /// Returns a [`CompileError::SyntaxError`] with code `E1005` if the token is not an
+    /// assignment operator.
     #[allow(clippy::result_large_err)]
     pub fn get_op(token: &Token) -> Result<Self, CompileError> {
         Ok(match token.kind {
@@ -64,9 +71,12 @@ impl AssignmentOp {
         })
     }
 
-    /// Returns the binary operation performed by a compound assignment.
+    /// Returns the binary operation that a compound assignment performs.
     ///
-    /// Simple assignment has no corresponding binary operation.
+    /// # Returns
+    ///
+    /// `Some` with the binary operator for a compound assignment, for example [`BinaryOp::Add`] for
+    /// `+=`. `None` for the simple assignment `=`.
     #[must_use]
     pub const fn compound_binary_op(self) -> Option<BinaryOp> {
         match self {

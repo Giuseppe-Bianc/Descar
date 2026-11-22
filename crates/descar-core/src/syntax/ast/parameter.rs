@@ -1,3 +1,5 @@
+// crates/descar-core/src/syntax/ast/parameter.rs
+
 use crate::{location::source_span::SourceSpan, syntax::ast::type_syntax::TypeSyntax};
 
 /// Parameter definition in a function declaration.
@@ -9,7 +11,7 @@ pub struct Parameter {
     /// Annotated type of the parameter.
     pub type_annotation: TypeSyntax,
 
-    /// Source location extent.
+    /// Source extent from the parameter name to the end of its type.
     pub span: SourceSpan,
 }
 

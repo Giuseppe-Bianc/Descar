@@ -1,9 +1,12 @@
+// crates/descar-core/src/syntax/ast/mod.rs
+
 //! Data types that represent the Descar abstract syntax tree.
 
 /// Assignment operators.
 pub mod assignment_op;
 /// Semantic types used in the AST.
 pub mod ast_type;
+/// Binary operators.
 pub mod binary_op;
 /// Compilation units.
 pub mod compilation_unit;
