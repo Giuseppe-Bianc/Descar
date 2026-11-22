@@ -1,23 +1,62 @@
+// crates/descar-core/src/syntax/precendence.rs
+
 use crate::tokens::{token::Token, token_kind::TokenKind};
 
-/// Defines operator binding powers (precedence and associativity)
-/// used by the Pratt-style expression parser.
+/// The binding powers of an operator.
+///
+/// The expression parser compares binding powers to decide the precedence and the associativity of
+/// operators. A higher number binds more tightly. The parser uses the left value to decide if an
+/// operator extends the expression on its left. It uses the right value as the minimum binding
+/// power for the expression on the right of the operator.
+///
+/// If the right value is less than the left value, the operator associates to the right. If both
+/// values are equal, the operator associates to the left.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Precedence {
+    /// The binding power that the operator has toward the expression on its left.
     pub left: u8,
+    /// The binding power that the operator has toward the expression on its right.
     pub right: u8,
 }
 
 impl Precedence {
-    /// Returns the left/right binding powers for the given binary/infix
-    /// operator token.
+    /// Returns the binding powers of an infix or postfix operator token.
     ///
-    /// The pair is used by the Pratt parser to determine when to stop
-    /// or continue parsing an expression.
+    /// The binding powers are (left, right):
+    ///
+    /// | Operators | Binding powers |
+    /// |-----------|----------------|
+    /// | `=` and the compound assignment operators | (2, 1) |
+    /// | `\|\|` | (4, 4) |
+    /// | `&&` | (6, 6) |
+    /// | `==` `!=` | (8, 8) |
+    /// | `<` `<=` `>` `>=` | (10, 10) |
+    /// | `\|` | (12, 12) |
+    /// | `^` | (14, 14) |
+    /// | `&` | (16, 16) |
+    /// | `<<` `>>` | (18, 18) |
+    /// | `+` `-` | (20, 20) |
+    /// | `*` `/` `%` | (22, 22) |
+    /// | `as` | (23, 24) |
+    /// | `(` `[` `.` `++` `--` | (27, 26) |
+    ///
+    /// # Arguments
+    ///
+    /// * `token` - The operator token.
+    ///
+    /// # Returns
+    ///
+    /// The binding powers of the token. The result is (0, 0) for a token that is not in the table.
+    /// The parser stops at such a token.
+    ///
+    /// # Notes
+    ///
+    /// The parser handles `(`, `[`, `++`, and `--` as postfix operators. The parser does not handle
+    /// `.`. It reports `.` as an unexpected operator.
     #[must_use]
     pub const fn binding_power(token: &Token) -> Self {
         match token.kind {
-            // Assignment is right-associative: a = (b = c).
+            // Assignment associates to the right: a = (b = c).
             TokenKind::Equal
             | TokenKind::PlusEqual
             | TokenKind::MinusEqual
@@ -30,7 +69,7 @@ impl Precedence {
             | TokenKind::ShiftLeftEqual
             | TokenKind::ShiftRightEqual => Self::new(2, 1),
 
-            // Binary operators are left-associative: a op b op c parses as (a op b) op c.
+            // Binary operators associate to the left: a op b op c parses as (a op b) op c.
             TokenKind::OrOr => Self::new(4, 4),
 
             TokenKind::AndAnd => Self::new(6, 6),
@@ -64,10 +103,19 @@ impl Precedence {
         }
     }
 
-    /// Returns the binding power for the given unary/prefix operator token.
+    /// Returns the binding powers of a prefix operator token.
     ///
-    /// The returned value determines how tightly the operand binds
-    /// to the prefix operator.
+    /// The prefix operators are `!`, `-`, `~`, `++`, and `--`. Their binding powers are (24, 23). The
+    /// parser uses the right value as the minimum binding power for the operand. Because the right
+    /// value is 23, an operand does not include a cast. For example, `-a as i32` is `(-a) as i32`.
+    ///
+    /// # Arguments
+    ///
+    /// * `token` - The operator token.
+    ///
+    /// # Returns
+    ///
+    /// The binding powers of the token. The result is (0, 0) for any other token.
     #[must_use]
     pub const fn unary_binding_power(token: &Token) -> Self {
         match token.kind {
@@ -78,6 +126,7 @@ impl Precedence {
         }
     }
 
+    /// Creates a pair of binding powers.
     #[inline]
     const fn new(left: u8, right: u8) -> Self {
         Self { left, right }

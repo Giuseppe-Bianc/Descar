@@ -1,3 +1,11 @@
+// crates/descar-core/src/semantic/symbol_table.rs
+
+//! Symbols, lexical scopes, and the current function context.
+//!
+//! [`SymbolTable`] keeps a stack of [`Scope`] values. The first scope is the global scope.
+//! The type checker declares variables and functions in the current scope and resolves a
+//! name by a search from the innermost scope outward.
+
 use std::{collections::HashMap, sync::Arc};
 
 use crate::{
@@ -6,91 +14,91 @@ use crate::{
     syntax::ast::Type,
 };
 
-/// Represents a symbol in the symbol table.
+/// A symbol in the symbol table.
 ///
-/// Symbols can be variables, functions, or type aliases. Each symbol type
-/// carries specific metadata relevant to semantic analysis and code generation.
+/// A symbol is a variable, a function, or a type alias. Each kind of symbol has its own
+/// data.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Symbol {
-    /// A variable symbol with associated metadata
+    /// A variable and its data.
     Variable(VariableSymbol),
-    /// A function symbol with signature information
+    /// A function and its signature.
     Function(FunctionSymbol),
-    /// A type alias mapping to an underlying type
+    /// A type alias. The value is the type that the alias stands for.
     TypeAlias(Type),
 }
 
-/// Metadata for a variable symbol.
+/// The data of a variable symbol.
 ///
-/// Tracks all information necessary for type checking and mutability analysis,
-/// including the variable's type, mutability status, and location information
-/// for error reporting.
+/// The data contains the type of the variable, whether the variable is mutable, and the
+/// source locations that error messages use.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VariableSymbol {
-    /// The name of the variable
+    /// The name of the variable.
     pub name: Arc<str>,
-    /// The type of the variable
+    /// The type of the variable.
     pub ty: Type,
-    /// Whether the variable is mutable
+    /// Whether the variable is mutable.
     pub mutable: bool,
-    /// Source location where the variable was defined
+    /// The source location of the declaration of the variable.
     pub defined_at: SourceSpan,
-    /// Source location of the last assignment (if any)
+    /// The source location of the last assignment, if the variable has one.
     pub last_assignment: Option<SourceSpan>,
 }
 
-/// A function parameter after its source type annotation has been resolved.
+/// A function parameter with a resolved type.
+///
+/// The type checker converts the type annotation of the source into a [`Type`] to create
+/// this value.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedParameter {
-    /// Parameter name.
+    /// The name of the parameter.
     pub name: Arc<str>,
-    /// Resolved parameter type.
+    /// The resolved type of the parameter.
     pub ty: Type,
-    /// Source location of the parameter declaration.
+    /// The source location of the declaration of the parameter.
     pub defined_at: SourceSpan,
 }
 
-/// Metadata for a function symbol.
+/// The data of a function symbol.
 ///
-/// Contains the function signature including parameters and return type,
-/// along with location information for error reporting.
+/// The data contains the signature of the function (the parameters and the return type)
+/// and the source location of the declaration.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionSymbol {
-    /// The name of the function
+    /// The name of the function.
     pub name: Arc<str>,
-    /// The function's parameters with their types
+    /// The parameters of the function, with their types.
     pub parameters: Vec<ResolvedParameter>,
-    /// The return type of the function
+    /// The return type of the function.
     pub return_type: Type,
-    /// Source location where the function was defined
+    /// The source location of the declaration of the function.
     pub defined_at: SourceSpan,
 }
 
-/// Represents the different kinds of scopes in the program.
+/// The kind of a scope.
 ///
-/// The scope kind determines visibility rules and what operations are valid.
-/// Using `#[repr(u8)]` ensures a compact memory representation.
+/// The enum uses `#[repr(u8)]`.
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScopeKind {
-    /// The global scope containing top-level declarations
+    /// The global scope. It contains the top-level declarations.
     Global,
-    /// A function scope containing parameters and local variables
+    /// The scope of a function. It contains the parameters and the local variables.
     Function,
-    /// A block scope (e.g., inside if, while, for, or explicit blocks)
+    /// The scope of a block, for example the body of a loop or a block of statements.
     Block,
     // Future: Struct scope for struct member access
     // Struct,
 }
 
-/// Represents a single scope in the symbol table hierarchy.
+/// One scope of the symbol table.
 ///
-/// Each scope maintains its own symbol mappings and can be nested within
-/// other scopes to implement lexical scoping rules.
+/// A scope maps names to symbols. The symbol table nests scopes to apply the rules of
+/// lexical scoping.
 ///
-/// The fields of `Scope` are intentionally private. Access to scope state
-/// must be performed through controlled methods so that callers cannot
-/// bypass symbol table invariants.
+/// The fields of `Scope` are private. A caller reads a scope through its methods and
+/// changes it only through [`SymbolTable`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Scope {
     kind: ScopeKind,
@@ -99,54 +107,56 @@ pub struct Scope {
 }
 
 impl Scope {
-    /// Creates a new empty scope.
+    /// Creates an empty scope.
     ///
-    /// This constructor is private to the symbol table module. Scope creation
-    /// is controlled by `SymbolTable::new()` and `SymbolTable::push_scope()`.
+    /// This constructor is private. [`SymbolTable::new`] and [`SymbolTable::push_scope`]
+    /// create scopes.
     fn new(kind: ScopeKind, defined_at: Option<SourceSpan>) -> Self {
         Self { kind, symbols: HashMap::new(), defined_at }
     }
 
-    /// Returns the kind of this scope.
+    /// Returns the kind of the scope.
     #[inline]
     #[must_use]
     pub const fn kind(&self) -> ScopeKind {
         self.kind
     }
 
-    /// Returns the source location where this scope was created.
+    /// Returns the source location where the scope starts.
+    ///
+    /// The result is `None` for the global scope.
     #[inline]
     #[must_use]
     pub const fn defined_at(&self) -> Option<&SourceSpan> {
         self.defined_at.as_ref()
     }
 
-    /// Returns the symbol associated with `name` in this scope only.
+    /// Returns the symbol with the name `name` in this scope.
     ///
-    /// This method does not search outer scopes.
+    /// The method does not search the outer scopes.
     #[inline]
     #[must_use]
     pub fn symbol(&self, name: &str) -> Option<&Symbol> {
         self.symbols.get(name)
     }
 
-    /// Returns whether this scope contains a symbol with `name`.
+    /// Returns whether this scope has a symbol with the name `name`.
     ///
-    /// This method checks this scope only and does not perform lexical lookup.
+    /// The method does not search the outer scopes.
     #[inline]
     #[must_use]
     pub fn contains(&self, name: &str) -> bool {
         self.symbols.contains_key(name)
     }
 
-    /// Returns the number of symbols declared directly in this scope.
+    /// Returns the number of symbols that this scope declares directly.
     #[inline]
     #[must_use]
     pub fn symbol_count(&self) -> usize {
         self.symbols.len()
     }
 
-    /// Returns whether this scope contains no symbols.
+    /// Returns whether the scope has no symbols.
     #[inline]
     #[must_use]
     pub fn is_empty(&self) -> bool {
@@ -154,16 +164,16 @@ impl Scope {
     }
 }
 
-/// The symbol table manages lexical scoping and symbol resolution.
+/// The symbol table. It manages lexical scopes and the resolution of names.
 ///
-/// Implements a stack of scopes to support nested lexical scoping, with
-/// symbols resolved by searching from the innermost scope outward.
-/// Also tracks the current function context for return type checking.
+/// The table has a stack of scopes. A search for a name starts in the innermost scope and
+/// continues in the outer scopes. The table also stores the function that the type checker
+/// is currently analyzing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SymbolTable {
-    /// Stack of scopes, with the current scope at the end
+    /// The stack of scopes. The current scope is the last element.
     scopes: Vec<Scope>,
-    /// The currently active function (if inside a function)
+    /// The current function, or `None` outside a function.
     current_function: Option<FunctionSymbol>,
 }
 
@@ -174,11 +184,11 @@ impl Default for SymbolTable {
 }
 
 impl SymbolTable {
-    /// Creates a new symbol table with a global scope.
+    /// Creates a symbol table.
     ///
     /// # Returns
     ///
-    /// A new `SymbolTable` initialized with an empty global scope.
+    /// A symbol table with one empty global scope and no current function.
     ///
     /// # Examples
     ///
@@ -192,12 +202,14 @@ impl SymbolTable {
         Self { scopes: vec![Scope::new(ScopeKind::Global, None)], current_function: None }
     }
 
-    /// Opens a non-global scope.
+    /// Opens a scope and makes it the current scope.
+    ///
+    /// The method does nothing if `kind` is [`ScopeKind::Global`].
     ///
     /// # Arguments
     ///
-    /// * `kind` - The kind of scope to create
-    /// * `defined_at` - Optional source location where the scope begins
+    /// * `kind` - The kind of the new scope.
+    /// * `defined_at` - The source location where the scope starts, if known.
     ///
     /// # Examples
     ///
@@ -216,10 +228,10 @@ impl SymbolTable {
         self.scopes.push(Scope::new(kind, defined_at));
     }
 
-    /// Closes the current non-global scope.
+    /// Closes the current scope.
     ///
-    /// The global scope is never popped to maintain invariant that at least
-    /// one scope always exists.
+    /// The method does nothing if the current scope is the global scope. The symbol table
+    /// always keeps at least one scope.
     ///
     /// # Examples
     ///
@@ -237,25 +249,27 @@ impl SymbolTable {
         }
     }
 
-    /// Returns the total number of scopes currently active.
+    /// Returns the number of scopes that are open.
     ///
     /// # Returns
     ///
-    /// The count of scopes in the stack (always at least 1 for global scope).
+    /// The number of scopes in the stack. The number is at least 1 because the global scope
+    /// is always open.
     #[inline]
     #[must_use]
     pub const fn scope_count(&self) -> usize {
         self.scopes.len()
     }
 
-    /// Returns a reference to the current (innermost) scope.
+    /// Returns the current (innermost) scope.
     ///
-    /// The returned scope is read-only. Mutation must be performed through
-    /// symbol table APIs such as `declare()`.
+    /// The reference is read-only. Use methods of [`SymbolTable`], for example
+    /// [`SymbolTable::declare`], to change a scope.
     ///
     /// # Returns
     ///
-    /// An optional reference to the current scope.
+    /// `Some` with a reference to the current scope. The result is `None` only if the scope
+    /// stack is empty, which does not occur.
     #[inline]
     #[must_use]
     pub fn current_scope(&self) -> Option<&Scope> {
@@ -266,56 +280,54 @@ impl SymbolTable {
     ///
     /// # Returns
     ///
-    /// An optional `ScopeKind` indicating the type of the current scope.
+    /// `Some` with the kind of the current scope, or `None` if the scope stack is empty.
     #[inline]
     #[must_use]
     pub fn current_scope_kind(&self) -> Option<ScopeKind> {
         self.current_scope().map(Scope::kind)
     }
 
-    /// Looks up a symbol in the current scope only.
+    /// Returns the symbol with the name `name` in the current scope.
     ///
-    /// Outer scopes are intentionally ignored.
-    ///
-    /// This method provides controlled read-only access to the current scope
-    /// without exposing the internal symbol map.
+    /// The method does not search the outer scopes.
     #[inline]
     #[must_use]
     pub fn current_symbol(&self, name: &str) -> Option<&Symbol> {
         self.current_scope().and_then(|scope| scope.symbol(name))
     }
 
-    /// Returns whether the current scope contains `name`.
+    /// Returns whether the current scope has a symbol with the name `name`.
     ///
-    /// Outer scopes are intentionally ignored.
+    /// The method does not search the outer scopes.
     #[inline]
     #[must_use]
     pub fn contains_current(&self, name: &str) -> bool {
         self.current_scope().is_some_and(|scope| scope.contains(name))
     }
 
-    /// Declares a new symbol in the current scope.
+    /// Declares a symbol in the current scope.
     ///
     /// # Arguments
     ///
-    /// * `name` - The name of the symbol to declare
-    /// * `symbol` - The symbol metadata to associate with the name
-    /// * `declared_at` - The source span of the declaration being added
+    /// * `name` - The name of the symbol.
+    /// * `symbol` - The symbol to store under `name`.
+    /// * `declared_at` - The source span of the declaration.
     ///
     /// # Returns
     ///
-    /// * `Ok(())` if the symbol was successfully declared
-    /// * `Err(CompileError)` if a symbol with the same name already exists in the current scope
-    ///
-    /// # Panics
-    ///
-    /// Panics if the scope stack is empty. This should never occur in practice as the
-    /// symbol table maintains the invariant that at least the global scope always exists.
+    /// `Ok(())` if the method stored the symbol.
     ///
     /// # Errors
     ///
-    /// Returns a `TypeError` if the identifier is already declared in the current scope,
-    /// including the location of the previous declaration for error reporting.
+    /// Returns a [`CompileError::TypeError`] with the code `E2032` if the current scope
+    /// already has a symbol with the name `name`. The span of the error is `declared_at`.
+    /// If the existing symbol is a variable or a function, the help text of the error gives
+    /// the location of the previous declaration.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the scope stack is empty. This does not occur, because the symbol table
+    /// always keeps the global scope.
     #[allow(clippy::expect_used, clippy::result_large_err)]
     pub fn declare(&mut self, name: &str, symbol: Symbol, declared_at: SourceSpan) -> Result<(), CompileError> {
         let current_scope = self.current_scope().expect("At least one scope");
@@ -343,16 +355,16 @@ impl SymbolTable {
         Ok(())
     }
 
-    /// Generic helper method to find symbols with a custom filter.
+    /// Finds the innermost symbol with a name and applies a filter to it.
     ///
-    /// Searches from the innermost scope outward and applies the filter to the
-    /// first symbol with the requested name. A symbol in an inner scope therefore
-    /// hides same-named symbols in outer scopes even when the filter rejects it.
+    /// The method searches from the innermost scope outward and applies the filter to the
+    /// first symbol with the name `name`. A symbol in an inner scope hides a symbol with the
+    /// same name in an outer scope, also if the filter rejects the inner symbol.
     ///
     /// # Type Parameters
     ///
-    /// * `F` - Filter function that extracts desired data from a symbol
-    /// * `T` - Type of data returned by the filter
+    /// * `F` - The filter. It extracts data from a symbol.
+    /// * `T` - The type of the data that the filter returns.
     fn find_symbol<F, T>(&self, name: &str, filter: F) -> Option<T>
     where
         F: Fn(&Symbol) -> Option<T>,
@@ -362,30 +374,30 @@ impl SymbolTable {
         symbol.and_then(filter)
     }
 
-    /// Looks up a symbol by name, searching through all scopes.
+    /// Finds the innermost symbol with the name `name`.
     ///
     /// # Arguments
     ///
-    /// * `name` - The name of the symbol to look up
+    /// * `name` - The name of the symbol.
     ///
     /// # Returns
     ///
-    /// An optional clone of the symbol if found, or `None` if not found.
+    /// `Some` with a clone of the symbol, or `None` if no scope has a symbol with this name.
     #[must_use]
     pub fn lookup(&self, name: &str) -> Option<Symbol> {
         self.find_symbol(name, |symbol| Some(symbol.clone()))
     }
 
-    /// Looks up the innermost symbol with the given name as a function.
+    /// Finds the innermost symbol with the name `name` and returns it as a function.
     ///
     /// # Arguments
     ///
-    /// * `name` - The name of the function to look up
+    /// * `name` - The name of the function.
     ///
     /// # Returns
     ///
-    /// A clone of the function symbol, or `None` if the name is not found or its
-    /// innermost declaration is not a function.
+    /// `Some` with a clone of the function symbol. `None` if no scope has a symbol with this
+    /// name, or if the innermost symbol with this name is not a function.
     #[must_use]
     pub fn lookup_function(&self, name: &str) -> Option<FunctionSymbol> {
         self.find_symbol(name, |symbol| match symbol {
@@ -394,16 +406,16 @@ impl SymbolTable {
         })
     }
 
-    /// Looks up the innermost symbol with the given name as a variable.
+    /// Finds the innermost symbol with the name `name` and returns it as a variable.
     ///
     /// # Arguments
     ///
-    /// * `name` - The name of the variable to look up
+    /// * `name` - The name of the variable.
     ///
     /// # Returns
     ///
-    /// A clone of the variable symbol, or `None` if the name is not found or its
-    /// innermost declaration is not a variable.
+    /// `Some` with a clone of the variable symbol. `None` if no scope has a symbol with this
+    /// name, or if the innermost symbol with this name is not a variable.
     #[must_use]
     pub fn lookup_variable(&self, name: &str) -> Option<VariableSymbol> {
         self.find_symbol(name, |symbol| match symbol {
@@ -412,31 +424,29 @@ impl SymbolTable {
         })
     }
 
-    /// Sets the current function context.
+    /// Sets the current function.
     ///
-    /// This is used to track which function is currently being analyzed,
-    /// enabling proper return type checking.
+    /// The method replaces the previous current function. It does not open a scope.
     ///
     /// # Arguments
     ///
-    /// * `func` - The function symbol to set as current
+    /// * `func` - The function to set as the current function.
     pub fn enter_function(&mut self, func: FunctionSymbol) {
         self.current_function = Some(func);
     }
 
-    /// Clears the current function context.
+    /// Clears the current function.
     ///
-    /// Called when exiting a function scope to reset the function context.
+    /// The method does not close a scope.
     pub fn exit_function(&mut self) {
         self.current_function = None;
     }
 
-    /// Returns a reference to the current function being analyzed.
+    /// Returns the current function.
     ///
     /// # Returns
     ///
-    /// An optional reference to the current function symbol, or `None` if
-    /// not currently inside a function.
+    /// `Some` with a reference to the current function, or `None` if no current function is set.
     #[must_use]
     pub const fn current_function(&self) -> Option<&FunctionSymbol> {
         self.current_function.as_ref()
@@ -446,8 +456,7 @@ impl SymbolTable {
     ///
     /// # Returns
     ///
-    /// An optional clone of the current function's return type, or `None` if
-    /// not currently inside a function.
+    /// `Some` with a clone of the return type, or `None` if no current function is set.
     #[must_use]
     pub fn current_function_return_type(&self) -> Option<Type> {
         self.current_function().map(|function| function.return_type.clone())

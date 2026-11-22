@@ -1,15 +1,12 @@
-//! # Semantic Analysis Module
-//!
-//! The semantic analysis module handles the verification of syntactic correctness
-//! and type checking of the abstract syntax tree. This is the third phase of the
-//! compilation process, responsible for ensuring the code follows semantic rules.
-//!
-//! ## Phase-specific responsibilities:
-//! * Initialization: Sets up symbol tables and type checking context
-//! * Runtime: Processes AST nodes to verify types and relationships
-//! * Termination: Finalizes symbol table and reports semantic errors
-//!   Semantic analysis, symbols, scopes, and type checking.
+// crates/descar-core/src/semantic/mod.rs
 
-/// Symbol and scope management.
+//! Semantic analysis of Descar programs.
+//!
+//! The parser creates a syntax tree. The semantic analysis reads this tree and reports
+//! semantic errors, for example undefined names and type mismatches.
+//!
+//! * [`symbol_table`]: Symbols, lexical scopes, and the current function context.
+//! * [`type_checker`]: Type checking of statements and expressions.
+
 pub mod symbol_table;
 pub mod type_checker;
