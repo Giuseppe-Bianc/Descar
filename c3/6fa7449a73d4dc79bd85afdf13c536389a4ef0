@@ -1,0 +1,38 @@
+crates/descar-core/src/syntax/ast/unary_op.rs
+  h_361662506da91f 1-2,4-5
+crates/descar-core/src/syntax/ast/binary_op.rs
+  h_361662506da91f 1-2,54,56-57,60
+crates/descar-core/src/syntax/ast/compilation_unit.rs
+  h_361662506da91f 1-2,25,38,47
+crates/descar-core/src/syntax/ast/assignment_op.rs
+  h_361662506da91f 1-2,41,43-44,47-48,74,76,78-79
+crates/descar-core/src/syntax/ast/mod.rs
+  h_361662506da91f 1-2,9
+crates/descar-core/src/syntax/ast/expr.rs
+  h_361662506da91f 1-2,75,133,151-152
+crates/descar-core/src/syntax/ast/parameter.rs
+  h_361662506da91f 1-2,14
+crates/descar-core/src/syntax/ast/stmt.rs
+  h_361662506da91f 1-2,25,40,43,55,79,88,127,149-151
+crates/descar-core/src/syntax/ast/else_branch.rs
+  h_361662506da91f 1-2,5,8,10,12
+crates/descar-core/src/syntax/ast/unary_op_side.rs
+  h_361662506da91f 1-2
+crates/descar-core/src/syntax/ast/ast_type.rs
+  h_361662506da91f 1-2,6-10,80-83,111
+crates/descar-core/src/syntax/ast/type_syntax.rs
+  h_361662506da91f 1-2,9,11,13,15,17,19,21,23,25,27,29,31,33,35,37,40,42,44,47,49,56-59,84
+crates/descar-core/src/syntax/ast/literal_value.rs
+  h_361662506da91f 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c36fa7449a73d4dc79bd85afdf13c536389a4ef0",
+  "prompts": {},
+  "humans": {
+    "h_361662506da91f": {
+      "author": "GIUSEPPE BIANCONI <gbianconi3@gmail.com>"
+    }
+  }
+}
