@@ -128,7 +128,7 @@ fn warn_ignored_options(args: &CompileArgs) {
 
 fn main() {
     let args = Args::parse();
-    
+
     if let Some(Err(error)) = args.logging().map(logging::init) {
         eprintln!("{} logging is disabled: {error}", style("WARNING:").yellow().bold());
     }
