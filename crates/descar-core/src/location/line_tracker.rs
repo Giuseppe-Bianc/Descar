@@ -100,8 +100,7 @@ impl LineTracker {
 
                 '\r' // CRLF is one logical line break. The line start is added
                     // when the following LF is consumed.
-                    if chars.peek().is_none_or(|(_, next)| *next != '\n') =>
-                {
+                    if chars.peek().is_none_or(|(_, next)| *next != '\n') => {
                     line_starts.push(LineStart {
                         byte_offset: next_byte_offset,
                         code_point_offset,
@@ -125,6 +124,7 @@ impl LineTracker {
             file_path: Arc::from(file_path),
         }
     }
+
     /// Returns the complete source text of the tracker.
     #[must_use]
     pub fn source(&self) -> &str {
