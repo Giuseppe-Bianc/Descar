@@ -479,3 +479,37 @@ fn get_line_strips_extended_unicode_line_terminators() {
     assert_eq!(tracker.get_line(5), Some("five"));
     assert_eq!(tracker.get_line(6), Some("six"));
 }
+#[test]
+fn location_for_tabulated_prefix_offsets_across_crlf_and_unicode() {
+    let source = "Aé😀\r\nB\u{2028}C";
+    let tracker = LineTracker::new("test.lang", source.to_string());
+
+    // offset, line, column, UTF-16 offset, absolute code-point offset
+    let expected = [
+        (0, 1, 1, 0, 0),
+        (1, 1, 2, 1, 1),
+        (3, 1, 3, 2, 2),
+        (7, 1, 4, 4, 3),
+        // The boundary between CR and LF remains on the preceding line.
+        (8, 1, 5, 5, 4),
+        (9, 2, 1, 6, 5),
+        (10, 2, 2, 7, 6),
+        (13, 3, 1, 8, 7),
+        (14, 3, 2, 9, 8),
+    ];
+
+    for (offset, line, column, utf16_offset, code_point_offset) in expected {
+        let location = tracker.location_for(offset);
+
+        assert_eq!(location.line(), line, "line at byte offset {offset}");
+        assert_eq!(location.column(), column, "column at byte offset {offset}");
+        assert_eq!(location.index(), utf16_offset, "UTF-16 offset at byte offset {offset}");
+        assert_eq!(location.code_point_offset(), code_point_offset);
+        assert_eq!(location.offset(), offset);
+        assert_eq!(location.utf8_offset(), offset);
+    }
+
+    assert_eq!(tracker.get_line(1), Some("Aé😀"));
+    assert_eq!(tracker.get_line(2), Some("B"));
+    assert_eq!(tracker.get_line(3), Some("C"));
+}
