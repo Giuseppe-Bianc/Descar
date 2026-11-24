@@ -479,6 +479,7 @@ fn get_line_strips_extended_unicode_line_terminators() {
     assert_eq!(tracker.get_line(5), Some("five"));
     assert_eq!(tracker.get_line(6), Some("six"));
 }
+
 #[test]
 fn location_for_tabulated_prefix_offsets_across_crlf_and_unicode() {
     let source = "Aé😀\r\nB\u{2028}C";
