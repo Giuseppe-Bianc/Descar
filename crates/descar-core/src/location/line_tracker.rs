@@ -111,18 +111,10 @@ impl LineTracker {
             }
 
             // Store the completed prefix state for the next character boundary.
-            positions.push(SourcePosition {
-                byte_offset: next_byte_offset,
-                utf16_offset,
-            });
+            positions.push(SourcePosition { byte_offset: next_byte_offset, utf16_offset });
         }
 
-        Self {
-            source: source.into(),
-            line_starts,
-            positions,
-            file_path: Arc::from(file_path),
-        }
+        Self { source: source.into(), line_starts, positions, file_path: Arc::from(file_path) }
     }
 
     /// Returns the complete source text of the tracker.
@@ -177,17 +169,12 @@ impl LineTracker {
 
         assert!(self.source.is_char_boundary(offset), "Offset {offset} is not a UTF-8 character boundary");
 
-        let line_index = match self
-            .line_starts
-            .binary_search_by_key(&offset, |line| line.byte_offset)
-        {
+        let line_index = match self.line_starts.binary_search_by_key(&offset, |line| line.byte_offset) {
             Ok(index) => index,
             Err(index) => index.saturating_sub(1),
         };
 
-        let Ok(code_point_offset) = self
-            .positions
-            .binary_search_by_key(&offset, |position| position.byte_offset)
+        let Ok(code_point_offset) = self.positions.binary_search_by_key(&offset, |position| position.byte_offset)
         else {
             unreachable!("offset was checked to be a valid UTF-8 boundary");
         };
@@ -259,10 +246,7 @@ impl LineTracker {
         let line_index = line_number.checked_sub(1)?;
         let start = self.line_starts.get(line_index)?.byte_offset;
 
-        let end = self
-            .line_starts
-            .get(line_index + 1)
-            .map_or(self.source.len(), |line| line.byte_offset);
+        let end = self.line_starts.get(line_index + 1).map_or(self.source.len(), |line| line.byte_offset);
 
         let line = &self.source[start..end];
 
