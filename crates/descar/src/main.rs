@@ -10,6 +10,7 @@ use descar_core::error::compile_error::CompileError;
 use descar_core::lex::lexer::{Lexer, lexer_tokenize_with_errors};
 use descar_core::semantic::type_checker::TypeChecker;
 use std::path::Path;
+use std::time::Instant;
 use std::{fs, process};
 
 use clap::{CommandFactory, Parser};
@@ -127,7 +128,7 @@ fn warn_ignored_options(args: &CompileArgs) {
 
 fn main() {
     let args = Args::parse();
-
+    
     if let Some(Err(error)) = args.logging().map(logging::init) {
         eprintln!("{} logging is disabled: {error}", style("WARNING:").yellow().bold());
     }
@@ -138,16 +139,16 @@ fn main() {
             let _command = error_span!("compile", file = ?args.input).entered();
             debug!(optimize = ?args.optimize, emit_ir = args.emit_ir, diagnostics = args.diagnostics, output = ?args.output, "command started");
             warn_ignored_options(&args);
-
+            let compilation_start = Instant::now();
             let _statements = analyze(args.input.as_path());
-            info!("compilation succeeded");
+            info!(elapsed = ?compilation_start.elapsed(), "compilation succeeded");
         }
         Some(Command::Check(args)) => {
             let _command = error_span!("check", file = ?args.input).entered();
             debug!("command started");
-
+            let check_start = Instant::now();
             let _statements = analyze(args.input.as_path());
-            info!("check succeeded");
+            info!(elapsed = ?check_start.elapsed(), "check succeeded");
         }
     }
 }
