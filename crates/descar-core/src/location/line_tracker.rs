@@ -185,12 +185,11 @@ impl LineTracker {
             Err(index) => index.saturating_sub(1),
         };
 
-        let code_point_offset = match self
+        let Ok(code_point_offset) = self
             .positions
             .binary_search_by_key(&offset, |position| position.byte_offset)
-        {
-            Ok(index) => index,
-            Err(_) => unreachable!("offset was checked to be a valid UTF-8 boundary"),
+        else {
+            unreachable!("offset was checked to be a valid UTF-8 boundary");
         };
 
         let line_start = self.line_starts[line_index];
