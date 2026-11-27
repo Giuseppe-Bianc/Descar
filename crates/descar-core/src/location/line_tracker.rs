@@ -1,22 +1,15 @@
 use crate::location::{source_location::SourceLocation, source_span::SourceSpan};
 use std::sync::Arc;
 
-/// Tracks source positions through efficient offset-to-location conversion.
-///
-/// The tracker keeps the original UTF-8 source text and stores prefix state at
-/// regular Unicode scalar boundaries:
-/// - the UTF-8 byte offset;
-/// - the corresponding UTF-16 code-unit offset;
-/// - the starting byte and code-point offset of every logical line.
-///
-/// `location_for` scans from the nearest stored position to resolve a byte
-/// offset while preserving the coordinate semantics used by Dersco.
+/// Byte distance between two stored prefix states.
 const POSITION_CHECKPOINT_INTERVAL: usize = 64;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct SourcePosition {
     /// UTF-8 byte offset of this character boundary.
     byte_offset: usize,
+    /// Unicode code points before this boundary.
+    code_points: usize,
     /// UTF-16 code-unit offset of this character boundary.
     utf16_offset: usize,
 }
@@ -29,7 +22,11 @@ struct LineStart {
     code_point_offset: usize,
 }
 
-#[repr(C)]
+/// Converts UTF-8 byte offsets to source locations.
+///
+/// The tracker keeps the source text, the start of every logical line, and one prefix
+/// state for every `POSITION_CHECKPOINT_INTERVAL` bytes. `location_for` indexes the
+/// checkpoint directly and scans the bytes that follow it.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LineTracker {
     /// Original source code content, shared via Arc.
@@ -40,9 +37,9 @@ pub struct LineTracker {
     /// The first element is always (0, 0).
     line_starts: Vec<LineStart>,
 
-    /// Prefix position state at every `POSITION_CHECKPOINT_INTERVAL` code points.
+    /// Entry `k` is the first character boundary at or after byte `k * POSITION_CHECKPOINT_INTERVAL`.
     ///
-    /// Each entry contains the byte and UTF-16 offsets for that boundary.
+    /// Each entry contains the byte, code-point, and UTF-16 offsets for that boundary.
     positions: Arc<[SourcePosition]>,
 
     /// Path to source file, shared via Arc.
@@ -69,7 +66,7 @@ impl LineTracker {
     #[must_use]
     pub fn new(file_path: &str, source: String) -> Self {
         let mut positions = Vec::with_capacity(source.len() / POSITION_CHECKPOINT_INTERVAL + 1);
-        positions.push(SourcePosition { byte_offset: 0, utf16_offset: 0 });
+        positions.push(SourcePosition { byte_offset: 0, code_points: 0, utf16_offset: 0 });
 
         let mut line_starts = vec![LineStart { byte_offset: 0, code_point_offset: 0 }];
 
@@ -103,8 +100,13 @@ impl LineTracker {
                 _ => {}
             }
 
-            if code_point_offset % POSITION_CHECKPOINT_INTERVAL == 0 {
-                positions.push(SourcePosition { byte_offset: next_byte_offset, utf16_offset });
+            // First boundary at or after each 64-byte mark.
+            if next_byte_offset >= positions.len() * POSITION_CHECKPOINT_INTERVAL {
+                positions.push(SourcePosition {
+                    byte_offset: next_byte_offset,
+                    code_points: code_point_offset,
+                    utf16_offset,
+                });
             }
         }
 
@@ -168,21 +170,15 @@ impl LineTracker {
             Err(index) => index.saturating_sub(1),
         };
 
-        let checkpoint_index = match self.positions.binary_search_by_key(&offset, |position| position.byte_offset) {
-            Ok(index) => index,
-            Err(index) => index.saturating_sub(1),
-        };
-        let checkpoint = self.positions[checkpoint_index];
-        let mut code_point_offset = checkpoint_index * POSITION_CHECKPOINT_INTERVAL;
-        let mut utf16_offset = checkpoint.utf16_offset;
-        for ch in self.source[checkpoint.byte_offset..offset].chars() {
-            code_point_offset += 1;
-            utf16_offset += ch.len_utf16();
-        }
+        let checkpoint = self.positions[offset / POSITION_CHECKPOINT_INTERVAL];
+        let (chars, astral) = self.source.as_bytes()[checkpoint.byte_offset..offset]
+            .iter()
+            .fold((0, 0), |(c, a), &x| (c + usize::from((x & 0xC0) != 0x80), a + usize::from(x >= 0xF0)));
+        let code_point_offset = checkpoint.code_points + chars;
+        let utf16_offset = checkpoint.utf16_offset + chars + astral;
 
         let line_start = self.line_starts[line_index];
 
-        // Each checkpoint index represents a fixed number of code points.
         let column = code_point_offset - line_start.code_point_offset + 1;
 
         // Dersco's `index` corresponds to Java's UTF-16 `position`.

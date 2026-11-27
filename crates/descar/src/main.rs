@@ -8,7 +8,6 @@ mod logging;
 use console::style;
 use descar_core::error::compile_error::CompileError;
 use descar_core::lex::lexer::{Lexer, lexer_tokenize_with_errors};
-use descar_core::printers::ast_printer::pretty_print_stmt;
 use descar_core::semantic::type_checker::TypeChecker;
 use std::path::Path;
 use std::time::Instant;
@@ -28,13 +27,15 @@ use descar_core::file::{FileSizeInfo, SizeSystems};
 /// The error category and underlying error value are printed to standard error.
 /// This message is a user-facing error, not a log event, so `-q` does not hide it.
 fn handle_io_error<T: std::fmt::Display>(error_type: &str, e: T) {
-    let message = e.to_string();
-    eprintln!(
-        "{} {}: {}\n",
-        style("ERROR:").red().bold(),
-        style(error_type).red(),
-        style(message.escape_debug()).yellow()
-    );
+    let mut message = String::new();
+    for c in e.to_string().chars() {
+        if c.is_control() {
+            message.extend(c.escape_default());
+        } else {
+            message.push(c);
+        }
+    }
+    eprintln!("{} {}: {}\n", style("ERROR:").red().bold(), style(error_type).red(), style(message).yellow());
 }
 
 /// Logs the size of the source text at debug level.
