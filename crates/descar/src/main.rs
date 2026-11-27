@@ -8,6 +8,7 @@ mod logging;
 use console::style;
 use descar_core::error::compile_error::CompileError;
 use descar_core::lex::lexer::{Lexer, lexer_tokenize_with_errors};
+use descar_core::printers::ast_printer::pretty_print_stmt;
 use descar_core::semantic::type_checker::TypeChecker;
 use std::path::Path;
 use std::time::Instant;
@@ -27,7 +28,13 @@ use descar_core::file::{FileSizeInfo, SizeSystems};
 /// The error category and underlying error value are printed to standard error.
 /// This message is a user-facing error, not a log event, so `-q` does not hide it.
 fn handle_io_error<T: std::fmt::Display>(error_type: &str, e: T) {
-    eprintln!("{} {}: {}\n", style("ERROR:").red().bold(), style(error_type).red(), style(e).yellow());
+    let message = e.to_string();
+    eprintln!(
+        "{} {}: {}\n",
+        style("ERROR:").red().bold(),
+        style(error_type).red(),
+        style(message.escape_debug()).yellow()
+    );
 }
 
 /// Logs the size of the source text at debug level.
@@ -140,14 +147,14 @@ fn main() {
             debug!(optimize = ?args.optimize, emit_ir = args.emit_ir, diagnostics = args.diagnostics, output = ?args.output, "command started");
             warn_ignored_options(&args);
             let compilation_start = Instant::now();
-            let _statements = analyze(args.input.as_path());
+            let _compilation_unit = analyze(args.input.as_path());
             info!(elapsed = ?compilation_start.elapsed(), "compilation succeeded");
         }
         Some(Command::Check(args)) => {
             let _command = error_span!("check", file = ?args.input).entered();
             debug!("command started");
             let check_start = Instant::now();
-            let _statements = analyze(args.input.as_path());
+            let _compilation_unit = analyze(args.input.as_path());
             info!(elapsed = ?check_start.elapsed(), "check succeeded");
         }
     }

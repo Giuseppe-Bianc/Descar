@@ -191,6 +191,26 @@ fn parses_prefix_and_postfix_unary_expressions() {
 }
 
 #[test]
+fn prefix_increment_after_a_declaration_starts_a_new_statement() {
+    let input = "fun f(): i64 {\nvar first, second: i64 = 0, 0\n++first\nsecond++\nreturn 0\n}";
+    let (unit, errors) = parse(input);
+    assert_no_errors(&errors);
+
+    let Stmt::Function { body, .. } = &unit[0] else { panic!("expected function declaration") };
+    let Stmt::Block { statements, .. } = body.as_ref() else { panic!("expected function body") };
+    assert!(matches!(
+        &statements[..],
+        [
+            Stmt::VarDeclaration { .. },
+            Stmt::Expression { expr: prefix },
+            Stmt::Expression { expr: postfix },
+            Stmt::Return { .. }
+        ] if matches!(prefix.as_ref(), Expr::Unary { op: UnaryOp::Increment, side: UnaryOpSide::Prefix, .. })
+            && matches!(postfix.as_ref(), Expr::Unary { op: UnaryOp::Increment, side: UnaryOpSide::Postfix, .. })
+    ));
+}
+
+#[test]
 fn respects_binary_precedence_and_grouping() {
     let (precedence_statements, errors) = parse("a + b * c");
     assert_no_errors(&errors);

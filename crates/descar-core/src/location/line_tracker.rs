@@ -3,16 +3,16 @@ use std::sync::Arc;
 
 /// Tracks source positions through efficient offset-to-location conversion.
 ///
-/// The tracker keeps the original UTF-8 source text and uses bottom-up tabulation
-/// to precompute the prefix state at every Unicode scalar boundary:
+/// The tracker keeps the original UTF-8 source text and stores prefix state at
+/// regular Unicode scalar boundaries:
 /// - the UTF-8 byte offset;
 /// - the corresponding UTF-16 code-unit offset;
 /// - the starting byte and code-point offset of every logical line.
 ///
-/// For the UTF-16 coordinate, the recurrence is
-/// `utf16[i + 1] = utf16[i] + char[i].len_utf16()`, with `utf16[0] = 0`.
-/// The resulting tables let `location_for` resolve a valid UTF-8 byte offset
-/// using binary search while preserving the coordinate semantics used by Dersco.
+/// `location_for` scans from the nearest stored position to resolve a byte
+/// offset while preserving the coordinate semantics used by Dersco.
+const POSITION_CHECKPOINT_INTERVAL: usize = 64;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct SourcePosition {
     /// UTF-8 byte offset of this character boundary.
@@ -40,11 +40,10 @@ pub struct LineTracker {
     /// The first element is always (0, 0).
     line_starts: Vec<LineStart>,
 
-    /// Prefix position state for every UTF-8 character boundary, including EOF.
+    /// Prefix position state at every `POSITION_CHECKPOINT_INTERVAL` code points.
     ///
-    /// The vector index is the absolute Unicode code-point offset. Each entry
-    /// contains the byte and UTF-16 offsets for that boundary.
-    positions: Vec<SourcePosition>,
+    /// Each entry contains the byte and UTF-16 offsets for that boundary.
+    positions: Arc<[SourcePosition]>,
 
     /// Path to source file, shared via Arc.
     file_path: Arc<str>,
@@ -69,11 +68,7 @@ impl LineTracker {
     /// * `source` - The source text. The tracker takes ownership of the text.
     #[must_use]
     pub fn new(file_path: &str, source: String) -> Self {
-        // Count once so the per-character prefix table can reserve its exact capacity.
-        let char_count = source.chars().count();
-
-        // Base state: zero bytes, zero Unicode code points, and zero UTF-16 units.
-        let mut positions = Vec::with_capacity(char_count + 1);
+        let mut positions = Vec::with_capacity(source.len() / POSITION_CHECKPOINT_INTERVAL + 1);
         positions.push(SourcePosition { byte_offset: 0, utf16_offset: 0 });
 
         let mut line_starts = vec![LineStart { byte_offset: 0, code_point_offset: 0 }];
@@ -83,8 +78,6 @@ impl LineTracker {
         let mut chars = source.char_indices().peekable();
 
         while let Some((byte_offset, ch)) = chars.next() {
-            // Bottom-up DP transition from the previous character boundary.
-            // D[i + 1] = D[i] + len_utf16(ch[i]).
             utf16_offset += ch.len_utf16();
             code_point_offset += 1;
 
@@ -110,11 +103,12 @@ impl LineTracker {
                 _ => {}
             }
 
-            // Store the completed prefix state for the next character boundary.
-            positions.push(SourcePosition { byte_offset: next_byte_offset, utf16_offset });
+            if code_point_offset % POSITION_CHECKPOINT_INTERVAL == 0 {
+                positions.push(SourcePosition { byte_offset: next_byte_offset, utf16_offset });
+            }
         }
 
-        Self { source: source.into(), line_starts, positions, file_path: Arc::from(file_path) }
+        Self { source: source.into(), line_starts, positions: positions.into(), file_path: Arc::from(file_path) }
     }
 
     /// Returns the complete source text of the tracker.
@@ -174,19 +168,25 @@ impl LineTracker {
             Err(index) => index.saturating_sub(1),
         };
 
-        let Ok(code_point_offset) = self.positions.binary_search_by_key(&offset, |position| position.byte_offset)
-        else {
-            unreachable!("offset was checked to be a valid UTF-8 boundary");
+        let checkpoint_index = match self.positions.binary_search_by_key(&offset, |position| position.byte_offset) {
+            Ok(index) => index,
+            Err(index) => index.saturating_sub(1),
         };
+        let checkpoint = self.positions[checkpoint_index];
+        let mut code_point_offset = checkpoint_index * POSITION_CHECKPOINT_INTERVAL;
+        let mut utf16_offset = checkpoint.utf16_offset;
+        for ch in self.source[checkpoint.byte_offset..offset].chars() {
+            code_point_offset += 1;
+            utf16_offset += ch.len_utf16();
+        }
 
         let line_start = self.line_starts[line_index];
-        let position = self.positions[code_point_offset];
 
-        // The position table index is the absolute Unicode code-point offset.
+        // Each checkpoint index represents a fixed number of code points.
         let column = code_point_offset - line_start.code_point_offset + 1;
 
         // Dersco's `index` corresponds to Java's UTF-16 `position`.
-        let index = position.utf16_offset;
+        let index = utf16_offset;
         // In Descar, `offset` is already the UTF-8 byte offset.
         let utf8_offset = offset;
 

@@ -699,6 +699,13 @@ impl<'a> JsavParser<'a> {
         let mut left = self.nud()?;
 
         while let Some(token) = self.peek() {
+            // A line break makes ++/-- a prefix for the next statement, not postfix on `left`.
+            if matches!(&token.kind, TokenKind::PlusPlus | TokenKind::MinusMinus)
+                && token.span.start().line() > left.span().end().line()
+            {
+                break;
+            }
+
             let lbp = Precedence::binding_power(token).left;
             if lbp <= min_bp {
                 break;

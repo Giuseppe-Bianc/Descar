@@ -705,7 +705,16 @@ impl TypeChecker {
     /// Validates numeric, boolean, integer, and mutability requirements for
     /// negation, logical and bitwise not, increment, and decrement operations.
     fn visit_unary_expr(&mut self, op: UnaryOp, expr: &Expr, _span: &SourceSpan) -> Option<Type> {
-        let expr_type = self.visit_expr(expr)?;
+        let expr_type = match op {
+            UnaryOp::Increment | UnaryOp::Decrement => {
+                let mut target = expr;
+                while let Expr::Grouping { expr: inner, .. } = target {
+                    target = inner.as_ref();
+                }
+                self.visit_assignment_target(target)?
+            }
+            _ => self.visit_expr(expr)?,
+        };
 
         match op {
             UnaryOp::Negate => {
@@ -748,18 +757,6 @@ impl TypeChecker {
             }
 
             UnaryOp::Increment | UnaryOp::Decrement => {
-                if let Some(name) = Self::base_variable_name(expr)
-                    && let Some(var) = self.symbol_table.lookup_variable(name)
-                    && !var.mutable
-                {
-                    self.type_error_with_code(
-                        Some(ErrorCode::E2024),
-                        format!("Cannot assign to immutable variable '{name}'"),
-                        expr.span(),
-                    );
-                    return None;
-                }
-
                 if Self::is_numeric(&expr_type) {
                     Some(expr_type)
                 } else {

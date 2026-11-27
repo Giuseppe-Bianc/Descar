@@ -1610,8 +1610,18 @@ fn test_compound_assignment_unknown_target_reaches_lookup_none() {
 }
 
 #[test]
-fn test_increment_non_variable_expression_reaches_base_name_none() {
+fn test_increment_non_variable_expression_is_rejected() {
     let ast = "fun f(): i32 { return 1i32 }\nf()++";
+    let errors = typecheck(ast);
+
+    assert_eq!(errors.len(), 1);
+    assert_eq!(errors[0].error_code(), Some(&ErrorCode::E1003));
+    assert_eq!(errors[0].message(), Some("Invalid assignment target"));
+}
+
+#[test]
+fn test_increment_mutable_array_element() {
+    let ast = "var values: i32[2] = {1i32, 2i32}\nvalues[0]++";
     let errors = typecheck(ast);
 
     assert!(errors.is_empty(), "Unexpected errors: {errors:?}");
