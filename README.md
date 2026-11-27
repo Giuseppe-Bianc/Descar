@@ -124,7 +124,6 @@ CI runs on Linux, macOS, and Windows for stable, beta, and nightly toolchains.
 
 ## Additional Documentation
 
-- [`CLAUDE.md`](./CLAUDE.md) contains development guidance, common Cargo commands, workspace architecture, CI details, and project contribution conventions.
 - [`SECURITY.md`](./SECURITY.md) describes the vulnerability reporting process, supported versions, security incident handling, and security practices.
 - [`CODE_OF_CONDUCT.md`](./CODE_OF_CONDUCT.md) defines the project's community standards and expected behavior.
 - [`.github/ISSUE_TEMPLATE/`](./.github/ISSUE_TEMPLATE/) contains templates for bug reports and feature requests.
