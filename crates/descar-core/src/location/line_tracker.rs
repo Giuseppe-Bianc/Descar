@@ -1,46 +1,39 @@
 use crate::location::{source_location::SourceLocation, source_span::SourceSpan};
 use std::sync::Arc;
 
-/// Byte distance between two stored prefix states.
-const POSITION_CHECKPOINT_INTERVAL: usize = 64;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct SourcePosition {
-    /// UTF-8 byte offset of this character boundary.
-    byte_offset: usize,
-    /// Unicode code points before this boundary.
-    code_points: usize,
-    /// UTF-16 code-unit offset of this character boundary.
-    utf16_offset: usize,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct LineStart {
-    /// UTF-8 byte offset immediately after the preceding line terminator.
-    byte_offset: usize,
-    /// Absolute Unicode code-point offset at the beginning of this line.
-    code_point_offset: usize,
-}
-
-/// Converts UTF-8 byte offsets to source locations.
+/// Tracks source positions through efficient offset-to-location conversion.
 ///
-/// The tracker keeps the source text, the start of every logical line, and one prefix
-/// state for every `POSITION_CHECKPOINT_INTERVAL` bytes. `location_for` indexes the
-/// checkpoint directly and scans the bytes that follow it.
+/// The tracker keeps the original UTF-8 source text and precomputes:
+/// - line starts in UTF-8 byte offsets;
+/// - the UTF-8 byte offset of every Unicode scalar value;
+/// - the corresponding UTF-16 offset of every Unicode scalar value.
+
+///
+/// This allows `location_for` to resolve a valid UTF-8 byte offset in O(log n)
+/// time while preserving the coordinate semantics used by Dersco.
+#[repr(C)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LineTracker {
     /// Original source code content, shared via Arc.
     source: Arc<str>,
 
-    /// Starting byte and code-point offset of every logical line.
+    /// Starting UTF-8 byte offset of every logical line.
     ///
-    /// The first element is always (0, 0).
-    line_starts: Vec<LineStart>,
+    /// The first element is always 0.
+    line_starts: Vec<usize>,
 
-    /// Entry `k` is the first character boundary at or after byte `k * POSITION_CHECKPOINT_INTERVAL`.
+    /// UTF-8 byte offsets of Unicode scalar value boundaries.
     ///
-    /// Each entry contains the byte, code-point, and UTF-16 offsets for that boundary.
-    positions: Arc<[SourcePosition]>,
+    /// Contains one additional entry for EOF.
+    char_starts: Vec<usize>,
+
+    /// UTF-16 code-unit offset corresponding to every `char_starts` entry.
+    ///
+    /// The final entry is the UTF-16 length of the complete source.
+    utf16_offsets: Vec<usize>,
+
+    /// Code-point index corresponding to each line start.
+    line_char_starts: Vec<usize>,
 
     /// Path to source file, shared via Arc.
     file_path: Arc<str>,
@@ -65,52 +58,67 @@ impl LineTracker {
     /// * `source` - The source text. The tracker takes ownership of the text.
     #[must_use]
     pub fn new(file_path: &str, source: String) -> Self {
-        let mut positions = Vec::with_capacity(source.len() / POSITION_CHECKPOINT_INTERVAL + 1);
-        positions.push(SourcePosition { byte_offset: 0, code_points: 0, utf16_offset: 0 });
 
-        let mut line_starts = vec![LineStart { byte_offset: 0, code_point_offset: 0 }];
+        let char_count = source.chars().count();
+
+        let mut line_starts = vec![0];
+        let mut line_char_starts = vec![0];
+
+
+        let mut char_starts = Vec::with_capacity(char_count + 1);
+        let mut utf16_offsets = Vec::with_capacity(char_count + 1);
 
         let mut utf16_offset = 0;
         let mut code_point_offset = 0;
+
         let mut chars = source.char_indices().peekable();
 
         while let Some((byte_offset, ch)) = chars.next() {
+            char_starts.push(byte_offset);
+            utf16_offsets.push(utf16_offset);
+
             utf16_offset += ch.len_utf16();
             code_point_offset += 1;
 
-            let next_byte_offset = byte_offset + ch.len_utf8();
+
 
             match ch {
                 '\n' | '\u{000B}' | '\u{000C}' | '\u{0085}' | '\u{2028}' | '\u{2029}' => {
-                    line_starts.push(LineStart {
-                        byte_offset: next_byte_offset,
-                        code_point_offset,
-                    });
+                    line_starts.push(byte_offset + ch.len_utf8());
+                    line_char_starts.push(code_point_offset);
+
+
                 }
 
                 '\r' // CRLF is one logical line break. The line start is added
                     // when the following LF is consumed.
                     if chars.peek().is_none_or(|(_, next)| *next != '\n') => {
-                    line_starts.push(LineStart {
-                        byte_offset: next_byte_offset,
-                        code_point_offset,
-                    });
-                }
+                        line_starts.push(byte_offset + ch.len_utf8());
+                        line_char_starts.push(code_point_offset);
+                    }
+
+
+
 
                 _ => {}
             }
-
-            // First boundary at or after each 64-byte mark.
-            if next_byte_offset >= positions.len() * POSITION_CHECKPOINT_INTERVAL {
-                positions.push(SourcePosition {
-                    byte_offset: next_byte_offset,
-                    code_points: code_point_offset,
-                    utf16_offset,
-                });
-            }
         }
 
-        Self { source: source.into(), line_starts, positions: positions.into(), file_path: Arc::from(file_path) }
+        // EOF is a valid UTF-8 and UTF-16 position.
+        char_starts.push(source.len());
+        utf16_offsets.push(utf16_offset);
+
+
+
+
+        Self {
+            source: source.into(),
+            line_starts,
+            char_starts,
+            utf16_offsets,
+            line_char_starts,
+            file_path: Arc::from(file_path),
+        }
     }
 
     /// Returns the complete source text of the tracker.
@@ -165,24 +173,30 @@ impl LineTracker {
 
         assert!(self.source.is_char_boundary(offset), "Offset {offset} is not a UTF-8 character boundary");
 
-        let line_index = match self.line_starts.binary_search_by_key(&offset, |line| line.byte_offset) {
+        let line_index = match self.line_starts.binary_search(&offset) {
+
+
+
             Ok(index) => index,
             Err(index) => index.saturating_sub(1),
         };
 
-        let checkpoint = self.positions[offset / POSITION_CHECKPOINT_INTERVAL];
-        let (chars, astral) = self.source.as_bytes()[checkpoint.byte_offset..offset]
-            .iter()
-            .fold((0, 0), |(c, a), &x| (c + usize::from((x & 0xC0) != 0x80), a + usize::from(x >= 0xF0)));
-        let code_point_offset = checkpoint.code_points + chars;
-        let utf16_offset = checkpoint.utf16_offset + chars + astral;
+        let Ok(code_point_offset) = self.char_starts.binary_search(&offset) else {
+            unreachable!("offset was checked to be a valid UTF-8 boundary");
 
-        let line_start = self.line_starts[line_index];
 
-        let column = code_point_offset - line_start.code_point_offset + 1;
+
+
+        };
+
+        // Dersco columns are counted in Unicode code points, not UTF-8 bytes.
+        let column = code_point_offset - self.line_char_starts[line_index] + 1;
 
         // Dersco's `index` corresponds to Java's UTF-16 `position`.
-        let index = utf16_offset;
+        let index = self.utf16_offsets[code_point_offset];
+
+
+
         // In Descar, `offset` is already the UTF-8 byte offset.
         let utf8_offset = offset;
 
@@ -240,9 +254,12 @@ impl LineTracker {
     #[must_use]
     pub fn get_line(&self, line_number: usize) -> Option<&str> {
         let line_index = line_number.checked_sub(1)?;
-        let start = self.line_starts.get(line_index)?.byte_offset;
+        let start = *self.line_starts.get(line_index)?;
 
-        let end = self.line_starts.get(line_index + 1).map_or(self.source.len(), |line| line.byte_offset);
+        let end = self.line_starts.get(line_index + 1).copied().unwrap_or(self.source.len());
+
+
+
 
         let line = &self.source[start..end];
 
