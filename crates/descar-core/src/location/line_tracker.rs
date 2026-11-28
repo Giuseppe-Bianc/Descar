@@ -7,7 +7,6 @@ use std::sync::Arc;
 /// - line starts in UTF-8 byte offsets;
 /// - the UTF-8 byte offset of every Unicode scalar value;
 /// - the corresponding UTF-16 offset of every Unicode scalar value.
-
 ///
 /// This allows `location_for` to resolve a valid UTF-8 byte offset in O(log n)
 /// time while preserving the coordinate semantics used by Dersco.
@@ -58,12 +57,10 @@ impl LineTracker {
     /// * `source` - The source text. The tracker takes ownership of the text.
     #[must_use]
     pub fn new(file_path: &str, source: String) -> Self {
-
         let char_count = source.chars().count();
 
         let mut line_starts = vec![0];
         let mut line_char_starts = vec![0];
-
 
         let mut char_starts = Vec::with_capacity(char_count + 1);
         let mut utf16_offsets = Vec::with_capacity(char_count + 1);
@@ -79,8 +76,6 @@ impl LineTracker {
 
             utf16_offset += ch.len_utf16();
             code_point_offset += 1;
-
-
 
             match ch {
                 '\n' | '\u{000B}' | '\u{000C}' | '\u{0085}' | '\u{2028}' | '\u{2029}' => {
@@ -107,9 +102,6 @@ impl LineTracker {
         // EOF is a valid UTF-8 and UTF-16 position.
         char_starts.push(source.len());
         utf16_offsets.push(utf16_offset);
-
-
-
 
         Self {
             source: source.into(),
@@ -174,19 +166,12 @@ impl LineTracker {
         assert!(self.source.is_char_boundary(offset), "Offset {offset} is not a UTF-8 character boundary");
 
         let line_index = match self.line_starts.binary_search(&offset) {
-
-
-
             Ok(index) => index,
             Err(index) => index.saturating_sub(1),
         };
 
         let Ok(code_point_offset) = self.char_starts.binary_search(&offset) else {
             unreachable!("offset was checked to be a valid UTF-8 boundary");
-
-
-
-
         };
 
         // Dersco columns are counted in Unicode code points, not UTF-8 bytes.
@@ -194,8 +179,6 @@ impl LineTracker {
 
         // Dersco's `index` corresponds to Java's UTF-16 `position`.
         let index = self.utf16_offsets[code_point_offset];
-
-
 
         // In Descar, `offset` is already the UTF-8 byte offset.
         let utf8_offset = offset;
@@ -257,9 +240,6 @@ impl LineTracker {
         let start = *self.line_starts.get(line_index)?;
 
         let end = self.line_starts.get(line_index + 1).copied().unwrap_or(self.source.len());
-
-
-
 
         let line = &self.source[start..end];
 
